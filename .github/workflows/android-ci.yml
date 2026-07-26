@@ -37,6 +37,28 @@ jobs:
             --tag h9-cluster-build:ci \
             .
 
+      - name: Smoke-test theme tooling
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --workdir /workspace \
+            h9-cluster-build:ci \
+            bash -euo pipefail -c '
+              smoke_dir=/workspace/.gradle-ci/theme-smoke
+              mkdir -p "${smoke_dir}/forum-kit"
+              python tools/build_forum_design_template.py \
+                --output-dir "${smoke_dir}/forum-kit" \
+                --opacity-source app/src/main/assets/dashboard/background_classic.png
+              python tools/edit_classic_background.py \
+                --input app/src/main/assets/dashboard/background_classic.png \
+                --output "${smoke_dir}/background-classic.png" \
+                --overlay-output "${smoke_dir}/background-classic-overlay.png"
+              test -s "${smoke_dir}/forum-kit/01_technical_guide.png"
+              test -s "${smoke_dir}/background-classic.png"
+              test -s "${smoke_dir}/background-classic-overlay.png"
+            '
+
       - name: Build debug APK and run Android Lint
         run: |
           docker run --rm \

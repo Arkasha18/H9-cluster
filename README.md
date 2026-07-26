@@ -131,9 +131,10 @@ H9_CLUSTER_KEY_PASSWORD=your-password
 GitHub Actions для каждого Pull Request:
 
 1. собирает зафиксированный Docker toolchain;
-2. выполняет внутри него `assembleDebug` и Android Lint;
-3. сохраняет debug APK и отчёты Lint как временный Actions artifact;
-4. после попадания проверенного commit в `main` публикует toolchain в GHCR.
+2. проверяет генерацию Forum Kit и обработку графики темы;
+3. выполняет внутри него `assembleDebug` и Android Lint;
+4. сохраняет debug APK и отчёты Lint как временный Actions artifact;
+5. после попадания проверенного commit в `main` публикует toolchain в GHCR.
 
 Production-ключ не используется GitHub Actions и должен оставаться только на
 компьютере владельца.
