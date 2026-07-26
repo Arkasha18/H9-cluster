@@ -1,0 +1,73 @@
+name: Сообщить об ошибке
+description: Воспроизводимая ошибка приложения или отображения данных
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Не публикуйте VIN, координаты, пароли, ключи подписи и необработанные дампы автомобиля.
+        Не работайте с головным устройством во время управления автомобилем.
+  - type: input
+    id: version
+    attributes:
+      label: Версия приложения
+      placeholder: "9.0.0"
+    validations:
+      required: true
+  - type: input
+    id: vehicle
+    attributes:
+      label: Автомобиль и головное устройство
+      description: Укажите модель, год и версию Android без серийных номеров.
+      placeholder: "Haval H9, Android 9, ARM64"
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Тема
+      options:
+        - Classic
+        - Horizon
+        - Собственная тема
+        - Не относится к теме
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: |
+        1. Открыть...
+        2. Выбрать...
+        3. Наблюдать...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактический результат
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Очищенные логи или снимки
+      description: Удалите идентификаторы автомобиля, местоположение и любые секреты.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Подтверждение
+      options:
+        - label: Я проверил, что похожей открытой ошибки ещё нет.
+          required: true
+        - label: Я воспроизводил проблему безопасно и не взаимодействовал с устройством во время движения.
+          required: true

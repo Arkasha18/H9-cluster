@@ -1,0 +1,37 @@
+name: Предложить функцию
+description: Новые показатели, поведение или улучшение интерфейса
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему решает предложение
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+    validations:
+      required: true
+  - type: textarea
+    id: data_source
+    attributes:
+      label: Источник данных
+      description: Если нужен новый показатель, укажите подтверждённый read-only источник и способ проверки.
+  - type: textarea
+    id: safety
+    attributes:
+      label: Влияние на безопасность
+      description: Опишите, почему функция не перекрывает штатные предупреждения и не требует команд автомобилю.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Подтверждение
+      options:
+        - label: Предложение не требует публикации секретов, заводских APK или персональных данных.
+          required: true

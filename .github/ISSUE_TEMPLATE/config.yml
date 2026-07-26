@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Закрытое сообщение об уязвимости
+    url: https://github.com/Arkasha18/H9-cluster/security/advisories/new
+    about: Не публикуйте сведения об уязвимости в обычном Issue.
+  - name: Вопросы и обсуждения
+    url: https://github.com/Arkasha18/H9-cluster/discussions
+    about: Помощь со сборкой, идеи и демонстрация новых тем.
