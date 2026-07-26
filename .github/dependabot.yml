@@ -13,6 +13,15 @@ updates:
       - Arkasha18
     labels:
       - dependencies
+    ignore:
+      # Android Gradle Plugin and the wrapper must be upgraded together after
+      # checking their compatibility. Isolated major updates break the build.
+      - dependency-name: com.android.application
+        update-types:
+          - version-update:semver-major
+      - dependency-name: gradle-wrapper
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: docker
     directory: /
@@ -26,6 +35,12 @@ updates:
       - Arkasha18
     labels:
       - dependencies
+    ignore:
+      # JDK 17 is the supported project toolchain. A major base-image update
+      # must be tested and adopted intentionally.
+      - dependency-name: eclipse-temurin
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
