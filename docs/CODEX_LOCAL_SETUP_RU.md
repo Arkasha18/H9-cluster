@@ -1,0 +1,243 @@
+# Подготовка локального компьютера для разработки дизайна H9 Cluster в Codex
+
+Актуально на 26 июля 2026 года.
+
+Эта инструкция предназначена для трёхэтапного процесса:
+
+1. создание визуального макета;
+2. создание и проверка автономного Demo APK с тестовыми значениями;
+3. перенос проверенного дизайна в основной проект с реальными данными.
+
+Обычный веб-чат для второго и третьего этапов не подходит: агент должен иметь
+доступ к локальной папке, изменять файлы, запускать Python, Gradle и Android SDK.
+
+## 1. Установите Codex
+
+### Рекомендуемый вариант для macOS и Windows
+
+Установите новое настольное приложение ChatGPT, в которое входит режим Codex:
+
+https://chatgpt.com/download/
+
+После установки:
+
+1. войдите в свой аккаунт ChatGPT;
+2. в левом верхнем меню выберите `Codex`;
+3. нажмите добавление проекта;
+4. выберите подготовленную локальную рабочую папку;
+5. запускайте каждый этап в отдельном потоке Codex, но в той же рабочей папке.
+
+Не запускайте эти промпты в обычном ChatGPT в браузере или на телефоне: там
+режим Codex с прямым доступом к локальной папке не выбирается. Если на
+компьютере установлено приложение `ChatGPT Classic`, скачайте новое приложение
+по ссылке выше.
+
+Codex следует давать доступ только к рабочей копии проекта. Не выбирайте
+домашнюю папку целиком, корень диска или каталог со всеми личными документами.
+
+### Codex CLI для macOS и Linux
+
+Официальный установщик:
+
+```sh
+curl -fsSL https://chatgpt.com/codex/install.sh | sh
+```
+
+После установки:
+
+```sh
+codex
+```
+
+Выберите `Sign in with ChatGPT`.
+
+### Codex CLI для Windows
+
+Запустите PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"
+```
+
+После установки:
+
+```powershell
+codex
+```
+
+Альтернативный способ для компьютера, где уже установлен Node.js:
+
+```sh
+npm install -g @openai/codex
+```
+
+Официальный исходный код и актуальные способы установки:
+
+https://github.com/openai/codex
+
+## 2. Установите Android Studio
+
+Скачайте актуальную стабильную версию:
+
+https://developer.android.com/studio
+
+При первом запуске завершите Setup Wizard. Затем откройте:
+
+`Tools → SDK Manager`
+
+Во вкладке `SDK Platforms` установите:
+
+- `Android 15 / API 35` — необходим для `compileSdk = 35`;
+- `Android 9 / API 28` и совместимый system image — только если планируется
+  проверка Demo на эмуляторе, соответствующем головному устройству.
+
+Во вкладке `SDK Tools` установите:
+
+- Android SDK Build-Tools 35.x;
+- Android SDK Platform-Tools;
+- Android SDK Command-line Tools (latest);
+- Android Emulator — если планируется эмулятор.
+
+NDK и CMake этому Java-проекту не требуются.
+
+Не прописывайте путь Android SDK в общий архив проекта. Локальный путь при
+необходимости хранится в `local.properties`, который не публикуется.
+
+## 3. Проверьте JDK 17
+
+Android Gradle Plugin 8.x требует JDK 17. Android Studio поставляется с
+JetBrains Runtime, но Codex запускает Gradle из терминала, поэтому отдельно
+проверьте:
+
+```sh
+java -version
+```
+
+В выводе должна быть версия 17. Если подходящего JDK нет, установите Eclipse
+Temurin 17:
+
+https://adoptium.net/temurin/releases/?version=17
+
+После установки настройте `JAVA_HOME` на JDK 17 или дайте Codex найти JDK 17,
+поставляемый вместе с Android Studio. Не фиксируйте абсолютный путь к JDK в
+публикуемых исходниках.
+
+## 4. Установите Python
+
+Скриптам подготовки и проверки изображений нужны Python, Pillow и NumPy.
+
+Скачать Python:
+
+https://www.python.org/downloads/
+
+Рекомендуется создать виртуальное окружение внутри рабочей папки.
+
+macOS/Linux:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install Pillow numpy
+```
+
+Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install Pillow numpy
+```
+
+Папку `.venv` нельзя включать в итоговый ZIP.
+
+## 5. Установите Git
+
+Git не является частью Android-приложения, но нужен для безопасного просмотра
+изменений и возврата к исходному состоянию:
+
+https://git-scm.com/downloads
+
+Работайте с копией проекта. Перед каждым этапом сохраните исходный ZIP отдельно
+и проверьте текущее состояние файлов.
+
+## 6. Подготовьте рабочую папку
+
+Пример:
+
+```text
+H9_Cluster_Design_Work/
+├── 01_template/
+│   └── H9_Cluster_Neutral_Design_Template_1920x720/
+├── 02_mockup/
+│   └── approved_mockup.png
+├── 03_demo/
+│   └── H9_Cluster_Dashboard_Demo/
+├── 04_production/
+│   └── H9_Cluster_Source/
+└── 05_test_evidence/
+    ├── photos/
+    └── videos/
+```
+
+На первом этапе достаточно `01_template`.
+
+На втором этапе добавьте утверждённый макет и распакованный Demo-проект.
+
+Основной production-проект помещайте в `04_production` только перед третьим
+этапом. Не давайте первому или второму этапу доступ к production-ключу.
+
+ZIP-архивы нужно распаковать заранее. Codex должен работать с реальными файлами
+в локальной папке, а не с вложением в обычном чате.
+
+## 7. Первичная проверка окружения
+
+Попросите Codex выполнить эти проверки из корня рабочей папки:
+
+```sh
+git --version
+java -version
+python3 --version
+adb version
+```
+
+В каталоге Demo-проекта:
+
+macOS/Linux:
+
+```sh
+./gradlew --version
+./gradlew :app:assembleDebug
+```
+
+Windows:
+
+```powershell
+.\gradlew.bat --version
+.\gradlew.bat :app:assembleDebug
+```
+
+Gradle Wrapper сам загружает закреплённую проектом версию Gradle. Не нужно
+устанавливать отдельный системный Gradle.
+
+## 8. Разрешения Codex
+
+Codex может запросить разрешение:
+
+- читать и изменять выбранную рабочую папку;
+- запускать Python, Gradle и Android SDK;
+- скачать зависимости Gradle при первой сборке;
+- использовать эмулятор или подключённое ADB-устройство.
+
+Проверяйте точную команду и путь перед подтверждением. Для этапов 1–2 нельзя
+разрешать установку APK в автомобиль, доступ к production-ключу или изменение
+основного production-проекта.
+
+## 9. Ключ подписи
+
+- Demo APK собирается только с debug-подписью.
+- Production-ключ используется только на третьем этапе и только в приватной
+  локальной работе.
+- Не помещайте `.p12`, `.jks`, пароль, `key.properties` или команды с паролем
+  в форум, Git, промпт либо итоговый ZIP.
+- До отдельного подтверждения пользователя Codex не должен устанавливать
+  production APK на автомобиль.
