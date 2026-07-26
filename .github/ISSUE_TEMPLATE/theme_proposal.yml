@@ -1,0 +1,36 @@
+name: Предложить тему
+description: Макет новой темы приборной панели 1920×720
+title: "[Theme]: "
+labels:
+  - theme
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Название темы
+    validations:
+      required: true
+  - type: textarea
+    id: concept
+    attributes:
+      label: Концепция и особенности
+    validations:
+      required: true
+  - type: textarea
+    id: assets
+    attributes:
+      label: Макеты и исходники
+      description: Приложите preview и укажите лицензии всех использованных ресурсов.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверка системных зон
+      options:
+        - label: Сохранены зоны штатных индикаторов, поворотников и предупреждений.
+          required: true
+        - label: Центральная область карты не перекрыта непрозрачной графикой.
+          required: true
+        - label: Все ресурсы оригинальные либо имеют совместимую лицензию.
+          required: true

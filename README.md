@@ -1,5 +1,9 @@
 # H9 Cluster 9.0.0
 
+[![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-orange.svg)](LICENSE)
+
 Неофициальная приборная панель для Haval H9 с головным устройством на Android 9
 и дополнительным экраном `Display ID 2` размером `1920×720`.
 
@@ -11,6 +15,8 @@
 Проект не связан с Great Wall Motor, Haval или производителем головного
 устройства и не одобрен ими. Названия и товарные знаки принадлежат их
 правообладателям.
+
+![H9 Cluster Classic на Display ID 2](docs/images/h9-cluster-display-2.png)
 
 ## Возможности
 
@@ -48,6 +54,34 @@ com.gwm.android.adapter.server.GwmAdapterService
 может обновляться реже.
 
 ## Сборка
+
+### Воспроизводимая Docker-сборка
+
+Docker-образ содержит JDK 17, Android SDK 35 и Python-зависимости инструментов
+создания тем. Исходники, APK и ключи подписи в образ не копируются.
+
+На компьютерах Apple Silicon также указывайте `linux/amd64`, поскольку Android
+Build Tools внутри контейнера рассчитаны на эту архитектуру:
+
+```bash
+docker build --platform linux/amd64 -t h9-cluster-build .
+docker run --rm --platform linux/amd64 \
+  -v "$PWD:/workspace" -w /workspace \
+  h9-cluster-build
+```
+
+По умолчанию контейнер выполняет `assembleDebug` и `lint`. Готовый образ из
+GitHub Container Registry можно использовать без локальной сборки:
+
+```bash
+docker pull --platform linux/amd64 \
+  ghcr.io/arkasha18/h9-cluster-build:android35-jdk17
+docker run --rm --platform linux/amd64 \
+  -v "$PWD:/workspace" -w /workspace \
+  ghcr.io/arkasha18/h9-cluster-build:android35-jdk17
+```
+
+### Локальная сборка
 
 Требуются:
 
@@ -88,6 +122,21 @@ H9_CLUSTER_KEY_PASSWORD=your-password
 
 Файлы ключей, локальные свойства, APK/AAB и каталоги сборки исключены через
 `.gitignore`.
+
+Порядок выпуска подписанной версии приведён в
+[docs/RELEASING_RU.md](docs/RELEASING_RU.md).
+
+## Непрерывная интеграция
+
+GitHub Actions для каждого Pull Request:
+
+1. собирает зафиксированный Docker toolchain;
+2. выполняет внутри него `assembleDebug` и Android Lint;
+3. сохраняет debug APK и отчёты Lint как временный Actions artifact;
+4. после попадания проверенного commit в `main` публикует toolchain в GHCR.
+
+Production-ключ не используется GitHub Actions и должен оставаться только на
+компьютере владельца.
 
 ## Установка
 
@@ -152,6 +201,19 @@ python3 -m venv .venv
 
 Подробный процесс описан в
 [docs/FORUM_DESIGN_PROMPTS_RU.md](docs/FORUM_DESIGN_PROMPTS_RU.md).
+
+## Участие и поддержка
+
+- ошибки и предложения: [Issues](https://github.com/Arkasha18/H9-cluster/issues);
+- вопросы, идеи и демонстрация тем:
+  [Discussions](https://github.com/Arkasha18/H9-cluster/discussions);
+- правила участия: [CONTRIBUTING.md](CONTRIBUTING.md);
+- история версий: [CHANGELOG.md](CHANGELOG.md);
+- уязвимости: [SECURITY.md](SECURITY.md).
+
+Перед отправкой изменений ознакомьтесь с
+[правилами сообщества](CODE_OF_CONDUCT.md). В Pull Request автоматически
+проверяются сборка и Android Lint.
 
 ## Сторонние компоненты
 
