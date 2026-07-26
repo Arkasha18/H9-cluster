@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="com.gwm.android.adapter.permission.GET_DATA" />
+
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:icon="@drawable/ic_dashboard"
+        android:label="H9 Cluster"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.H9Cluster.Settings">
+
+        <activity
+            android:name=".PreviewActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|density"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:taskAffinity="net.adminrunet.h9cluster.cluster"
+            android:theme="@style/Theme.H9Cluster.Transparent" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.H9Cluster.Settings">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="${bootReceiverEnabled}"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".FdbusProbeService"
+            android:enabled="${fdbusProbeEnabled}"
+            android:exported="true" />
+
+    </application>
+
+</manifest>

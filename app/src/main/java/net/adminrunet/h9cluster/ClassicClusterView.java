@@ -1,0 +1,607 @@
+package net.adminrunet.h9cluster;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.os.SystemClock;
+import android.view.View;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * Complete 1920x720 Canvas renderer. The static PNG contains only the panel body and scales;
+ * every changing needle, number, status and indicator is drawn in this class.
+ */
+public final class ClassicClusterView extends View implements ClusterRenderer {
+    private static final float LOGICAL_WIDTH = 1920.0f;
+    private static final float LOGICAL_HEIGHT = 720.0f;
+    private static final float MAX_SPEED_KPH = 220.0f;
+    private static final float MAX_RPM = 8000.0f;
+    private static final float TANK_CAPACITY_LITERS = 80.0f;
+    private static final float MAIN_DIAL_CENTER_Y = 426.0f;
+    private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+
+    private final Paint bitmapPaint = new Paint(
+            Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint textPaint = new Paint(
+            Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
+    private final Paint shapePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF logicalBounds =
+            new RectF(0.0f, 0.0f, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+    private final RectF needleDestination = new RectF();
+    private final SimpleDateFormat timeFormat =
+            new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+    private final Bitmap staticBackground;
+    private final Bitmap staticOverlay;
+    private final Bitmap yellowNeedle;
+    private final Bitmap whiteNeedle;
+    private final Typeface dataTypeface;
+    private final Typeface gaugeTypeface;
+
+    private ClusterState targetState = ClusterState.empty();
+    private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
+            -1080.0f, 1080.0f, 1080.0f, 450L,
+            35.0f, 60.0f, 12.0f, 0.1f, 0.15f);
+    private float displayedSpeed = targetState.speedKph;
+    private float displayedRpm = targetState.rpm;
+    private float displayedFuel = targetState.fuelLiters;
+    private float displayedCoolant = targetState.coolantC;
+    private float displayedSteering = targetState.steeringAngleDeg;
+    private long lastFrameAtMs;
+    private long cachedClockSecond = -1L;
+    private String cachedClockText = "00:00";
+
+    public ClassicClusterView(Context context) {
+        super(context);
+        setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        setBackgroundColor(Color.TRANSPARENT);
+
+        staticBackground = loadBitmap(context, "dashboard/background_classic.png");
+        staticOverlay = loadBitmap(context, "dashboard/background_classic_overlay.png");
+        yellowNeedle = loadBitmap(context, "dashboard/panel_needle_main_trimmed.png");
+        whiteNeedle = loadBitmap(context, "dashboard/panel_needle_small_trimmed.png");
+        dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
+        gaugeTypeface = Typeface.createFromAsset(
+                context.getAssets(), "fonts/Rajdhani-Medium.ttf");
+
+        bitmapPaint.setAlpha(255);
+        linePaint.setStyle(Paint.Style.STROKE);
+        linePaint.setStrokeCap(Paint.Cap.ROUND);
+    }
+
+    @Override
+    public void setClusterState(ClusterState state) {
+        if (state == null) {
+            return;
+        }
+        targetState = state;
+        displayedRpm = state.rpm;
+        if (state.steeringUpdatedAtMs > 0L) {
+            steeringMotion.onSample(state.steeringAngleDeg, state.steeringUpdatedAtMs);
+        }
+        postInvalidateOnAnimation();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        long frameAtMs = SystemClock.elapsedRealtime();
+        updateSmoothedValues(frameAtMs);
+        updateClock();
+
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+        float scale = Math.min(getWidth() / LOGICAL_WIDTH, getHeight() / LOGICAL_HEIGHT);
+        float offsetX = (getWidth() - LOGICAL_WIDTH * scale) * 0.5f;
+        float offsetY = (getHeight() - LOGICAL_HEIGHT * scale) * 0.5f;
+
+        int rootSave = canvas.save();
+        canvas.translate(offsetX, offsetY);
+        canvas.scale(scale, scale);
+
+        drawStaticLayer(canvas);
+        drawNeedleLayer(canvas);
+        drawTextLayer(canvas);
+
+        canvas.restoreToCount(rootSave);
+        if (needsAnotherAnimationFrame(frameAtMs)) {
+            postInvalidateOnAnimation();
+        } else {
+            postInvalidateDelayed(1000L);
+        }
+    }
+
+    private void drawStaticLayer(Canvas canvas) {
+        canvas.drawBitmap(staticBackground, (Rect) null, logicalBounds, bitmapPaint);
+        canvas.drawBitmap(staticOverlay, (Rect) null, logicalBounds, bitmapPaint);
+
+        // The factory turn arrows own 578..696 and 1196..1320. No application
+        // card, border or text is drawn in those protected zones.
+        drawTopCard(canvas, 12.0f, 276.0f);
+        drawTopCard(canvas, 286.0f, 394.0f);
+        drawTopCard(canvas, 404.0f, 568.0f);
+        drawTopCard(canvas, 706.0f, 882.0f);
+        drawTopCard(canvas, 1038.0f, 1186.0f);
+
+        configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
+        canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
+    }
+
+    private void drawNeedleLayer(Canvas canvas) {
+        float speedFraction = clamp(displayedSpeed / MAX_SPEED_KPH, 0.0f, 1.0f);
+        float rpmFraction = clamp(displayedRpm / MAX_RPM, 0.0f, 1.0f);
+        float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
+        float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
+
+        // Markers follow polar rays through the real elliptical scales. This keeps the
+        // value-to-angle mapping uniform instead of treating the polar angle as an
+        // ellipse parameter, which caused increasing drift after the first third.
+        drawScaleNeedle(
+                canvas,
+                yellowNeedle,
+                342.0f,
+                MAIN_DIAL_CENTER_Y,
+                260.0f,
+                MAIN_DIAL_RADIUS_Y,
+                90.0f + speedFraction * 220.0f,
+                72.0f,
+                56.0f,
+                12.0f);
+        drawScaleNeedle(
+                canvas,
+                yellowNeedle,
+                1578.0f,
+                MAIN_DIAL_CENTER_Y,
+                260.0f,
+                MAIN_DIAL_RADIUS_Y,
+                90.0f - rpmFraction * 220.0f,
+                72.0f,
+                56.0f,
+                12.0f);
+
+        drawScaleNeedle(
+                canvas,
+                whiteNeedle,
+                620.0f,
+                305.0f,
+                90.0f,
+                120.0f,
+                120.0f - fuelFraction * 196.0f,
+                22.0f,
+                42.0f,
+                10.0f);
+        drawScaleNeedle(
+                canvas,
+                whiteNeedle,
+                1300.0f,
+                305.0f,
+                90.0f,
+                120.0f,
+                64.0f + coolantFraction * 173.0f,
+                22.0f,
+                42.0f,
+                10.0f);
+    }
+
+    private void drawScaleNeedle(
+            Canvas canvas,
+            Bitmap needle,
+            float centerX,
+            float centerY,
+            float radiusX,
+            float radiusY,
+            float pathAngleDeg,
+            float scaleGap,
+            float length,
+            float thickness) {
+        double pathRadians = Math.toRadians(pathAngleDeg);
+        float cosine = (float) Math.cos(pathRadians);
+        float sine = (float) Math.sin(pathRadians);
+        float ellipseRadius = radiusX * radiusY
+                / (float) Math.sqrt(
+                        radiusY * radiusY * cosine * cosine
+                                + radiusX * radiusX * sine * sine);
+        float needleRadius = Math.max(length + 8.0f, ellipseRadius - scaleGap);
+        float baseX = centerX + cosine * needleRadius;
+        float baseY = centerY + sine * needleRadius;
+        float inwardDirection = (float) Math.toDegrees(
+                Math.atan2(centerY - baseY, centerX - baseX));
+
+        int save = canvas.save();
+        canvas.translate(baseX, baseY);
+        // The supplied bitmap points left and its rounded base is at the right edge.
+        canvas.rotate(inwardDirection - 180.0f);
+        needleDestination.set(-length, -thickness * 0.5f, 0.0f, thickness * 0.5f);
+        canvas.drawBitmap(needle, (Rect) null, needleDestination, bitmapPaint);
+        canvas.restoreToCount(save);
+    }
+
+    private void drawTextLayer(Canvas canvas) {
+        ClusterState state = targetState;
+
+        drawLiveTelemetryCards(canvas, state);
+
+        // Main values occupy fixed inner safe zones. Their size is reduced only when
+        // the measured value would exceed the zone; the position itself never jumps.
+        configureText(gaugeTypeface, 112.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.10f);
+        drawFittedText(
+                canvas,
+                Integer.toString(Math.round(displayedSpeed)),
+                349.0f,
+                435.0f,
+                168.0f,
+                112.0f,
+                92.0f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "%.1f", displayedRpm / 1000.0f),
+                1581.0f,
+                435.0f,
+                178.0f,
+                112.0f,
+                92.0f);
+
+        configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
+        canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
+
+        // Move all fuel values another 3.3 mm right at 160 dpi. Their fitted boxes
+        // stay inside the grey insert and clear both the icon and the full needle sweep.
+        configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFE7E8E8, true, -0.08f);
+        drawFittedText(
+                canvas,
+                state.rangeKm + " km",
+                596.0f,
+                260.0f,
+                72.0f,
+                29.0f,
+                22.0f);
+        drawFittedText(
+                canvas,
+                Math.round(displayedFuel) + " L",
+                596.0f,
+                298.0f,
+                72.0f,
+                29.0f,
+                22.0f);
+        configureText(gaugeTypeface, 27.0f, Paint.Align.CENTER, 0xFFCFD2D4, true, -0.08f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
+                558.0f,
+                370.0f,
+                34.0f,
+                27.0f,
+                20.0f);
+
+        // Shift the coolant value about 5 mm left at 160 dpi. Its narrower fitted
+        // box still clears the complete 40-to-130 needle sweep.
+        configureText(gaugeTypeface, 31.0f, Paint.Align.CENTER, 0xFFF4F4F2, true, -0.08f);
+        drawFittedText(
+                canvas,
+                Integer.toString(Math.round(displayedCoolant)),
+                1300.0f,
+                270.0f,
+                40.0f,
+                31.0f,
+                23.0f);
+
+        // Three odometer values from the reference layout.
+        configureText(dataTypeface, 20.0f, Paint.Align.LEFT, 0xFFF0F0EE, false, 0.0f);
+        canvas.drawText("ODO:", 407.0f, 555.0f, textPaint);
+        canvas.drawText("Day:", 407.0f, 591.0f, textPaint);
+        canvas.drawText("Trip:", 407.0f, 627.0f, textPaint);
+        configureText(gaugeTypeface, 23.0f, Paint.Align.LEFT, 0xFFF8F8F7, false, -0.05f);
+        canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
+                485.0f, 555.0f, textPaint);
+        canvas.drawText(String.format(Locale.US, "%.1f  km", state.dayKm),
+                485.0f, 591.0f, textPaint);
+        canvas.drawText(String.format(Locale.US, "%.1f  km", state.tripKm),
+                485.0f, 627.0f, textPaint);
+
+        // The baked car is centered at (1397, 544). Columns and row centers are
+        // perfectly mirrored around that point, including their measured text boxes.
+        configureText(gaugeTypeface, 24.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
+        drawFittedText(
+                canvas,
+                formatPressure(state.tyreFrontLeftBar),
+                1335.0f,
+                529.0f,
+                74.0f,
+                24.0f,
+                19.0f);
+        drawFittedText(
+                canvas,
+                formatPressure(state.tyreFrontRightBar),
+                1459.0f,
+                529.0f,
+                74.0f,
+                24.0f,
+                19.0f);
+        drawFittedText(
+                canvas,
+                formatPressure(state.tyreRearLeftBar),
+                1335.0f,
+                559.0f,
+                74.0f,
+                24.0f,
+                19.0f);
+        drawFittedText(
+                canvas,
+                formatPressure(state.tyreRearRightBar),
+                1459.0f,
+                559.0f,
+                74.0f,
+                24.0f,
+                19.0f);
+
+        // Live outside temperature and steering angle remain at the top.
+        drawSteeringWheel(canvas, 762.0f, 44.0f, 13.0f, 0xFFD9DEE2);
+        configureText(dataTypeface, 23.0f, Paint.Align.LEFT, 0xFFF7F7F5, false, 0.0f);
+        canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
+        configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
+        canvas.drawText(formatOutside(state.outsideTemperatureC), 1112.0f, 55.0f, textPaint);
+
+        // Bottom live metrics.
+        configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "%.1fL", state.consumptionLitersPer100Km),
+                91.0f,
+                678.0f,
+                112.0f,
+                32.0f,
+                24.0f);
+        configureText(dataTypeface, 16.0f, Paint.Align.LEFT, 0xFFD6D9DB, true, 0.0f);
+        canvas.drawText("/100 km", 46.0f, 712.0f, textPaint);
+
+        configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "%.1fV", state.voltage),
+                1830.0f,
+                678.0f,
+                112.0f,
+                32.0f,
+                24.0f);
+    }
+
+    private void drawFittedText(
+            Canvas canvas,
+            String value,
+            float centerX,
+            float centerY,
+            float maximumWidth,
+            float desiredSize,
+            float minimumSize) {
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setTextSize(desiredSize);
+        float measuredWidth = textPaint.measureText(value);
+        if (measuredWidth > maximumWidth && measuredWidth > 0.0f) {
+            float fittedSize = desiredSize * maximumWidth / measuredWidth;
+            textPaint.setTextSize(Math.max(minimumSize, fittedSize));
+        }
+        Paint.FontMetrics metrics = textPaint.getFontMetrics();
+        float baseline = centerY - (metrics.ascent + metrics.descent) * 0.5f;
+        canvas.drawText(value, centerX, baseline, textPaint);
+    }
+
+    private void drawSteeringWheel(
+            Canvas canvas, float centerX, float centerY, float radius, int color) {
+        linePaint.setColor(color);
+        linePaint.setStrokeWidth(2.2f);
+        canvas.drawCircle(centerX, centerY, radius, linePaint);
+        canvas.drawCircle(centerX, centerY, 3.0f, linePaint);
+        canvas.drawLine(centerX, centerY - 3.0f, centerX, centerY - radius, linePaint);
+        canvas.drawLine(centerX - 2.5f, centerY + 2.0f,
+                centerX - radius * 0.78f, centerY + radius * 0.55f, linePaint);
+        canvas.drawLine(centerX + 2.5f, centerY + 2.0f,
+                centerX + radius * 0.78f, centerY + radius * 0.55f, linePaint);
+    }
+
+    private void updateSmoothedValues(long now) {
+        if (lastFrameAtMs == 0L) {
+            lastFrameAtMs = now;
+            displayedSpeed = targetState.speedKph;
+            displayedFuel = targetState.fuelLiters;
+            displayedCoolant = targetState.coolantC;
+        }
+        float deltaMs = Math.min(100.0f, Math.max(0.0f, now - lastFrameAtMs));
+        lastFrameAtMs = now;
+        float blend = 1.0f - (float) Math.exp(-deltaMs / 115.0f);
+
+        displayedSpeed += (targetState.speedKph - displayedSpeed) * blend;
+        displayedFuel += (targetState.fuelLiters - displayedFuel) * blend;
+        displayedCoolant += (targetState.coolantC - displayedCoolant) * blend;
+        displayedSteering = steeringMotion.update(now);
+    }
+
+    private boolean needsAnotherAnimationFrame(long nowMs) {
+        return Math.abs(targetState.speedKph - displayedSpeed) > 0.05f
+                || Math.abs(targetState.fuelLiters - displayedFuel) > 0.01f
+                || Math.abs(targetState.coolantC - displayedCoolant) > 0.01f
+                || steeringMotion.needsAnimationFrame(nowMs);
+    }
+
+    private void updateClock() {
+        long wallTime = System.currentTimeMillis();
+        long second = wallTime / 1000L;
+        if (second != cachedClockSecond) {
+            cachedClockSecond = second;
+            cachedClockText = timeFormat.format(new Date(wallTime));
+        }
+    }
+
+    private void configureText(
+            Typeface typeface,
+            float size,
+            Paint.Align align,
+            int color,
+            boolean bold,
+            float skewX) {
+        textPaint.setTypeface(typeface);
+        textPaint.setTextSize(size);
+        textPaint.setTextAlign(align);
+        textPaint.setColor(color);
+        textPaint.setFakeBoldText(bold);
+        textPaint.setTextSkewX(skewX);
+        textPaint.setStyle(Paint.Style.FILL);
+    }
+
+    private void drawTopCard(Canvas canvas, float left, float right) {
+        shapePaint.setStyle(Paint.Style.FILL);
+        shapePaint.setColor(0xFF080B0E);
+        canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
+        shapePaint.setStyle(Paint.Style.STROKE);
+        shapePaint.setStrokeWidth(2.0f);
+        shapePaint.setColor(0xFF4C535A);
+        canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
+        shapePaint.setStyle(Paint.Style.FILL);
+    }
+
+    private void drawLiveTelemetryCards(Canvas canvas, ClusterState state) {
+        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("WHEEL SPEED  km/h", 144.0f, 25.0f, textPaint);
+
+        shapePaint.setStyle(Paint.Style.STROKE);
+        shapePaint.setStrokeWidth(1.0f);
+        shapePaint.setColor(0xFF30363B);
+        canvas.drawLine(144.0f, 30.0f, 144.0f, 70.0f, shapePaint);
+        canvas.drawLine(22.0f, 54.0f, 266.0f, 54.0f, shapePaint);
+        shapePaint.setStyle(Paint.Style.FILL);
+
+        drawWheelValue(canvas, state, "FL", state.wheelFrontLeftKph,
+                30.0f, 88.0f, 47.0f, 43.0f);
+        drawWheelValue(canvas, state, "FR", state.wheelFrontRightKph,
+                162.0f, 220.0f, 47.0f, 43.0f);
+        drawWheelValue(canvas, state, "RL", state.wheelRearLeftKph,
+                30.0f, 88.0f, 70.0f, 66.0f);
+        drawWheelValue(canvas, state, "RR", state.wheelRearRightKph,
+                162.0f, 220.0f, 70.0f, 66.0f);
+
+        configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("TRQ", 340.0f, 32.0f, textPaint);
+        configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
+        drawFittedText(canvas, formatTorque(state.engineFlywheelTorque),
+                340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
+    }
+
+    private void drawWheelValue(
+            Canvas canvas,
+            ClusterState state,
+            String label,
+            float speedKph,
+            float labelX,
+            float valueX,
+            float labelBaseline,
+            float valueCenterY) {
+        configureText(dataTypeface, 10.0f, Paint.Align.LEFT, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText(label, labelX, labelBaseline, textPaint);
+        configureText(
+                gaugeTypeface,
+                18.0f,
+                Paint.Align.CENTER,
+                wheelSpeedColor(state, speedKph),
+                true,
+                -0.04f);
+        drawFittedText(
+                canvas,
+                formatWheelSpeed(speedKph),
+                valueX,
+                valueCenterY,
+                92.0f,
+                18.0f,
+                15.0f);
+    }
+
+    private static Bitmap loadBitmap(Context context, String assetPath) {
+        InputStream input = null;
+        try {
+            input = context.getAssets().open(assetPath);
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            if (bitmap == null) {
+                throw new IllegalStateException("Cannot decode asset: " + assetPath);
+            }
+            return bitmap;
+        } catch (IOException error) {
+            throw new IllegalStateException("Cannot load asset: " + assetPath, error);
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (IOException ignored) {
+                    // Nothing else to release.
+                }
+            }
+        }
+    }
+
+    private static String formatPressure(float pressure) {
+        return String.format(Locale.US, "%.2f", pressure);
+    }
+
+    private static String formatOutside(float temperatureC) {
+        return String.format(Locale.US, "%.1f °C", temperatureC);
+    }
+
+    private static String formatSteering(float angleDeg) {
+        int angle = Math.round(angleDeg);
+        return angle > 0 ? "+" + angle + "°" : angle + "°";
+    }
+
+    private static String formatWheelSpeed(float speedKph) {
+        return Float.isNaN(speedKph)
+                ? "\u2014"
+                : String.format(Locale.US, "%.1f", speedKph);
+    }
+
+    private static String formatTorque(float torque) {
+        if (Float.isNaN(torque)) {
+            return "\u2014";
+        }
+        return Math.abs(torque) >= 100.0f
+                ? String.format(Locale.US, "%.0f", torque)
+                : String.format(Locale.US, "%.1f", torque);
+    }
+
+    private static int wheelSpeedColor(ClusterState state, float wheelSpeed) {
+        float frontLeft = state.wheelFrontLeftKph;
+        float frontRight = state.wheelFrontRightKph;
+        float rearLeft = state.wheelRearLeftKph;
+        float rearRight = state.wheelRearRightKph;
+        if (Float.isNaN(wheelSpeed)
+                || Float.isNaN(frontLeft)
+                || Float.isNaN(frontRight)
+                || Float.isNaN(rearLeft)
+                || Float.isNaN(rearRight)) {
+            return 0xFFF7F7F5;
+        }
+
+        float minimum = Math.min(Math.min(frontLeft, frontRight), Math.min(rearLeft, rearRight));
+        float maximum = Math.max(Math.max(frontLeft, frontRight), Math.max(rearLeft, rearRight));
+        if (maximum < 4.0f) {
+            return 0xFFF7F7F5;
+        }
+        float median =
+                (frontLeft + frontRight + rearLeft + rearRight - minimum - maximum) * 0.5f;
+        float threshold = Math.max(4.0f, median * 0.18f);
+        return Math.abs(wheelSpeed - median) >= threshold
+                ? 0xFFFFC247
+                : 0xFFF7F7F5;
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
+    }
+}

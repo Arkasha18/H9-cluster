@@ -1,0 +1,42 @@
+# Android / Gradle
+/.gradle/
+/.idea/
+/**/build/
+/local.properties
+*.iml
+
+# macOS / editor files
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+
+# Build artifacts
+*.apk
+*.aab
+/release/
+
+# Signing material and local secrets
+/signing/
+keystore.properties
+signing.properties
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Local research and design tooling. These directories contain device dumps,
+# reverse-engineering artifacts, OEM packages/configuration and generated files;
+# none of them is required to compile the public application.
+/analysis/
+/docs/
+/tools/
+
+# Python caches
+/__pycache__/
+**/__pycache__/
+*.py[cod]
