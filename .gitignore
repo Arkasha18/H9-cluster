@@ -29,14 +29,19 @@ signing.properties
 *.pem
 *.key
 
-# Local research and design tooling. These directories contain device dumps,
-# reverse-engineering artifacts, OEM packages/configuration and generated files;
-# none of them is required to compile the public application.
+# Local research materials. This directory contains device dumps,
+# reverse-engineering artifacts, OEM packages/configuration and generated
+# diagnostic files; none of it is required to compile the application.
 /analysis/
-/docs/
-/tools/
+
+# Superseded theme-demo archives kept locally for reference. The maintained
+# v3 archive and the Forum Kit remain publishable.
+/docs/H9_Cluster_Dashboard_Demo_Base_Source.zip
+/docs/H9_Cluster_Dashboard_Demo_Base_Source_v2.zip
 
 # Python caches
+/.venv/
+/venv/
 /__pycache__/
 **/__pycache__/
 *.py[cod]
