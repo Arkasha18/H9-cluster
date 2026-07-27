@@ -46,7 +46,7 @@ https://4pda.to/forum/index.php?act=post&do=new_post&f=212
    сайтов использовать нельзя.
 4. Рабочий APK нужно прикрепить к сообщению на сервере 4PDA. Одной ссылки на
    GitHub недостаточно.
-5. Версия должна совпадать с Manifest: `9.1.0`.
+5. Версия должна совпадать с Manifest: `9.2.0`.
 6. Для APK нужно указать архитектуру: `arm64-v8a`.
 7. В сообщении нельзя использовать разноцветный текст и увеличенный шрифт.
 8. Для последующих обновлений нужно публиковать новый пост с APK, точной
@@ -58,16 +58,16 @@ https://4pda.to/forum/index.php?act=post&do=new_post&f=212
 APK:
 
 ```text
-app/build/outputs/apk/release/H9_Cluster_v9.1.0_adminrunet_release.apk
+app/build/outputs/apk/release/H9_Cluster_v9.2.0_adminrunet_release.apk
 ```
 
 SHA-256:
 
 ```text
-fad5f15c14a3c279dab2fd1925f1635046aa79a86f29e5fbbc673498e29c7218
+f5419936b27f53a35b4c25556b5ef41d3e2a76b5705a4ed42270871861dab4f6
 ```
 
-Текущий полноразмерный скриншот:
+Текущий настоящий полноразмерный скриншот с Display ID 2:
 
 ```text
 docs/images/h9-cluster-display-2.png
@@ -79,8 +79,9 @@ docs/images/h9-cluster-display-2.png
 docs/images/h9-cluster-icon-192.png
 ```
 
-Если будет сделан более удачный реальный скриншот с дисплея автомобиля,
-используйте его вместо текущего. Не используйте
+Файл `docs/images/h9-cluster-display-2.png` снят через `scrcpy` непосредственно
+с Display ID 2 и показывает работающую карточку `ATF 34 °C`. Его можно
+использовать и в README, и в поле скриншотов 4PDA. Не используйте
 `docs/images/h9-cluster-social-preview.png`: это промо-композиция, а правила
 раздела требуют настоящий полноразмерный скриншот.
 
@@ -92,8 +93,8 @@ docs/images/h9-cluster-icon-192.png
 | --- | --- |
 | Название программы | `H9 Cluster` |
 | Описание программы | `Неофициальная приборная панель для Haval H9` |
-| Краткое описание возможностей | `Две темы, штатная карта, данные автомобиля, Display ID 2 и автозапуск` |
-| Версия | `9.1.0` |
+| Краткое описание возможностей | `Две темы, штатная карта, данные автомобиля, температура ATF, Display ID 2 и автозапуск` |
+| Версия | `9.2.0` |
 | Требуемая версия Android | выбрать `9 (API 28)` |
 | Иконка приложения | загрузить `docs/images/h9-cluster-icon-192.png` |
 | Скриншоты | загрузить `docs/images/h9-cluster-display-2.png` |
@@ -111,8 +112,8 @@ docs/images/h9-cluster-icon-192.png
 | Имя пакета | `net.adminrunet.h9cluster` |
 | YouTube | оставить пустым |
 | RUTUBE | оставить пустым |
-| Файлы | загрузить `H9_Cluster_v9.1.0_adminrunet_release.apk` |
-| Ссылка на APK | `https://github.com/Arkasha18/H9-cluster/releases/download/v9.1.0/H9_Cluster_v9.1.0_adminrunet_release.apk` |
+| Файлы | загрузить `H9_Cluster_v9.2.0_adminrunet_release.apk` |
+| Ссылка на APK | `https://github.com/Arkasha18/H9-cluster/releases/download/v9.2.0/H9_Cluster_v9.2.0_adminrunet_release.apk` |
 
 APK является одним монолитным файлом, а не набором split APK. В большом поле
 описания отдельно указана архитектура `arm64-v8a`.
@@ -144,7 +145,7 @@ APK является одним монолитным файлом, а не на�
     - Мастер тем поместил картинку под спойлер;
     - APK действительно прикреплён к сообщению;
     - нет тегов `color` и `size`;
-    - версия указана как `9.1.0`;
+    - версия указана как `9.2.0`;
     - архитектура указана как `arm64-v8a`;
     - ссылки ведут на публичный GitHub;
     - в тексте и вложениях нет ключей подписи, паролей, приватных дампов,

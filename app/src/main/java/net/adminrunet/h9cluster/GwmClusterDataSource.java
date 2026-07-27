@@ -21,13 +21,15 @@ import java.util.regex.Pattern;
  *
  * On the Binder side only GET_DATA, listener registration and listener
  * removal are used. A separate read-only FDBus reader supplies high-rate RPM;
- * neither path sends vehicle commands.
+ * transmission temperature is read from the snapshot already maintained by
+ * the stock TBOX. None of these paths sends vehicle commands.
  */
 public final class GwmClusterDataSource
         implements ClusterDataSource,
                 ServiceConnection,
                 ReadOnlyDataListener.Callback,
-                FdbusRpmReader.Listener {
+                FdbusRpmReader.Listener,
+                TransmissionTemperatureReader.Listener {
     private static final String TAG = "GwmClusterDataSource";
     private static final String SERVICE_PACKAGE = "com.gwm.android.adapter.server";
     private static final String SERVICE_CLASS =
@@ -99,6 +101,7 @@ public final class GwmClusterDataSource
     private final String[] values = new String[DATA_IDS.length];
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
+    private final TransmissionTemperatureReader transmissionTemperatureReader;
 
     private Listener listener;
     private IBinder service;
@@ -110,6 +113,8 @@ public final class GwmClusterDataSource
     private long fdbusRpmUpdatedAtMs;
     private int fdbusRpm;
     private long steeringUpdatedAtMs;
+    private float transmissionTemperatureC = Float.NaN;
+    private long transmissionTemperatureUpdatedAtMs;
 
     private final Runnable rebindTask = new Runnable() {
         @Override
@@ -124,6 +129,8 @@ public final class GwmClusterDataSource
         this.context = context.getApplicationContext();
         this.dataListener = new ReadOnlyDataListener(mainHandler, this);
         this.fdbusRpmReader = new FdbusRpmReader(this);
+        this.transmissionTemperatureReader =
+                new TransmissionTemperatureReader(this);
         Arrays.fill(values, null);
     }
 
@@ -133,6 +140,7 @@ public final class GwmClusterDataSource
         started = true;
         publishState();
         fdbusRpmReader.start();
+        transmissionTemperatureReader.start();
         bindAdapterService();
     }
 
@@ -141,6 +149,7 @@ public final class GwmClusterDataSource
         started = false;
         mainHandler.removeCallbacks(rebindTask);
         fdbusRpmReader.stop();
+        transmissionTemperatureReader.stop();
         unregisterListener();
         if (bound) {
             try {
@@ -388,6 +397,7 @@ public final class GwmClusterDataSource
                 rpm,
                 currentGear,
                 clamp(parseInt(values[INDEX_COOLANT], lastState.coolantC), 40, 130),
+                transmissionTemperatureC,
                 clamp(fuelLiters, 0.0f, TANK_CAPACITY_LITERS),
                 Math.max(0, parseInt(values[INDEX_RANGE], lastState.rangeKm)),
                 Math.max(0.0d, parseDouble(values[INDEX_ODOMETER], lastState.odometerKm)),
@@ -422,6 +432,7 @@ public final class GwmClusterDataSource
                         lastState.engineFlywheelTorque), -2000.0f, 2000.0f),
                 effectiveRpmUpdatedAtMs,
                 steeringUpdatedAtMs,
+                transmissionTemperatureUpdatedAtMs,
                 lastState.driveMode);
         lastState = state;
         currentListener.onClusterState(state);
@@ -434,6 +445,16 @@ public final class GwmClusterDataSource
         }
         fdbusRpm = clamp(rpm, 0, 8000);
         fdbusRpmUpdatedAtMs = receivedAtMs;
+        publishState();
+    }
+
+    @Override
+    public void onTransmissionTemperature(float temperatureC, long receivedAtMs) {
+        if (!started) {
+            return;
+        }
+        transmissionTemperatureC = temperatureC;
+        transmissionTemperatureUpdatedAtMs = receivedAtMs;
         publishState();
     }
 

@@ -13,7 +13,7 @@ body:
     id: version
     attributes:
       label: Версия приложения
-      placeholder: "9.0.0"
+      placeholder: "9.2.0"
     validations:
       required: true
   - type: input

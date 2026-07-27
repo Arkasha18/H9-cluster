@@ -40,6 +40,7 @@ public final class ClusterView extends View implements ClusterRenderer {
 
     private static final float STATUS_GEAR_GAP_LEFT = 920.0f;
     private static final float STATUS_GEAR_GAP_RIGHT = 1000.0f;
+    private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
 
     private final Paint shapePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
@@ -88,7 +89,7 @@ public final class ClusterView extends View implements ClusterRenderer {
         drawGauge(canvas, 1590.0f, 315.0f, displayedRpm, 8000.0f, true);
         drawFuelCard(canvas, targetState);
         drawCoolantCard(canvas, targetState);
-        drawStatusBar(canvas, targetState);
+        drawStatusBar(canvas, targetState, frameAtMs);
         drawOdometerCard(canvas, targetState);
         drawTyreCard(canvas, targetState);
 
@@ -311,7 +312,7 @@ public final class ClusterView extends View implements ClusterRenderer {
         canvas.drawRoundRect(fill, bounds.width() * 0.5f, bounds.width() * 0.5f, shapePaint);
     }
 
-    private void drawStatusBar(Canvas canvas, ClusterState state) {
+    private void drawStatusBar(Canvas canvas, ClusterState state, long frameAtMs) {
         drawWheelSpeedCard(canvas, state);
         drawTelemetryCard(canvas, new RectF(286.0f, 14.0f, 394.0f, 74.0f),
                 "TRQ", formatTorque(state.engineFlywheelTorque));
@@ -319,8 +320,11 @@ public final class ClusterView extends View implements ClusterRenderer {
 
         RectF clock = new RectF(404.0f, 14.0f, 568.0f, 74.0f);
         RectF right = new RectF(1038.0f, 14.0f, 1186.0f, 74.0f);
+        RectF transmissionTemperature =
+                new RectF(1330.0f, 14.0f, 1478.0f, 74.0f);
         drawCard(canvas, clock, 22.0f);
         drawCard(canvas, right, 22.0f);
+        drawCard(canvas, transmissionTemperature, 22.0f);
 
         configureText(32.0f, Paint.Align.CENTER, COLOR_TEXT, true);
         canvas.drawText(timeFormat.format(new Date()), clock.centerX(), 55.0f, textPaint);
@@ -328,6 +332,18 @@ public final class ClusterView extends View implements ClusterRenderer {
                 formatOutsideTemperature(state.outsideTemperatureC),
                 right.centerX(),
                 55.0f,
+                textPaint);
+        configureText(10.0f, Paint.Align.CENTER, COLOR_MUTED, true);
+        canvas.drawText(
+                "ATF",
+                transmissionTemperature.centerX(),
+                32.0f,
+                textPaint);
+        configureText(24.0f, Paint.Align.CENTER, COLOR_TEXT, true);
+        canvas.drawText(
+                formatTransmissionTemperature(state, frameAtMs),
+                transmissionTemperature.centerX(),
+                60.0f,
                 textPaint);
 
         shapePaint.setStyle(Paint.Style.STROKE);
@@ -526,6 +542,16 @@ public final class ClusterView extends View implements ClusterRenderer {
             return Math.round(value) + " \u00b0C";
         }
         return String.format(Locale.US, "%.1f \u00b0C", value);
+    }
+
+    private static String formatTransmissionTemperature(ClusterState state, long nowMs) {
+        if (!state.hasTransmissionTemperature()
+                || state.transmissionTemperatureUpdatedAtMs <= 0L
+                || nowMs - state.transmissionTemperatureUpdatedAtMs
+                        > TRANSMISSION_TEMPERATURE_STALE_AFTER_MS) {
+            return "\u2014 \u00b0C";
+        }
+        return Math.round(state.transmissionTemperatureC) + " \u00b0C";
     }
 
     private static String formatWheelSpeed(float speedKph) {

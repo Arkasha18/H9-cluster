@@ -15,7 +15,6 @@ import android.view.WindowManager;
 public final class PreviewActivity extends Activity {
     public static final String EXTRA_RELOAD_SKIN = "reload_skin";
     private static final String TAG = "H9Cluster";
-    private static final String BUILD_ID = "9.0.0-display2-api28";
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -31,7 +30,9 @@ public final class PreviewActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.i(TAG, "Starting build " + BUILD_ID);
+        Log.i(TAG, "Starting build "
+                + BuildConfig.VERSION_NAME
+                + "-display2-api28");
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(
