@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="192"
+     height="192"
+     viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="#081018"/>
+  <path d="M17 72a39 39 0 1 1 74 0l-8-3a31 31 0 1 0-58 0z"
+        fill="#FFC21A"/>
+  <path d="M53 53l25-19-18 27z" fill="#FFFFFF"/>
+  <circle cx="54" cy="54" r="6" fill="#FFFFFF"/>
+</svg>
