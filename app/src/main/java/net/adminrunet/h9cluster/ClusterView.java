@@ -315,6 +315,7 @@ public final class ClusterView extends View implements ClusterRenderer {
         drawWheelSpeedCard(canvas, state);
         drawTelemetryCard(canvas, new RectF(286.0f, 14.0f, 394.0f, 74.0f),
                 "TRQ", formatTorque(state.engineFlywheelTorque));
+        drawCurrentGearCard(canvas, state);
 
         RectF clock = new RectF(404.0f, 14.0f, 568.0f, 74.0f);
         RectF right = new RectF(1038.0f, 14.0f, 1186.0f, 74.0f);
@@ -333,6 +334,20 @@ public final class ClusterView extends View implements ClusterRenderer {
         shapePaint.setStrokeWidth(2.0f);
         shapePaint.setColor(0x5531D7C5);
         canvas.drawLine(STATUS_GEAR_GAP_LEFT, 72.0f, STATUS_GEAR_GAP_RIGHT, 72.0f, shapePaint);
+    }
+
+    private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
+        RectF bounds = new RectF(916.0f, 78.0f, 1004.0f, 140.0f);
+        drawCard(canvas, bounds, 18.0f);
+
+        configureText(10.0f, Paint.Align.CENTER, COLOR_MUTED, true);
+        canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
+        configureText(29.0f, Paint.Align.CENTER, COLOR_TEXT, true);
+        canvas.drawText(
+                state.currentGear > 0 ? Integer.toString(state.currentGear) : "",
+                bounds.centerX(),
+                130.0f,
+                textPaint);
     }
 
     private void drawOdometerCard(Canvas canvas, ClusterState state) {
