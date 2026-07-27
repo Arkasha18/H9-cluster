@@ -6,6 +6,7 @@ public final class ClusterState {
     public final int rpm;
     public final int currentGear;
     public final int coolantC;
+    public final float transmissionTemperatureC;
     public final float fuelLiters;
     public final int rangeKm;
     public final double odometerKm;
@@ -26,6 +27,7 @@ public final class ClusterState {
     public final float engineFlywheelTorque;
     public final long rpmUpdatedAtMs;
     public final long steeringUpdatedAtMs;
+    public final long transmissionTemperatureUpdatedAtMs;
     public final String driveMode;
 
     public ClusterState(
@@ -33,6 +35,7 @@ public final class ClusterState {
             int rpm,
             int currentGear,
             int coolantC,
+            float transmissionTemperatureC,
             float fuelLiters,
             int rangeKm,
             double odometerKm,
@@ -53,11 +56,13 @@ public final class ClusterState {
             float engineFlywheelTorque,
             long rpmUpdatedAtMs,
             long steeringUpdatedAtMs,
+            long transmissionTemperatureUpdatedAtMs,
             String driveMode) {
         this.speedKph = speedKph;
         this.rpm = rpm;
         this.currentGear = currentGear;
         this.coolantC = coolantC;
+        this.transmissionTemperatureC = transmissionTemperatureC;
         this.fuelLiters = fuelLiters;
         this.rangeKm = rangeKm;
         this.odometerKm = odometerKm;
@@ -78,7 +83,13 @@ public final class ClusterState {
         this.engineFlywheelTorque = engineFlywheelTorque;
         this.rpmUpdatedAtMs = rpmUpdatedAtMs;
         this.steeringUpdatedAtMs = steeringUpdatedAtMs;
+        this.transmissionTemperatureUpdatedAtMs =
+                transmissionTemperatureUpdatedAtMs;
         this.driveMode = driveMode == null ? "ECO" : driveMode;
+    }
+
+    public boolean hasTransmissionTemperature() {
+        return !Float.isNaN(transmissionTemperatureC);
     }
 
     public static ClusterState empty() {
@@ -87,6 +98,7 @@ public final class ClusterState {
                 0,
                 0,
                 40,
+                Float.NaN,
                 0.0f,
                 0,
                 0.0,
@@ -105,6 +117,7 @@ public final class ClusterState {
                 Float.NaN,
                 Float.NaN,
                 Float.NaN,
+                0L,
                 0L,
                 0L,
                 "ECO");

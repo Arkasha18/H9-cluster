@@ -58,6 +58,16 @@ The application catches native loading failures and falls back to the stock
 Binder RPM source, so the rest of the application remains functional if a
 redistributor removes these files.
 
+## JSch
+
+- Gradle dependency: `com.jcraft:jsch:0.1.55`
+- Project: <https://www.jcraft.com/jsch/>
+- License: BSD-style JSch license
+- License text: `third_party/licenses/JSch-BSD.txt`
+
+JSch is used only for the read-only connection to the TBOX shared-memory
+snapshot that contains transmission temperature.
+
 ## Trademarks
 
 Haval, Great Wall Motor and related marks are the property of their respective

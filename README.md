@@ -1,4 +1,4 @@
-# H9 Cluster 9.0.0
+# H9 Cluster 9.2.0
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -23,6 +23,7 @@
 - темы `Classic` и `Horizon`;
 - скорость, обороты, пробег, топливо и запас хода;
 - температура охлаждающей жидкости и наружного воздуха;
+- температура масла автоматической трансмиссии;
 - угол рулевого колеса;
 - давление в четырёх шинах;
 - четыре отдельные скорости колёс;
@@ -52,6 +53,39 @@ com.gwm.android.adapter.server.GwmAdapterService
 Если совместимые нативные библиотеки отсутствуют или не загружаются, приложение
 автоматически продолжает работу и получает RPM через Binder; тахометр при этом
 может обновляться реже.
+
+Температура масла АКПП читается без CAN-команд и UDS-запросов из уже
+обновляемого штатным ПО снимка `/dev/shm/can_data_collect` на TBOX. Приложение
+подключается к TBOX только для выполнения команды чтения; firewall, файлы и
+настройки TBOX не изменяются.
+
+Пароль TBOX не хранится в репозитории. Перед production-сборкой передайте его
+как Gradle property либо переменную окружения:
+
+```bash
+H9_TBOX_PASSWORD='...' ./gradlew assembleRelease
+```
+
+Для GitHub Actions используйте Repository Secret `H9_TBOX_PASSWORD`. Во время
+сборки пароль преобразуется в две случайно маскированные последовательности,
+поэтому открытой строки в DEX нет. Без секрета APK собирается нормально, но
+источник температуры АКПП остаётся отключённым.
+
+Маскирование защищает только от простого поиска строки и не является
+криптографическим хранилищем: автономный APK технически содержит всё
+необходимое для восстановления секрета во время работы. Не используйте в
+публичных сборках пароль, применяемый для других систем.
+
+Значение для интерфейса приходит в общем `ClusterState`:
+
+- `transmissionTemperatureC` — температура в градусах Цельсия;
+- `hasTransmissionTemperature()` — `false`, пока первое значение не получено;
+- `transmissionTemperatureUpdatedAtMs` — время последнего обновления по
+  `SystemClock.elapsedRealtime()`.
+
+Карточка `ATF` выводится в обеих темах справа от защищённой зоны штатного
+правого поворотника. Если значение не получено либо не обновлялось более
+15 секунд, интерфейс показывает `— °C`.
 
 ## Сборка
 
@@ -148,16 +182,17 @@ adb shell am start --display 2 -W \
   -n net.adminrunet.h9cluster/.PreviewActivity
 ```
 
-Проверка подключения к штатному Adapter:
+Проверка подключения к штатному Adapter и TBOX:
 
 ```bash
-adb logcat -s GwmClusterDataSource FdbusRpmReader
+adb logcat -s GwmClusterDataSource FdbusRpmReader TransmissionTemp
 ```
 
-Для успешного Binder-подключения в журнале появляется:
+Для успешного Binder- и TBOX-подключения в журнале появляются:
 
 ```text
 GWM adapter connected; live listener active
+Connected to read-only TBOX temperature source
 ```
 
 ## Что намеренно не публикуется

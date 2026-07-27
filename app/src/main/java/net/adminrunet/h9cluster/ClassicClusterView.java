@@ -31,6 +31,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+    private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
 
     private final Paint bitmapPaint = new Paint(
             Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -113,7 +114,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
 
         drawStaticLayer(canvas);
         drawNeedleLayer(canvas);
-        drawTextLayer(canvas);
+        drawTextLayer(canvas, frameAtMs);
 
         canvas.restoreToCount(rootSave);
         if (needsAnotherAnimationFrame(frameAtMs)) {
@@ -134,6 +135,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         drawTopCard(canvas, 404.0f, 568.0f);
         drawTopCard(canvas, 706.0f, 882.0f);
         drawTopCard(canvas, 1038.0f, 1186.0f);
+        drawTopCard(canvas, 1330.0f, 1478.0f);
 
         configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
         canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
@@ -228,7 +230,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.restoreToCount(save);
     }
 
-    private void drawTextLayer(Canvas canvas) {
+    private void drawTextLayer(Canvas canvas, long frameAtMs) {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
@@ -353,6 +355,14 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
         configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
         canvas.drawText(formatOutside(state.outsideTemperatureC), 1112.0f, 55.0f, textPaint);
+        configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("ATF", 1404.0f, 32.0f, textPaint);
+        configureText(gaugeTypeface, 26.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, -0.04f);
+        canvas.drawText(
+                formatTransmissionTemperature(state, frameAtMs),
+                1404.0f,
+                61.0f,
+                textPaint);
 
         // Bottom live metrics.
         configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
@@ -576,6 +586,16 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
 
     private static String formatOutside(float temperatureC) {
         return String.format(Locale.US, "%.1f °C", temperatureC);
+    }
+
+    private static String formatTransmissionTemperature(ClusterState state, long nowMs) {
+        if (!state.hasTransmissionTemperature()
+                || state.transmissionTemperatureUpdatedAtMs <= 0L
+                || nowMs - state.transmissionTemperatureUpdatedAtMs
+                        > TRANSMISSION_TEMPERATURE_STALE_AFTER_MS) {
+            return "— °C";
+        }
+        return Math.round(state.transmissionTemperatureC) + " °C";
     }
 
     private static String formatSteering(float angleDeg) {
