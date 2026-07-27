@@ -51,6 +51,7 @@ public final class GwmClusterDataSource
     private static final int INDEX_RANGE = 6;
     private static final int INDEX_COOLANT = 7;
     private static final int INDEX_OUTSIDE_TEMP = 8;
+    private static final int INDEX_CURRENT_GEAR = 10;
     private static final int INDEX_TPMS = 11;
     private static final int INDEX_TPMS_UNITS = 12;
     private static final int INDEX_AVG_CONSUMPTION_B = 13;
@@ -377,10 +378,15 @@ public final class GwmClusterDataSource
         long effectiveRpmUpdatedAtMs = useFdbusRpm
                 ? fdbusRpmUpdatedAtMs
                 : binderRpmUpdatedAtMs;
+        int parsedGear = parseInt(values[INDEX_CURRENT_GEAR], -1);
+        int currentGear = parsedGear >= 1 && parsedGear <= 15
+                ? parsedGear
+                : 0;
 
         ClusterState state = new ClusterState(
                 clamp(parseInt(values[INDEX_SPEED], lastState.speedKph), 0, 220),
                 rpm,
+                currentGear,
                 clamp(parseInt(values[INDEX_COOLANT], lastState.coolantC), 40, 130),
                 clamp(fuelLiters, 0.0f, TANK_CAPACITY_LITERS),
                 Math.max(0, parseInt(values[INDEX_RANGE], lastState.rangeKm)),

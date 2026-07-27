@@ -4,6 +4,7 @@ package net.adminrunet.h9cluster;
 public final class ClusterState {
     public final int speedKph;
     public final int rpm;
+    public final int currentGear;
     public final int coolantC;
     public final float fuelLiters;
     public final int rangeKm;
@@ -30,6 +31,7 @@ public final class ClusterState {
     public ClusterState(
             int speedKph,
             int rpm,
+            int currentGear,
             int coolantC,
             float fuelLiters,
             int rangeKm,
@@ -54,6 +56,7 @@ public final class ClusterState {
             String driveMode) {
         this.speedKph = speedKph;
         this.rpm = rpm;
+        this.currentGear = currentGear;
         this.coolantC = coolantC;
         this.fuelLiters = fuelLiters;
         this.rangeKm = rangeKm;
@@ -80,6 +83,7 @@ public final class ClusterState {
 
     public static ClusterState empty() {
         return new ClusterState(
+                0,
                 0,
                 0,
                 40,

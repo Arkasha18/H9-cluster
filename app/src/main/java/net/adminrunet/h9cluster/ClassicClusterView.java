@@ -232,6 +232,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
+        drawCurrentGearCard(canvas, state);
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
         // the measured value would exceed the zone; the position itself never jumps.
@@ -256,13 +257,13 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
         canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
 
-        // Move all fuel values another 3.3 mm right at 160 dpi. Their fitted boxes
-        // stay inside the grey insert and clear both the icon and the full needle sweep.
+        // Keep the fuel values inside the grey insert and clear of the full needle
+        // sweep. Range and fuel fraction are nudged about 1 mm farther right.
         configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFE7E8E8, true, -0.08f);
         drawFittedText(
                 canvas,
                 state.rangeKm + " km",
-                596.0f,
+                602.0f,
                 260.0f,
                 72.0f,
                 29.0f,
@@ -279,7 +280,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         drawFittedText(
                 canvas,
                 String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
-                558.0f,
+                564.0f,
                 370.0f,
                 34.0f,
                 27.0f,
@@ -495,6 +496,28 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
         drawFittedText(canvas, formatTorque(state.engineFlywheelTorque),
                 340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
+    }
+
+    private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
+        RectF bounds = new RectF(916.0f, 78.0f, 1004.0f, 140.0f);
+
+        shapePaint.setStyle(Paint.Style.FILL);
+        shapePaint.setColor(0xFF080B0E);
+        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
+        shapePaint.setStyle(Paint.Style.STROKE);
+        shapePaint.setStrokeWidth(2.0f);
+        shapePaint.setColor(0xFF4C535A);
+        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
+        shapePaint.setStyle(Paint.Style.FILL);
+
+        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
+        configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
+        canvas.drawText(
+                state.currentGear > 0 ? Integer.toString(state.currentGear) : "",
+                bounds.centerX(),
+                130.0f,
+                textPaint);
     }
 
     private void drawWheelValue(
