@@ -38,14 +38,13 @@ public final class ClusterView extends View implements ClusterRenderer {
     private static final int COLOR_CARD = 0xD912242A;
     private static final int COLOR_BORDER = 0xFF28434A;
 
-    private static final float STATUS_GEAR_GAP_LEFT = 920.0f;
-    private static final float STATUS_GEAR_GAP_RIGHT = 1000.0f;
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
 
     private final Paint shapePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Path reusablePath = new Path();
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final BlockVisibility visibility;
 
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
@@ -55,7 +54,12 @@ public final class ClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public ClusterView(Context context) {
+        this(context, BlockVisibility.allVisible());
+    }
+
+    public ClusterView(Context context, BlockVisibility visibility) {
         super(context);
+        this.visibility = visibility == null ? BlockVisibility.allVisible() : visibility;
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
@@ -84,14 +88,30 @@ public final class ClusterView extends View implements ClusterRenderer {
         canvas.translate(offsetX, offsetY);
         canvas.scale(scale, scale);
 
-        drawSidePanels(canvas);
-        drawGauge(canvas, 330.0f, 315.0f, displayedSpeed, 220.0f, false);
-        drawGauge(canvas, 1590.0f, 315.0f, displayedRpm, 8000.0f, true);
-        drawFuelCard(canvas, targetState);
-        drawCoolantCard(canvas, targetState);
+        drawVisibleSidePanels(canvas);
+        if (isVisible(BlockVisibility.Block.SPEEDOMETER)) {
+            drawGauge(canvas, 330.0f, 315.0f, displayedSpeed, 220.0f, false);
+        }
+        if (isVisible(BlockVisibility.Block.TACHOMETER)) {
+            drawGauge(canvas, 1590.0f, 315.0f, displayedRpm, 8000.0f, true);
+        }
+        if (isVisible(BlockVisibility.Block.FUEL_AND_RANGE)) {
+            drawFuelCard(canvas, targetState);
+        }
+        if (isVisible(BlockVisibility.Block.ENGINE_TEMPERATURE)) {
+            drawCoolantCard(canvas, targetState);
+        }
         drawStatusBar(canvas, targetState, frameAtMs);
-        drawOdometerCard(canvas, targetState);
-        drawTyreCard(canvas, targetState);
+        drawOdometerCard(
+                canvas,
+                targetState,
+                isVisible(BlockVisibility.Block.ODOMETERS),
+                isVisible(BlockVisibility.Block.FUEL_CONSUMPTION));
+        drawTyreCard(
+                canvas,
+                targetState,
+                isVisible(BlockVisibility.Block.TYRE_PRESSURE),
+                isVisible(BlockVisibility.Block.BATTERY_VOLTAGE));
 
         canvas.restoreToCount(rootSave);
 
@@ -100,6 +120,27 @@ public final class ClusterView extends View implements ClusterRenderer {
         } else {
             postInvalidateDelayed(1000L);
         }
+    }
+
+    private void drawVisibleSidePanels(Canvas canvas) {
+        boolean leftVisible = isVisible(BlockVisibility.Block.SPEEDOMETER);
+        boolean rightVisible = isVisible(BlockVisibility.Block.TACHOMETER);
+        if (!leftVisible && !rightVisible) {
+            return;
+        }
+        if (leftVisible && rightVisible) {
+            drawSidePanels(canvas);
+            return;
+        }
+
+        int save = canvas.save();
+        if (leftVisible) {
+            canvas.clipRect(0.0f, 0.0f, LOGICAL_WIDTH * 0.5f, LOGICAL_HEIGHT);
+        } else {
+            canvas.clipRect(LOGICAL_WIDTH * 0.5f, 0.0f, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+        }
+        drawSidePanels(canvas);
+        canvas.restoreToCount(save);
     }
 
     private void drawSidePanels(Canvas canvas) {
@@ -313,43 +354,54 @@ public final class ClusterView extends View implements ClusterRenderer {
     }
 
     private void drawStatusBar(Canvas canvas, ClusterState state, long frameAtMs) {
-        drawWheelSpeedCard(canvas, state);
-        drawTelemetryCard(canvas, new RectF(286.0f, 14.0f, 394.0f, 74.0f),
-                "TRQ", formatTorque(state.engineFlywheelTorque));
-        drawCurrentGearCard(canvas, state);
+        if (isVisible(BlockVisibility.Block.WHEEL_SPEEDS)) {
+            drawWheelSpeedCard(canvas, state);
+        }
+        if (isVisible(BlockVisibility.Block.ENGINE_TORQUE)) {
+            drawTelemetryCard(canvas, new RectF(286.0f, 14.0f, 394.0f, 74.0f),
+                    "TRQ", formatTorque(state.engineFlywheelTorque));
+        }
+        if (isVisible(BlockVisibility.Block.STEERING_ANGLE)) {
+            drawTelemetryCard(canvas, new RectF(706.0f, 14.0f, 882.0f, 74.0f),
+                    "STEERING", formatSteeringAngle(state.steeringAngleDeg));
+        }
+        if (isVisible(BlockVisibility.Block.CURRENT_GEAR)) {
+            drawCurrentGearCard(canvas, state);
+        }
 
         RectF clock = new RectF(404.0f, 14.0f, 568.0f, 74.0f);
         RectF right = new RectF(1038.0f, 14.0f, 1186.0f, 74.0f);
         RectF transmissionTemperature =
                 new RectF(1330.0f, 14.0f, 1478.0f, 74.0f);
-        drawCard(canvas, clock, 22.0f);
-        drawCard(canvas, right, 22.0f);
-        drawCard(canvas, transmissionTemperature, 22.0f);
-
-        configureText(32.0f, Paint.Align.CENTER, COLOR_TEXT, true);
-        canvas.drawText(timeFormat.format(new Date()), clock.centerX(), 55.0f, textPaint);
-        canvas.drawText(
-                formatOutsideTemperature(state.outsideTemperatureC),
-                right.centerX(),
-                55.0f,
-                textPaint);
-        configureText(10.0f, Paint.Align.CENTER, COLOR_MUTED, true);
-        canvas.drawText(
-                "ATF",
-                transmissionTemperature.centerX(),
-                32.0f,
-                textPaint);
-        configureText(24.0f, Paint.Align.CENTER, COLOR_TEXT, true);
-        canvas.drawText(
-                formatTransmissionTemperature(state, frameAtMs),
-                transmissionTemperature.centerX(),
-                60.0f,
-                textPaint);
-
-        shapePaint.setStyle(Paint.Style.STROKE);
-        shapePaint.setStrokeWidth(2.0f);
-        shapePaint.setColor(0x5531D7C5);
-        canvas.drawLine(STATUS_GEAR_GAP_LEFT, 72.0f, STATUS_GEAR_GAP_RIGHT, 72.0f, shapePaint);
+        if (isVisible(BlockVisibility.Block.CLOCK)) {
+            drawCard(canvas, clock, 22.0f);
+            configureText(32.0f, Paint.Align.CENTER, COLOR_TEXT, true);
+            canvas.drawText(timeFormat.format(new Date()), clock.centerX(), 55.0f, textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.OUTSIDE_TEMPERATURE)) {
+            drawCard(canvas, right, 22.0f);
+            configureText(32.0f, Paint.Align.CENTER, COLOR_TEXT, true);
+            canvas.drawText(
+                    formatOutsideTemperature(state.outsideTemperatureC),
+                    right.centerX(),
+                    55.0f,
+                    textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.ATF_TEMPERATURE)) {
+            drawCard(canvas, transmissionTemperature, 22.0f);
+            configureText(10.0f, Paint.Align.CENTER, COLOR_MUTED, true);
+            canvas.drawText(
+                    "ATF",
+                    transmissionTemperature.centerX(),
+                    32.0f,
+                    textPaint);
+            configureText(24.0f, Paint.Align.CENTER, COLOR_TEXT, true);
+            canvas.drawText(
+                    formatTransmissionTemperature(state, frameAtMs),
+                    transmissionTemperature.centerX(),
+                    60.0f,
+                    textPaint);
+        }
     }
 
     private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
@@ -366,46 +418,76 @@ public final class ClusterView extends View implements ClusterRenderer {
                 textPaint);
     }
 
-    private void drawOdometerCard(Canvas canvas, ClusterState state) {
-        RectF card = new RectF(74.0f, 548.0f, 586.0f, 688.0f);
+    private void drawOdometerCard(
+            Canvas canvas,
+            ClusterState state,
+            boolean showOdometers,
+            boolean showConsumption) {
+        if (!showOdometers && !showConsumption) {
+            return;
+        }
+        RectF card = showOdometers
+                ? new RectF(74.0f, 548.0f, 586.0f, 688.0f)
+                : new RectF(74.0f, 548.0f, 264.0f, 626.0f);
         drawCard(canvas, card, 26.0f);
 
-        configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("ODOMETER", 104.0f, 581.0f, textPaint);
-        canvas.drawText("TODAY", 104.0f, 633.0f, textPaint);
-        canvas.drawText("TRIP", 354.0f, 633.0f, textPaint);
+        if (showOdometers) {
+            configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
+            canvas.drawText("ODOMETER", 104.0f, 581.0f, textPaint);
+            canvas.drawText("TODAY", 104.0f, 633.0f, textPaint);
+            canvas.drawText("TRIP", 354.0f, 633.0f, textPaint);
 
-        configureText(27.0f, Paint.Align.RIGHT, COLOR_TEXT, true);
-        canvas.drawText(Math.round(state.odometerKm) + " km", 554.0f, 585.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f km", state.dayKm), 310.0f, 665.0f, textPaint);
-        canvas.drawText(formatTrip(state.tripKm) + " km", 554.0f, 665.0f, textPaint);
+            configureText(27.0f, Paint.Align.RIGHT, COLOR_TEXT, true);
+            canvas.drawText(Math.round(state.odometerKm) + " km", 554.0f, 585.0f, textPaint);
+            canvas.drawText(String.format(Locale.US, "%.1f km", state.dayKm),
+                    310.0f, 665.0f, textPaint);
+            canvas.drawText(formatTrip(state.tripKm) + " km", 554.0f, 665.0f, textPaint);
+        }
 
-        configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("AVG", 104.0f, 613.0f, textPaint);
-        configureText(21.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
-        canvas.drawText(
-                String.format(Locale.US, "%.1f L/100", state.consumptionLitersPer100Km),
-                150.0f,
-                614.0f,
-                textPaint);
+        if (showConsumption) {
+            configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
+            canvas.drawText("AVG", 104.0f, 613.0f, textPaint);
+            configureText(21.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
+            canvas.drawText(
+                    String.format(Locale.US, "%.1f L/100", state.consumptionLitersPer100Km),
+                    150.0f,
+                    614.0f,
+                    textPaint);
+        }
     }
 
-    private void drawTyreCard(Canvas canvas, ClusterState state) {
-        RectF card = new RectF(1334.0f, 548.0f, 1846.0f, 688.0f);
+    private void drawTyreCard(
+            Canvas canvas,
+            ClusterState state,
+            boolean showTyres,
+            boolean showVoltage) {
+        if (!showTyres && !showVoltage) {
+            return;
+        }
+        RectF card = showTyres
+                ? new RectF(1334.0f, 548.0f, 1846.0f, 688.0f)
+                : new RectF(1680.0f, 548.0f, 1846.0f, 626.0f);
         drawCard(canvas, card, 26.0f);
 
-        configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("TYRE PRESSURE  bar", 1364.0f, 579.0f, textPaint);
-        configureText(13.0f, Paint.Align.RIGHT, COLOR_MUTED, true);
-        canvas.drawText("BATTERY", 1816.0f, 579.0f, textPaint);
-        configureText(22.0f, Paint.Align.RIGHT, voltageColor(state.voltage), true);
-        canvas.drawText(String.format(Locale.US, "%.1f V", state.voltage), 1816.0f, 610.0f, textPaint);
-
-        drawVehicleOutline(canvas, 1590.0f, 630.0f);
-        drawPressure(canvas, state.tyreFrontLeftBar, 1452.0f, 622.0f);
-        drawPressure(canvas, state.tyreFrontRightBar, 1728.0f, 622.0f);
-        drawPressure(canvas, state.tyreRearLeftBar, 1452.0f, 665.0f);
-        drawPressure(canvas, state.tyreRearRightBar, 1728.0f, 665.0f);
+        if (showTyres) {
+            configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
+            canvas.drawText("TYRE PRESSURE  bar", 1364.0f, 579.0f, textPaint);
+            drawVehicleOutline(canvas, 1590.0f, 630.0f);
+            drawPressure(canvas, state.tyreFrontLeftBar, 1452.0f, 622.0f);
+            drawPressure(canvas, state.tyreFrontRightBar, 1728.0f, 622.0f);
+            drawPressure(canvas, state.tyreRearLeftBar, 1452.0f, 665.0f);
+            drawPressure(canvas, state.tyreRearRightBar, 1728.0f, 665.0f);
+        }
+        if (showVoltage) {
+            configureText(13.0f, Paint.Align.RIGHT, COLOR_MUTED, true);
+            canvas.drawText("BATTERY", 1816.0f, 579.0f, textPaint);
+            configureText(22.0f, Paint.Align.RIGHT, voltageColor(state.voltage), true);
+            canvas.drawText(
+                    String.format(Locale.US, "%.1f V", state.voltage),
+                    1816.0f,
+                    610.0f,
+                    textPaint);
+        }
     }
 
     private void drawVehicleOutline(Canvas canvas, float centerX, float centerY) {
@@ -544,6 +626,10 @@ public final class ClusterView extends View implements ClusterRenderer {
         return String.format(Locale.US, "%.1f \u00b0C", value);
     }
 
+    private static String formatSteeringAngle(float value) {
+        return Math.round(value) + "\u00b0";
+    }
+
     private static String formatTransmissionTemperature(ClusterState state, long nowMs) {
         if (!state.hasTransmissionTemperature()
                 || state.transmissionTemperatureUpdatedAtMs <= 0L
@@ -597,5 +683,9 @@ public final class ClusterView extends View implements ClusterRenderer {
 
     private static float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private boolean isVisible(BlockVisibility.Block block) {
+        return visibility.isVisible(block);
     }
 }

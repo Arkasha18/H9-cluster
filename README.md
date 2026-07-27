@@ -124,7 +124,20 @@ docker run --rm --platform linux/amd64 \
 - Android SDK Build Tools 35;
 - ARM64-устройство с Android 9 для проверки в автомобиле.
 
-Debug APK собирается без ключей:
+На macOS с JDK 17 из Homebrew перед запуском Gradle:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export PATH=/opt/homebrew/opt/openjdk@17/bin:$PATH
+```
+
+Все следующие команды выполняются из корня проекта:
+
+```bash
+cd H9-cluster
+```
+
+Автомобильный debug APK собирается без ключей:
 
 ```bash
 ./gradlew assembleDebug
@@ -134,6 +147,132 @@ Debug APK собирается без ключей:
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
+```
+
+Автономный Demo APK с автоматически меняющимися тестовыми значениями:
+
+```bash
+./gradlew assembleDemo
+```
+
+Результат:
+
+```text
+app/build/outputs/apk/demo/app-demo.apk
+```
+
+### Локальный запуск Demo на macOS
+
+Demo APK позволяет проверить темы `Classic` и `Horizon`, настройки видимости и
+движение всех показателей без автомобиля. Он не подключается к GWM Adapter,
+FDBus, CAN или TBOX.
+
+Текущий APK содержит только ABI `arm64-v8a`. На Mac с Apple Silicon откройте
+Android Studio:
+
+1. `More Actions → Virtual Device Manager`;
+2. `Create Virtual Device`;
+3. выберите телефон или планшет;
+4. установите ARM64 system image Android 9 / API 28;
+5. если API 28 ARM64 недоступен, используйте API 35 ARM64;
+6. завершите создание и запустите AVD кнопкой ▶.
+
+Проверьте подключение:
+
+```bash
+adb devices
+```
+
+В списке должно появиться устройство вида `emulator-5554 device`. Для запуска
+без дополнительных дисплеев удалите настройку оверлеев, установите Demo и
+откройте настройки:
+
+```bash
+adb shell settings delete global overlay_display_devices
+adb shell wm size 1920x720
+adb shell wm density 240
+./gradlew installDemo
+adb shell am start -W \
+  -n net.adminrunet.h9cluster.demo/net.adminrunet.h9cluster.SettingsActivity
+```
+
+Кнопка сохранения откроет приборную панель на том же экране. Любой клик по
+панели или системная кнопка Back вернёт экран настроек. Этот fallback включён
+только в Demo-сборке: автомобильные debug и release по-прежнему требуют
+`Display ID 2`.
+
+Чтобы вернуть стандартные размер и плотность основного экрана:
+
+```bash
+adb shell wm size reset
+adb shell wm density reset
+```
+
+Для двухэкранной проверки создайте оверлей `1920×720` и перезапустите Demo:
+
+```bash
+adb shell settings put global overlay_display_devices '1920x720/240'
+adb shell am force-stop net.adminrunet.h9cluster.demo
+adb shell am start -W \
+  -n net.adminrunet.h9cluster.demo/net.adminrunet.h9cluster.SettingsActivity
+```
+
+После появления `Display ID 2` кнопка сохранения автоматически запустит
+приборную панель на нём.
+
+После первого создания AVD его можно запускать из отдельного терминала:
+
+```bash
+$HOME/Library/Android/sdk/emulator/emulator -list-avds
+$HOME/Library/Android/sdk/emulator/emulator -avd ИМЯ_AVD
+```
+
+Фактический запуск на эмуляторе зависит от установленного ARM64 system image и
+локального Android SDK.
+
+### Локальные тесты
+
+Java unit-тесты для автомобильного debug и Demo:
+
+```bash
+./gradlew testDebugUnitTest testDemoUnitTest
+```
+
+Тесты генерации независимых графических слоёв Classic:
+
+```bash
+./.venv/bin/python -m unittest discover -s tools/tests -v
+```
+
+Если `.venv` ещё не создан:
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install Pillow numpy
+```
+
+Android Lint для обеих локальных сборок:
+
+```bash
+./gradlew lintDebug lintDemo
+```
+
+Полная локальная проверка перед отправкой изменений:
+
+```bash
+./gradlew testDebugUnitTest testDemoUnitTest lintDebug lintDemo \
+  assembleDebug assembleDemo
+./.venv/bin/python -m unittest discover -s tools/tests -v
+```
+
+HTML-отчёты:
+
+```text
+app/build/reports/tests/testDebugUnitTest/index.html
+app/build/reports/tests/testDemoUnitTest/index.html
+app/build/reports/lint-results-debug.html
+app/build/reports/lint-results-demo.html
 ```
 
 Для release-сборки используйте собственный ключ. Секреты рекомендуется хранить

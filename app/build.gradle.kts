@@ -84,9 +84,22 @@ android {
             versionNameSuffix = "-debug"
             manifestPlaceholders["bootReceiverEnabled"] = "false"
             manifestPlaceholders["fdbusProbeEnabled"] = "true"
+            buildConfigField("boolean", "DEMO_MODE", "false")
+        }
+        create("demo") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".demo"
+            versionNameSuffix = "-demo"
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            manifestPlaceholders["bootReceiverEnabled"] = "false"
+            manifestPlaceholders["fdbusProbeEnabled"] = "false"
+            buildConfigField("boolean", "DEMO_MODE", "true")
+            matchingFallbacks += listOf("debug")
         }
         release {
             isMinifyEnabled = false
+            buildConfigField("boolean", "DEMO_MODE", "false")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("releaseKey")
             }
@@ -112,4 +125,5 @@ android {
 
 dependencies {
     implementation("com.jcraft:jsch:0.1.55")
+    testImplementation("junit:junit:4.13.2")
 }

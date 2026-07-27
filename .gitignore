@@ -2,6 +2,7 @@
 /.gradle/
 /.gradle-ci/
 /.idea/
+/.superpowers/
 /**/build/
 /local.properties
 *.iml

@@ -45,12 +45,17 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private final SimpleDateFormat timeFormat =
             new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-    private final Bitmap staticBackground;
-    private final Bitmap staticOverlay;
+    private final Bitmap commonLayer;
+    private final Bitmap speedometerLayer;
+    private final Bitmap tachometerLayer;
+    private final Bitmap fuelLayer;
+    private final Bitmap engineTemperatureLayer;
+    private final Bitmap tyrePressureLayer;
     private final Bitmap yellowNeedle;
     private final Bitmap whiteNeedle;
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
+    private final BlockVisibility visibility;
 
     private ClusterState targetState = ClusterState.empty();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -66,12 +71,26 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private String cachedClockText = "00:00";
 
     public ClassicClusterView(Context context) {
+        this(context, BlockVisibility.allVisible());
+    }
+
+    public ClassicClusterView(Context context, BlockVisibility visibility) {
         super(context);
+        this.visibility = visibility == null ? BlockVisibility.allVisible() : visibility;
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
-        staticBackground = loadBitmap(context, "dashboard/background_classic.png");
-        staticOverlay = loadBitmap(context, "dashboard/background_classic_overlay.png");
+        commonLayer = loadBitmap(context, "dashboard/classic_layers/common.png");
+        speedometerLayer =
+                loadBitmap(context, "dashboard/classic_layers/speedometer.png");
+        tachometerLayer =
+                loadBitmap(context, "dashboard/classic_layers/tachometer.png");
+        fuelLayer =
+                loadBitmap(context, "dashboard/classic_layers/fuel_and_range.png");
+        engineTemperatureLayer =
+                loadBitmap(context, "dashboard/classic_layers/engine_temperature.png");
+        tyrePressureLayer =
+                loadBitmap(context, "dashboard/classic_layers/tyre_pressure.png");
         yellowNeedle = loadBitmap(context, "dashboard/panel_needle_main_trimmed.png");
         whiteNeedle = loadBitmap(context, "dashboard/panel_needle_small_trimmed.png");
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
@@ -125,20 +144,53 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawStaticLayer(Canvas canvas) {
-        canvas.drawBitmap(staticBackground, (Rect) null, logicalBounds, bitmapPaint);
-        canvas.drawBitmap(staticOverlay, (Rect) null, logicalBounds, bitmapPaint);
+        canvas.drawBitmap(commonLayer, (Rect) null, logicalBounds, bitmapPaint);
+        drawStaticBlock(canvas, BlockVisibility.Block.SPEEDOMETER, speedometerLayer);
+        drawStaticBlock(canvas, BlockVisibility.Block.TACHOMETER, tachometerLayer);
+        drawStaticBlock(canvas, BlockVisibility.Block.FUEL_AND_RANGE, fuelLayer);
+        drawStaticBlock(
+                canvas,
+                BlockVisibility.Block.ENGINE_TEMPERATURE,
+                engineTemperatureLayer);
+        drawStaticBlock(canvas, BlockVisibility.Block.TYRE_PRESSURE, tyrePressureLayer);
 
         // The factory turn arrows own 578..696 and 1196..1320. No application
         // card, border or text is drawn in those protected zones.
-        drawTopCard(canvas, 12.0f, 276.0f);
-        drawTopCard(canvas, 286.0f, 394.0f);
-        drawTopCard(canvas, 404.0f, 568.0f);
-        drawTopCard(canvas, 706.0f, 882.0f);
-        drawTopCard(canvas, 1038.0f, 1186.0f);
-        drawTopCard(canvas, 1330.0f, 1478.0f);
+        if (isVisible(BlockVisibility.Block.WHEEL_SPEEDS)) {
+            drawTopCard(canvas, 12.0f, 276.0f);
+        }
+        if (isVisible(BlockVisibility.Block.ENGINE_TORQUE)) {
+            drawTopCard(canvas, 286.0f, 394.0f);
+        }
+        if (isVisible(BlockVisibility.Block.CLOCK)) {
+            drawTopCard(canvas, 404.0f, 568.0f);
+            configureText(
+                    dataTypeface,
+                    31.0f,
+                    Paint.Align.CENTER,
+                    0xFFFFFFFF,
+                    true,
+                    0.0f);
+            canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.STEERING_ANGLE)) {
+            drawTopCard(canvas, 706.0f, 882.0f);
+        }
+        if (isVisible(BlockVisibility.Block.OUTSIDE_TEMPERATURE)) {
+            drawTopCard(canvas, 1038.0f, 1186.0f);
+        }
+        if (isVisible(BlockVisibility.Block.ATF_TEMPERATURE)) {
+            drawTopCard(canvas, 1330.0f, 1478.0f);
+        }
+    }
 
-        configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
-        canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
+    private void drawStaticBlock(
+            Canvas canvas,
+            BlockVisibility.Block block,
+            Bitmap bitmap) {
+        if (isVisible(block)) {
+            canvas.drawBitmap(bitmap, (Rect) null, logicalBounds, bitmapPaint);
+        }
     }
 
     private void drawNeedleLayer(Canvas canvas) {
@@ -150,51 +202,58 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         // Markers follow polar rays through the real elliptical scales. This keeps the
         // value-to-angle mapping uniform instead of treating the polar angle as an
         // ellipse parameter, which caused increasing drift after the first third.
-        drawScaleNeedle(
-                canvas,
-                yellowNeedle,
-                342.0f,
-                MAIN_DIAL_CENTER_Y,
-                260.0f,
-                MAIN_DIAL_RADIUS_Y,
-                90.0f + speedFraction * 220.0f,
-                72.0f,
-                56.0f,
-                12.0f);
-        drawScaleNeedle(
-                canvas,
-                yellowNeedle,
-                1578.0f,
-                MAIN_DIAL_CENTER_Y,
-                260.0f,
-                MAIN_DIAL_RADIUS_Y,
-                90.0f - rpmFraction * 220.0f,
-                72.0f,
-                56.0f,
-                12.0f);
-
-        drawScaleNeedle(
-                canvas,
-                whiteNeedle,
-                620.0f,
-                305.0f,
-                90.0f,
-                120.0f,
-                120.0f - fuelFraction * 196.0f,
-                22.0f,
-                42.0f,
-                10.0f);
-        drawScaleNeedle(
-                canvas,
-                whiteNeedle,
-                1300.0f,
-                305.0f,
-                90.0f,
-                120.0f,
-                64.0f + coolantFraction * 173.0f,
-                22.0f,
-                42.0f,
-                10.0f);
+        if (isVisible(BlockVisibility.Block.SPEEDOMETER)) {
+            drawScaleNeedle(
+                    canvas,
+                    yellowNeedle,
+                    342.0f,
+                    MAIN_DIAL_CENTER_Y,
+                    260.0f,
+                    MAIN_DIAL_RADIUS_Y,
+                    90.0f + speedFraction * 220.0f,
+                    72.0f,
+                    56.0f,
+                    12.0f);
+        }
+        if (isVisible(BlockVisibility.Block.TACHOMETER)) {
+            drawScaleNeedle(
+                    canvas,
+                    yellowNeedle,
+                    1578.0f,
+                    MAIN_DIAL_CENTER_Y,
+                    260.0f,
+                    MAIN_DIAL_RADIUS_Y,
+                    90.0f - rpmFraction * 220.0f,
+                    72.0f,
+                    56.0f,
+                    12.0f);
+        }
+        if (isVisible(BlockVisibility.Block.FUEL_AND_RANGE)) {
+            drawScaleNeedle(
+                    canvas,
+                    whiteNeedle,
+                    620.0f,
+                    305.0f,
+                    90.0f,
+                    120.0f,
+                    120.0f - fuelFraction * 196.0f,
+                    22.0f,
+                    42.0f,
+                    10.0f);
+        }
+        if (isVisible(BlockVisibility.Block.ENGINE_TEMPERATURE)) {
+            drawScaleNeedle(
+                    canvas,
+                    whiteNeedle,
+                    1300.0f,
+                    305.0f,
+                    90.0f,
+                    120.0f,
+                    64.0f + coolantFraction * 173.0f,
+                    22.0f,
+                    42.0f,
+                    10.0f);
+        }
     }
 
     private void drawScaleNeedle(
@@ -234,158 +293,270 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
-        drawCurrentGearCard(canvas, state);
+        if (isVisible(BlockVisibility.Block.CURRENT_GEAR)) {
+            drawCurrentGearCard(canvas, state);
+        }
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
         // the measured value would exceed the zone; the position itself never jumps.
         configureText(gaugeTypeface, 112.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.10f);
-        drawFittedText(
-                canvas,
-                Integer.toString(Math.round(displayedSpeed)),
-                349.0f,
-                435.0f,
-                168.0f,
-                112.0f,
-                92.0f);
-        drawFittedText(
-                canvas,
-                String.format(Locale.US, "%.1f", displayedRpm / 1000.0f),
-                1581.0f,
-                435.0f,
-                178.0f,
-                112.0f,
-                92.0f);
-
-        configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
-        canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
+        if (isVisible(BlockVisibility.Block.SPEEDOMETER)) {
+            drawFittedText(
+                    canvas,
+                    Integer.toString(Math.round(displayedSpeed)),
+                    349.0f,
+                    435.0f,
+                    168.0f,
+                    112.0f,
+                    92.0f);
+            configureText(
+                    dataTypeface,
+                    20.0f,
+                    Paint.Align.CENTER,
+                    0xFFC8CDD1,
+                    false,
+                    0.0f);
+            canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.TACHOMETER)) {
+            configureText(
+                    gaugeTypeface,
+                    112.0f,
+                    Paint.Align.CENTER,
+                    0xFFF7F7F5,
+                    true,
+                    -0.10f);
+            drawFittedText(
+                    canvas,
+                    String.format(Locale.US, "%.1f", displayedRpm / 1000.0f),
+                    1581.0f,
+                    435.0f,
+                    178.0f,
+                    112.0f,
+                    92.0f);
+        }
 
         // Keep the fuel values inside the grey insert and clear of the full needle
         // sweep. Range and fuel fraction are nudged about 1 mm farther right.
-        configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFE7E8E8, true, -0.08f);
-        drawFittedText(
-                canvas,
-                state.rangeKm + " km",
-                602.0f,
-                260.0f,
-                72.0f,
-                29.0f,
-                22.0f);
-        drawFittedText(
-                canvas,
-                Math.round(displayedFuel) + " L",
-                596.0f,
-                298.0f,
-                72.0f,
-                29.0f,
-                22.0f);
-        configureText(gaugeTypeface, 27.0f, Paint.Align.CENTER, 0xFFCFD2D4, true, -0.08f);
-        drawFittedText(
-                canvas,
-                String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
-                564.0f,
-                370.0f,
-                34.0f,
-                27.0f,
-                20.0f);
+        if (isVisible(BlockVisibility.Block.FUEL_AND_RANGE)) {
+            configureText(
+                    gaugeTypeface,
+                    29.0f,
+                    Paint.Align.CENTER,
+                    0xFFE7E8E8,
+                    true,
+                    -0.08f);
+            drawFittedText(
+                    canvas,
+                    state.rangeKm + " km",
+                    602.0f,
+                    260.0f,
+                    72.0f,
+                    29.0f,
+                    22.0f);
+            drawFittedText(
+                    canvas,
+                    Math.round(displayedFuel) + " L",
+                    596.0f,
+                    298.0f,
+                    72.0f,
+                    29.0f,
+                    22.0f);
+            configureText(
+                    gaugeTypeface,
+                    27.0f,
+                    Paint.Align.CENTER,
+                    0xFFCFD2D4,
+                    true,
+                    -0.08f);
+            drawFittedText(
+                    canvas,
+                    String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
+                    564.0f,
+                    370.0f,
+                    34.0f,
+                    27.0f,
+                    20.0f);
+        }
 
         // Shift the coolant value about 5 mm left at 160 dpi. Its narrower fitted
         // box still clears the complete 40-to-130 needle sweep.
-        configureText(gaugeTypeface, 31.0f, Paint.Align.CENTER, 0xFFF4F4F2, true, -0.08f);
-        drawFittedText(
-                canvas,
-                Integer.toString(Math.round(displayedCoolant)),
-                1300.0f,
-                270.0f,
-                40.0f,
-                31.0f,
-                23.0f);
+        if (isVisible(BlockVisibility.Block.ENGINE_TEMPERATURE)) {
+            configureText(
+                    gaugeTypeface,
+                    31.0f,
+                    Paint.Align.CENTER,
+                    0xFFF4F4F2,
+                    true,
+                    -0.08f);
+            drawFittedText(
+                    canvas,
+                    Integer.toString(Math.round(displayedCoolant)),
+                    1300.0f,
+                    270.0f,
+                    40.0f,
+                    31.0f,
+                    23.0f);
+        }
 
         // Three odometer values from the reference layout.
-        configureText(dataTypeface, 20.0f, Paint.Align.LEFT, 0xFFF0F0EE, false, 0.0f);
-        canvas.drawText("ODO:", 407.0f, 555.0f, textPaint);
-        canvas.drawText("Day:", 407.0f, 591.0f, textPaint);
-        canvas.drawText("Trip:", 407.0f, 627.0f, textPaint);
-        configureText(gaugeTypeface, 23.0f, Paint.Align.LEFT, 0xFFF8F8F7, false, -0.05f);
-        canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
-                485.0f, 555.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f  km", state.dayKm),
-                485.0f, 591.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f  km", state.tripKm),
-                485.0f, 627.0f, textPaint);
+        if (isVisible(BlockVisibility.Block.ODOMETERS)) {
+            configureText(dataTypeface, 20.0f, Paint.Align.LEFT, 0xFFF0F0EE, false, 0.0f);
+            canvas.drawText("ODO:", 407.0f, 555.0f, textPaint);
+            canvas.drawText("Day:", 407.0f, 591.0f, textPaint);
+            canvas.drawText("Trip:", 407.0f, 627.0f, textPaint);
+            configureText(
+                    gaugeTypeface,
+                    23.0f,
+                    Paint.Align.LEFT,
+                    0xFFF8F8F7,
+                    false,
+                    -0.05f);
+            canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
+                    485.0f, 555.0f, textPaint);
+            canvas.drawText(String.format(Locale.US, "%.1f  km", state.dayKm),
+                    485.0f, 591.0f, textPaint);
+            canvas.drawText(String.format(Locale.US, "%.1f  km", state.tripKm),
+                    485.0f, 627.0f, textPaint);
+        }
 
         // The baked car is centered at (1397, 544). Columns and row centers are
         // perfectly mirrored around that point, including their measured text boxes.
-        configureText(gaugeTypeface, 24.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
-        drawFittedText(
-                canvas,
-                formatPressure(state.tyreFrontLeftBar),
-                1335.0f,
-                529.0f,
-                74.0f,
-                24.0f,
-                19.0f);
-        drawFittedText(
-                canvas,
-                formatPressure(state.tyreFrontRightBar),
-                1459.0f,
-                529.0f,
-                74.0f,
-                24.0f,
-                19.0f);
-        drawFittedText(
-                canvas,
-                formatPressure(state.tyreRearLeftBar),
-                1335.0f,
-                559.0f,
-                74.0f,
-                24.0f,
-                19.0f);
-        drawFittedText(
-                canvas,
-                formatPressure(state.tyreRearRightBar),
-                1459.0f,
-                559.0f,
-                74.0f,
-                24.0f,
-                19.0f);
+        if (isVisible(BlockVisibility.Block.TYRE_PRESSURE)) {
+            configureText(
+                    gaugeTypeface,
+                    24.0f,
+                    Paint.Align.CENTER,
+                    0xFFF4F4F2,
+                    false,
+                    -0.06f);
+            drawFittedText(
+                    canvas,
+                    formatPressure(state.tyreFrontLeftBar),
+                    1335.0f,
+                    529.0f,
+                    74.0f,
+                    24.0f,
+                    19.0f);
+            drawFittedText(
+                    canvas,
+                    formatPressure(state.tyreFrontRightBar),
+                    1459.0f,
+                    529.0f,
+                    74.0f,
+                    24.0f,
+                    19.0f);
+            drawFittedText(
+                    canvas,
+                    formatPressure(state.tyreRearLeftBar),
+                    1335.0f,
+                    559.0f,
+                    74.0f,
+                    24.0f,
+                    19.0f);
+            drawFittedText(
+                    canvas,
+                    formatPressure(state.tyreRearRightBar),
+                    1459.0f,
+                    559.0f,
+                    74.0f,
+                    24.0f,
+                    19.0f);
+        }
 
         // Live outside temperature and steering angle remain at the top.
-        drawSteeringWheel(canvas, 762.0f, 44.0f, 13.0f, 0xFFD9DEE2);
-        configureText(dataTypeface, 23.0f, Paint.Align.LEFT, 0xFFF7F7F5, false, 0.0f);
-        canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
-        configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
-        canvas.drawText(formatOutside(state.outsideTemperatureC), 1112.0f, 55.0f, textPaint);
-        configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("ATF", 1404.0f, 32.0f, textPaint);
-        configureText(gaugeTypeface, 26.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, -0.04f);
-        canvas.drawText(
-                formatTransmissionTemperature(state, frameAtMs),
-                1404.0f,
-                61.0f,
-                textPaint);
+        if (isVisible(BlockVisibility.Block.STEERING_ANGLE)) {
+            drawSteeringWheel(canvas, 762.0f, 44.0f, 13.0f, 0xFFD9DEE2);
+            configureText(
+                    dataTypeface,
+                    23.0f,
+                    Paint.Align.LEFT,
+                    0xFFF7F7F5,
+                    false,
+                    0.0f);
+            canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.OUTSIDE_TEMPERATURE)) {
+            configureText(
+                    dataTypeface,
+                    27.0f,
+                    Paint.Align.CENTER,
+                    0xFFF9F9F7,
+                    true,
+                    0.0f);
+            canvas.drawText(
+                    formatOutside(state.outsideTemperatureC),
+                    1112.0f,
+                    55.0f,
+                    textPaint);
+        }
+        if (isVisible(BlockVisibility.Block.ATF_TEMPERATURE)) {
+            configureText(
+                    dataTypeface,
+                    11.0f,
+                    Paint.Align.CENTER,
+                    0xFFA7AFB5,
+                    true,
+                    0.0f);
+            canvas.drawText("ATF", 1404.0f, 32.0f, textPaint);
+            configureText(
+                    gaugeTypeface,
+                    26.0f,
+                    Paint.Align.CENTER,
+                    0xFFF9F9F7,
+                    true,
+                    -0.04f);
+            canvas.drawText(
+                    formatTransmissionTemperature(state, frameAtMs),
+                    1404.0f,
+                    61.0f,
+                    textPaint);
+        }
 
         // Bottom live metrics.
-        configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
-        drawFittedText(
-                canvas,
-                String.format(Locale.US, "%.1fL", state.consumptionLitersPer100Km),
-                91.0f,
-                678.0f,
-                112.0f,
-                32.0f,
-                24.0f);
-        configureText(dataTypeface, 16.0f, Paint.Align.LEFT, 0xFFD6D9DB, true, 0.0f);
-        canvas.drawText("/100 km", 46.0f, 712.0f, textPaint);
+        if (isVisible(BlockVisibility.Block.FUEL_CONSUMPTION)) {
+            configureText(
+                    gaugeTypeface,
+                    32.0f,
+                    Paint.Align.CENTER,
+                    0xFFF5F5F3,
+                    true,
+                    -0.08f);
+            drawFittedText(
+                    canvas,
+                    String.format(Locale.US, "%.1fL", state.consumptionLitersPer100Km),
+                    91.0f,
+                    678.0f,
+                    112.0f,
+                    32.0f,
+                    24.0f);
+            configureText(
+                    dataTypeface,
+                    16.0f,
+                    Paint.Align.LEFT,
+                    0xFFD6D9DB,
+                    true,
+                    0.0f);
+            canvas.drawText("/100 km", 46.0f, 712.0f, textPaint);
+        }
 
-        configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
-        drawFittedText(
-                canvas,
-                String.format(Locale.US, "%.1fV", state.voltage),
-                1830.0f,
-                678.0f,
-                112.0f,
-                32.0f,
-                24.0f);
+        if (isVisible(BlockVisibility.Block.BATTERY_VOLTAGE)) {
+            configureText(
+                    gaugeTypeface,
+                    32.0f,
+                    Paint.Align.CENTER,
+                    0xFFF5F5F3,
+                    true,
+                    -0.08f);
+            drawFittedText(
+                    canvas,
+                    String.format(Locale.US, "%.1fV", state.voltage),
+                    1830.0f,
+                    678.0f,
+                    112.0f,
+                    32.0f,
+                    24.0f);
+        }
     }
 
     private void drawFittedText(
@@ -482,30 +653,37 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawLiveTelemetryCards(Canvas canvas, ClusterState state) {
-        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("WHEEL SPEED  km/h", 144.0f, 25.0f, textPaint);
+        if (isVisible(BlockVisibility.Block.WHEEL_SPEEDS)) {
+            configureText(dataTypeface, 10.0f, Paint.Align.CENTER,
+                    0xFFA7AFB5, true, 0.0f);
+            canvas.drawText("WHEEL SPEED  km/h", 144.0f, 25.0f, textPaint);
 
-        shapePaint.setStyle(Paint.Style.STROKE);
-        shapePaint.setStrokeWidth(1.0f);
-        shapePaint.setColor(0xFF30363B);
-        canvas.drawLine(144.0f, 30.0f, 144.0f, 70.0f, shapePaint);
-        canvas.drawLine(22.0f, 54.0f, 266.0f, 54.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.FILL);
+            shapePaint.setStyle(Paint.Style.STROKE);
+            shapePaint.setStrokeWidth(1.0f);
+            shapePaint.setColor(0xFF30363B);
+            canvas.drawLine(144.0f, 30.0f, 144.0f, 70.0f, shapePaint);
+            canvas.drawLine(22.0f, 54.0f, 266.0f, 54.0f, shapePaint);
+            shapePaint.setStyle(Paint.Style.FILL);
 
-        drawWheelValue(canvas, state, "FL", state.wheelFrontLeftKph,
-                30.0f, 88.0f, 47.0f, 43.0f);
-        drawWheelValue(canvas, state, "FR", state.wheelFrontRightKph,
-                162.0f, 220.0f, 47.0f, 43.0f);
-        drawWheelValue(canvas, state, "RL", state.wheelRearLeftKph,
-                30.0f, 88.0f, 70.0f, 66.0f);
-        drawWheelValue(canvas, state, "RR", state.wheelRearRightKph,
-                162.0f, 220.0f, 70.0f, 66.0f);
+            drawWheelValue(canvas, state, "FL", state.wheelFrontLeftKph,
+                    30.0f, 88.0f, 47.0f, 43.0f);
+            drawWheelValue(canvas, state, "FR", state.wheelFrontRightKph,
+                    162.0f, 220.0f, 47.0f, 43.0f);
+            drawWheelValue(canvas, state, "RL", state.wheelRearLeftKph,
+                    30.0f, 88.0f, 70.0f, 66.0f);
+            drawWheelValue(canvas, state, "RR", state.wheelRearRightKph,
+                    162.0f, 220.0f, 70.0f, 66.0f);
+        }
 
-        configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("TRQ", 340.0f, 32.0f, textPaint);
-        configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
-        drawFittedText(canvas, formatTorque(state.engineFlywheelTorque),
-                340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
+        if (isVisible(BlockVisibility.Block.ENGINE_TORQUE)) {
+            configureText(dataTypeface, 11.0f, Paint.Align.CENTER,
+                    0xFFA7AFB5, true, 0.0f);
+            canvas.drawText("TRQ", 340.0f, 32.0f, textPaint);
+            configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER,
+                    0xFFF7F7F5, true, -0.04f);
+            drawFittedText(canvas, formatTorque(state.engineFlywheelTorque),
+                    340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
+        }
     }
 
     private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
@@ -646,5 +824,9 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
 
     private static float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private boolean isVisible(BlockVisibility.Block block) {
+        return visibility.isVisible(block);
     }
 }
