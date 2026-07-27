@@ -32,6 +32,11 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
+    private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
+    private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
+    private static final int COLOR_ATF_HOT = 0xFFFF8A3D;
+    private static final int COLOR_ATF_CRITICAL = 0xFFFF4D4D;
+    private static final int COLOR_CARD_BORDER = 0xFF4C535A;
 
     private final Paint bitmapPaint = new Paint(
             Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -44,6 +49,8 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private final RectF needleDestination = new RectF();
     private final SimpleDateFormat timeFormat =
             new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final TransmissionTemperatureAlert transmissionTemperatureAlert =
+            new TransmissionTemperatureAlert();
 
     private final Bitmap staticBackground;
     private final Bitmap staticOverlay;
@@ -101,6 +108,8 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         long frameAtMs = SystemClock.elapsedRealtime();
         updateSmoothedValues(frameAtMs);
         updateClock();
+        TransmissionTemperatureAlert.Level transmissionTemperatureLevel =
+                updateTransmissionTemperatureAlert(targetState, frameAtMs);
 
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
@@ -112,9 +121,9 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.translate(offsetX, offsetY);
         canvas.scale(scale, scale);
 
-        drawStaticLayer(canvas);
+        drawStaticLayer(canvas, transmissionTemperatureLevel);
         drawNeedleLayer(canvas);
-        drawTextLayer(canvas, frameAtMs);
+        drawTextLayer(canvas, frameAtMs, transmissionTemperatureLevel);
 
         canvas.restoreToCount(rootSave);
         if (needsAnotherAnimationFrame(frameAtMs)) {
@@ -124,7 +133,9 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         }
     }
 
-    private void drawStaticLayer(Canvas canvas) {
+    private void drawStaticLayer(
+            Canvas canvas,
+            TransmissionTemperatureAlert.Level transmissionTemperatureLevel) {
         canvas.drawBitmap(staticBackground, (Rect) null, logicalBounds, bitmapPaint);
         canvas.drawBitmap(staticOverlay, (Rect) null, logicalBounds, bitmapPaint);
 
@@ -135,7 +146,13 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         drawTopCard(canvas, 404.0f, 568.0f);
         drawTopCard(canvas, 706.0f, 882.0f);
         drawTopCard(canvas, 1038.0f, 1186.0f);
-        drawTopCard(canvas, 1330.0f, 1478.0f);
+        drawTopCard(
+                canvas,
+                1330.0f,
+                1478.0f,
+                transmissionTemperatureColor(
+                        transmissionTemperatureLevel,
+                        COLOR_CARD_BORDER));
 
         configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
         canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
@@ -230,7 +247,10 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.restoreToCount(save);
     }
 
-    private void drawTextLayer(Canvas canvas, long frameAtMs) {
+    private void drawTextLayer(
+            Canvas canvas,
+            long frameAtMs,
+            TransmissionTemperatureAlert.Level transmissionTemperatureLevel) {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
@@ -357,7 +377,15 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.drawText(formatOutside(state.outsideTemperatureC), 1112.0f, 55.0f, textPaint);
         configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
         canvas.drawText("ATF", 1404.0f, 32.0f, textPaint);
-        configureText(gaugeTypeface, 26.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, -0.04f);
+        configureText(
+                gaugeTypeface,
+                26.0f,
+                Paint.Align.CENTER,
+                transmissionTemperatureColor(
+                        transmissionTemperatureLevel,
+                        COLOR_ATF_NORMAL),
+                true,
+                -0.04f);
         canvas.drawText(
                 formatTransmissionTemperature(state, frameAtMs),
                 1404.0f,
@@ -471,12 +499,16 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawTopCard(Canvas canvas, float left, float right) {
+        drawTopCard(canvas, left, right, COLOR_CARD_BORDER);
+    }
+
+    private void drawTopCard(Canvas canvas, float left, float right, int borderColor) {
         shapePaint.setStyle(Paint.Style.FILL);
         shapePaint.setColor(0xFF080B0E);
         canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
         shapePaint.setStyle(Paint.Style.STROKE);
         shapePaint.setStrokeWidth(2.0f);
-        shapePaint.setColor(0xFF4C535A);
+        shapePaint.setColor(borderColor);
         canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
         shapePaint.setStyle(Paint.Style.FILL);
     }
@@ -596,6 +628,34 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
             return "— °C";
         }
         return Math.round(state.transmissionTemperatureC) + " °C";
+    }
+
+    private TransmissionTemperatureAlert.Level updateTransmissionTemperatureAlert(
+            ClusterState state,
+            long nowMs) {
+        boolean hasFreshValue = state.hasTransmissionTemperature()
+                && state.transmissionTemperatureUpdatedAtMs > 0L
+                && nowMs - state.transmissionTemperatureUpdatedAtMs
+                        <= TRANSMISSION_TEMPERATURE_STALE_AFTER_MS;
+        return transmissionTemperatureAlert.update(
+                state.transmissionTemperatureC,
+                hasFreshValue);
+    }
+
+    private static int transmissionTemperatureColor(
+            TransmissionTemperatureAlert.Level level,
+            int normalColor) {
+        switch (level) {
+            case ELEVATED:
+                return COLOR_ATF_ELEVATED;
+            case HOT:
+                return COLOR_ATF_HOT;
+            case CRITICAL:
+                return COLOR_ATF_CRITICAL;
+            case NORMAL:
+            default:
+                return normalColor;
+        }
     }
 
     private static String formatSteering(float angleDeg) {
