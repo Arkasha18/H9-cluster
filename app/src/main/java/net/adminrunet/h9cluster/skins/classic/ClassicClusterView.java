@@ -1,4 +1,9 @@
-package net.adminrunet.h9cluster;
+package net.adminrunet.h9cluster.skins.classic;
+
+import net.adminrunet.h9cluster.ClusterRenderer;
+import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.PredictiveMotionFilter;
+import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -77,10 +82,10 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
-        staticBackground = loadBitmap(context, "dashboard/background_classic.png");
-        staticOverlay = loadBitmap(context, "dashboard/background_classic_overlay.png");
-        yellowNeedle = loadBitmap(context, "dashboard/panel_needle_main_trimmed.png");
-        whiteNeedle = loadBitmap(context, "dashboard/panel_needle_small_trimmed.png");
+        staticBackground = loadBitmap(context, "dashboard/skins/classic/background.png");
+        staticOverlay = loadBitmap(context, "dashboard/skins/classic/overlay.png");
+        yellowNeedle = loadBitmap(context, "dashboard/skins/classic/needle_main.png");
+        whiteNeedle = loadBitmap(context, "dashboard/skins/classic/needle_small.png");
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
         gaugeTypeface = Typeface.createFromAsset(
                 context.getAssets(), "fonts/Rajdhani-Medium.ttf");

@@ -7,8 +7,8 @@ package net.adminrunet.h9cluster;
  * band has a lower exit point so minor sensor changes around a boundary do not
  * make the card flicker between colors.</p>
  */
-final class TransmissionTemperatureAlert {
-    enum Level {
+public final class TransmissionTemperatureAlert {
+    public enum Level {
         NORMAL,
         ELEVATED,
         HOT,
@@ -24,7 +24,7 @@ final class TransmissionTemperatureAlert {
 
     private Level level = Level.NORMAL;
 
-    Level update(float temperatureC, boolean hasFreshValue) {
+    public Level update(float temperatureC, boolean hasFreshValue) {
         if (!hasFreshValue || Float.isNaN(temperatureC) || Float.isInfinite(temperatureC)) {
             level = Level.NORMAL;
             return level;

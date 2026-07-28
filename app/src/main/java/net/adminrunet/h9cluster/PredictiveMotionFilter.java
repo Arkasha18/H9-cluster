@@ -6,7 +6,7 @@ package net.adminrunet.h9cluster;
  * Prediction is deliberately bounded in value, velocity and time. It makes a
  * one-hertz signal feel continuous without allowing an old sample to drift.
  */
-final class PredictiveMotionFilter {
+public final class PredictiveMotionFilter {
     private final float minimum;
     private final float maximum;
     private final float maximumVelocityPerSecond;
@@ -24,7 +24,7 @@ final class PredictiveMotionFilter {
     private long lastSampleAtMs;
     private long lastFrameAtMs;
 
-    PredictiveMotionFilter(
+    public PredictiveMotionFilter(
             float minimum,
             float maximum,
             float maximumVelocityPerSecond,
@@ -45,7 +45,7 @@ final class PredictiveMotionFilter {
         this.noiseThreshold = noiseThreshold;
     }
 
-    void onSample(float value, long sampleAtMs) {
+    public void onSample(float value, long sampleAtMs) {
         float boundedValue = clamp(value, minimum, maximum);
         if (!initialized) {
             initialized = true;
@@ -83,7 +83,7 @@ final class PredictiveMotionFilter {
         lastSampleAtMs = sampleAtMs;
     }
 
-    float update(long nowMs) {
+    public float update(long nowMs) {
         if (!initialized) {
             return targetValue;
         }
@@ -114,7 +114,7 @@ final class PredictiveMotionFilter {
         return displayedValue;
     }
 
-    boolean needsAnimationFrame(long nowMs) {
+    public boolean needsAnimationFrame(long nowMs) {
         if (!initialized) {
             return false;
         }

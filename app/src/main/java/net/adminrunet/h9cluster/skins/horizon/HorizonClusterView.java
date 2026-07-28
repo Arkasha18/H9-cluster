@@ -1,4 +1,8 @@
-package net.adminrunet.h9cluster;
+package net.adminrunet.h9cluster.skins.horizon;
+
+import net.adminrunet.h9cluster.ClusterRenderer;
+import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -23,7 +27,7 @@ import java.util.Locale;
  * The middle of the surface deliberately stays transparent so the factory
  * navigation and transmission layers remain visible underneath.
  */
-public final class ClusterView extends View implements ClusterRenderer {
+public final class HorizonClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
@@ -59,7 +63,7 @@ public final class ClusterView extends View implements ClusterRenderer {
     private float displayedCoolant = targetState.coolantC;
     private long lastFrameAtMs;
 
-    public ClusterView(Context context) {
+    public HorizonClusterView(Context context) {
         super(context);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
