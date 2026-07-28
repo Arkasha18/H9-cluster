@@ -1,0 +1,277 @@
+package net.adminrunet.h9cluster.trip;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import net.adminrunet.h9cluster.ClusterState;
+
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class TripSummaryCoordinatorTest {
+    @Test
+    public void ignoresTelemetryUntilStartIsConfirmed() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+
+        coordinator.onClusterState(state(400, 0, 10.0f, 1.0f, clock.nowMs()));
+
+        assertFalse(coordinator.isTripActive());
+        assertNull(persistence.stored);
+        assertTrue(listener.summaries.isEmpty());
+    }
+
+    @Test
+    public void confirmedStartCreatesAndSynchronouslyPersistsSession() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+
+        coordinator.onClusterState(state(400, 0, 10.0f, 1.0f, clock.nowMs()));
+        clock.now = 2_000L;
+        coordinator.onClusterState(state(400, 0, 10.0f, 1.0f, clock.nowMs()));
+
+        assertTrue(coordinator.isTripActive());
+        assertNotNull(persistence.stored);
+        assertEquals(2_000L, persistence.stored.startedAtMs);
+        assertEquals(1, persistence.syncSaves);
+    }
+
+    @Test
+    public void runningTripUpdatesAndThrottlesAsyncPersistence() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        TripSummaryCoordinator coordinator = new TripSummaryCoordinator(
+                persistence,
+                new RecordingListener(persistence),
+                clock);
+        confirmStart(coordinator, clock, 10.0f);
+
+        clock.now = 2_500L;
+        coordinator.onClusterState(state(800, 60, 10.1f, 10.0f, clock.nowMs()));
+        assertEquals(0, persistence.asyncSaves);
+
+        clock.now = 3_000L;
+        coordinator.onClusterState(state(800, 60, 10.2f, 10.0f, clock.nowMs()));
+        assertEquals(1, persistence.asyncSaves);
+        assertEquals(0.2, persistence.stored.distanceKm, 0.0001);
+    }
+
+    @Test
+    public void recreationRestoresRunningTripAndContinuesDistance() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        TripSummaryCoordinator first = new TripSummaryCoordinator(
+                persistence,
+                new RecordingListener(persistence),
+                clock);
+        confirmStart(first, clock, 10.0f);
+        clock.now = 3_000L;
+        first.onClusterState(state(800, 60, 10.2f, 10.0f, clock.nowMs()));
+        first.flush();
+
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator restored =
+                new TripSummaryCoordinator(persistence, listener, clock);
+        assertTrue(restored.isTripActive());
+
+        clock.now = 4_000L;
+        restored.onClusterState(state(0, 0, 10.3f, 1.0f, clock.nowMs()));
+        clock.now = 6_500L;
+        restored.onClusterState(state(0, 0, 10.3f, 1.0f, clock.nowMs()));
+
+        assertEquals(1, listener.summaries.size());
+        assertEquals(0.3, listener.summaries.get(0).distanceKm, 0.0001);
+    }
+
+    @Test
+    public void confirmedStopClearsBeforeEmittingExactlyOnce() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+        confirmStart(coordinator, clock, 10.0f);
+
+        clock.now = 3_000L;
+        coordinator.onClusterState(state(0, 0, 10.1f, 1.0f, clock.nowMs()));
+        clock.now = 5_500L;
+        coordinator.onClusterState(state(0, 0, 10.1f, 1.0f, clock.nowMs()));
+        clock.now = 6_000L;
+        coordinator.onClusterState(state(0, 0, 10.1f, 1.0f, clock.nowMs()));
+
+        assertFalse(coordinator.isTripActive());
+        assertNull(persistence.stored);
+        assertEquals(1, persistence.syncClears);
+        assertEquals(1, listener.summaries.size());
+        assertTrue(listener.storageWasClearAtCallback);
+    }
+
+    @Test
+    public void invalidFuelDoesNotInvalidateDistanceOrDuration() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+        confirmStart(coordinator, clock, 10.0f);
+
+        clock.now = 3_000L;
+        coordinator.onClusterState(state(0, 0, 10.1f, Float.NaN, clock.nowMs()));
+        clock.now = 5_500L;
+        coordinator.onClusterState(state(0, 0, 10.1f, Float.NaN, clock.nowMs()));
+
+        TripSummary summary = listener.summaries.get(0);
+        assertTrue(summary.distanceValid);
+        assertFalse(summary.consumptionValid);
+        assertTrue(summary.durationValid);
+    }
+
+    @Test
+    public void flushSynchronouslyStoresLatestActiveSession() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        TripSummaryCoordinator coordinator = new TripSummaryCoordinator(
+                persistence,
+                new RecordingListener(persistence),
+                clock);
+        confirmStart(coordinator, clock, 10.0f);
+        clock.now = 2_500L;
+        coordinator.onClusterState(state(800, 60, 10.1f, 10.0f, clock.nowMs()));
+
+        coordinator.flush();
+
+        assertEquals(2, persistence.syncSaves);
+        assertEquals(0.1, persistence.stored.distanceKm, 0.0001);
+    }
+
+    private static void confirmStart(
+            TripSummaryCoordinator coordinator,
+            MutableClock clock,
+            float journeyKm) {
+        clock.now = 1_000L;
+        coordinator.onClusterState(
+                state(400, 0, journeyKm, 1.0f, clock.nowMs()));
+        clock.now = 2_000L;
+        coordinator.onClusterState(
+                state(400, 0, journeyKm, 1.0f, clock.nowMs()));
+    }
+
+    private static ClusterState state(
+            int rpm,
+            int speedKph,
+            float journeyKm,
+            float instantFuel,
+            long nowMs) {
+        return new ClusterState(
+                speedKph,
+                rpm,
+                speedKph == 0 ? 0 : 3,
+                80,
+                Float.NaN,
+                50.0f,
+                500,
+                20_000.0,
+                journeyKm,
+                100.0f,
+                2.3f,
+                2.3f,
+                2.3f,
+                2.3f,
+                9.0f,
+                instantFuel,
+                14.0f,
+                20.0f,
+                0.0f,
+                speedKph,
+                speedKph,
+                speedKph,
+                speedKph,
+                100.0f,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                "NORMAL");
+    }
+
+    private static final class MutableClock
+            implements TripSummaryCoordinator.Clock {
+        long now;
+
+        MutableClock(long now) {
+            this.now = now;
+        }
+
+        @Override
+        public long nowMs() {
+            return now;
+        }
+    }
+
+    private static final class MemoryPersistence
+            implements TripSessionPersistence {
+        TripSession stored;
+        int syncSaves;
+        int asyncSaves;
+        int syncClears;
+
+        @Override
+        public TripSession load(long nowMs) {
+            return TripSessionNormalizer.normalize(stored, nowMs);
+        }
+
+        @Override
+        public void saveAsync(TripSession session) {
+            stored = session;
+            asyncSaves++;
+        }
+
+        @Override
+        public boolean saveSync(TripSession session) {
+            stored = session;
+            syncSaves++;
+            return true;
+        }
+
+        @Override
+        public void clearAsync() {
+            stored = null;
+        }
+
+        @Override
+        public boolean clearSync() {
+            stored = null;
+            syncClears++;
+            return true;
+        }
+    }
+
+    private static final class RecordingListener
+            implements TripSummaryCoordinator.Listener {
+        final MemoryPersistence persistence;
+        final List<TripSummary> summaries = new ArrayList<>();
+        boolean storageWasClearAtCallback;
+
+        RecordingListener(MemoryPersistence persistence) {
+            this.persistence = persistence;
+        }
+
+        @Override
+        public void onTripSummary(TripSummary summary) {
+            storageWasClearAtCallback = persistence.stored == null;
+            summaries.add(summary);
+        }
+    }
+}
