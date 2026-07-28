@@ -1,7 +1,10 @@
 package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
+import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.SkinSettingsProvider;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -12,6 +15,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 /** Touch settings surface kept dependency-free for the Android 9 head unit. */
+@SuppressLint("ViewConstructor")
 public final class SettingsView extends View {
     private static final float LOGICAL_WIDTH = 960.0f;
     private static final float LOGICAL_HEIGHT = 540.0f;
@@ -23,17 +27,34 @@ public final class SettingsView extends View {
     private static final SkinRegistry.Definition[] SKINS =
             SkinRegistry.getDefinitions();
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
+    private static final float CONFIGURE_TOP = 300.0f;
+    private static final float CONFIGURE_BOTTOM = 348.0f;
+    private static final float SAVE_TOP_DEFAULT = 340.0f;
+    private static final float SAVE_BOTTOM_DEFAULT = 398.0f;
+    private static final float SAVE_TOP_WITH_SETTINGS = 365.0f;
+    private static final float SAVE_BOTTOM_WITH_SETTINGS = 423.0f;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
-    private String selectedSkin;
+    private final SkinSettingsSession session;
+    private final Listener listener;
     private String status = "";
     private float contentScale = 1.0f;
     private float contentOffsetX;
     private float contentOffsetY;
 
-    public SettingsView(Context context) {
+    interface Listener {
+        void onDraftChanged(SkinSettingsSession.Snapshot draft);
+
+        void onSaveRequested(SkinSettingsSession.Snapshot draft);
+    }
+
+    SettingsView(
+            Context context,
+            SkinSettingsSession session,
+            Listener listener) {
         super(context);
-        selectedSkin = SkinPreferences.getSelectedSkin(context);
+        this.session = session;
+        this.listener = listener;
         setBackgroundColor(COLOR_BACKGROUND);
     }
 
@@ -72,16 +93,34 @@ public final class SettingsView extends View {
 
         drawSkinSelector(canvas);
 
+        boolean configurable = selectedDefinition().hasSettings();
+        if (configurable) {
+            drawConfigureButton(canvas);
+        }
+
+        float saveTop = configurable
+                ? SAVE_TOP_WITH_SETTINGS
+                : SAVE_TOP_DEFAULT;
+        float saveBottom = configurable
+                ? SAVE_BOTTOM_WITH_SETTINGS
+                : SAVE_BOTTOM_DEFAULT;
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_ACCENT);
-        canvas.drawRoundRect(255.0f, 340.0f, 705.0f, 398.0f, 14.0f, 14.0f, paint);
+        canvas.drawRoundRect(
+                255.0f,
+                saveTop,
+                705.0f,
+                saveBottom,
+                14.0f,
+                14.0f,
+                paint);
         drawCenteredText(
                 canvas,
                 BuildConfig.DEMO_MODE
                         ? "Сохранить и запустить"
                         : "Сохранить и запустить на дисплее 2",
                 480.0f,
-                376.0f,
+                saveTop + 36.0f,
                 19.0f,
                 Color.BLACK,
                 true);
@@ -102,8 +141,40 @@ public final class SettingsView extends View {
         canvas.restoreToCount(save);
     }
 
+    private void drawConfigureButton(Canvas canvas) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(COLOR_CARD_SELECTED);
+        canvas.drawRoundRect(
+                300.0f,
+                CONFIGURE_TOP,
+                660.0f,
+                CONFIGURE_BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                300.0f,
+                CONFIGURE_TOP,
+                660.0f,
+                CONFIGURE_BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        drawCenteredText(
+                canvas,
+                "Настроить выбранную тему",
+                480.0f,
+                CONFIGURE_TOP + 31.0f,
+                17.0f,
+                COLOR_TEXT,
+                true);
+    }
+
     private void drawSkinSelector(Canvas canvas) {
-        SkinRegistry.Definition option = SKINS[getSelectedSkinIndex()];
+        SkinRegistry.Definition option = selectedDefinition();
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_CARD_SELECTED);
         canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 280.0f, 16.0f, 16.0f, paint);
@@ -135,25 +206,41 @@ public final class SettingsView extends View {
         if (event.getAction() != MotionEvent.ACTION_UP) {
             return true;
         }
+        performClick();
         float x = (event.getX() - contentOffsetX) / contentScale;
         float y = (event.getY() - contentOffsetY) / contentScale;
         if (x >= 110.0f && x <= 850.0f && y >= 160.0f && y <= 280.0f) {
             showSkinPicker();
             return true;
         }
-        if (x >= 255.0f && x <= 705.0f && y >= 340.0f && y <= 398.0f) {
-            SkinPreferences.setSelectedSkin(getContext(), selectedSkin);
-            boolean launched = ClusterLauncher.startOnClusterDisplay(getContext());
-            status = launched
-                    ? BuildConfig.DEMO_MODE
-                            ? "Тема сохранена и запущена"
-                            : "Тема сохранена и запущена на дисплее 2"
-                    : BuildConfig.DEMO_MODE
-                            ? "Тема сохранена. Не удалось запустить Demo"
-                            : "Тема сохранена. Дисплей 2 сейчас недоступен";
-            invalidate();
+        boolean configurable = selectedDefinition().hasSettings();
+        if (configurable
+                && x >= 300.0f
+                && x <= 660.0f
+                && y >= CONFIGURE_TOP
+                && y <= CONFIGURE_BOTTOM) {
+            showSettingsEditor();
             return true;
         }
+        float saveTop = configurable
+                ? SAVE_TOP_WITH_SETTINGS
+                : SAVE_TOP_DEFAULT;
+        float saveBottom = configurable
+                ? SAVE_BOTTOM_WITH_SETTINGS
+                : SAVE_BOTTOM_DEFAULT;
+        if (x >= 255.0f
+                && x <= 705.0f
+                && y >= saveTop
+                && y <= saveBottom) {
+            listener.onSaveRequested(session.snapshot());
+            return true;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean performClick() {
+        super.performClick();
         return true;
     }
 
@@ -166,9 +253,10 @@ public final class SettingsView extends View {
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                selectedSkin = SKINS[which].id;
-                                status = "";
+                                session.selectSkin(SKINS[which].id);
+                                status = "Предпросмотр темы изменён";
                                 dialog.dismiss();
+                                listener.onDraftChanged(session.snapshot());
                                 invalidate();
                             }
                         })
@@ -178,11 +266,51 @@ public final class SettingsView extends View {
 
     private int getSelectedSkinIndex() {
         for (int index = 0; index < SKINS.length; index++) {
-            if (SKINS[index].id.equals(selectedSkin)) {
+            if (SKINS[index].id.equals(session.snapshot().skinId)) {
                 return index;
             }
         }
         return 0;
+    }
+
+    private SkinRegistry.Definition selectedDefinition() {
+        return SkinRegistry.getDefinition(session.snapshot().skinId);
+    }
+
+    private void showSettingsEditor() {
+        SkinRegistry.Definition definition = selectedDefinition();
+        if (!definition.hasSettings()) {
+            return;
+        }
+        SkinSettingsSession.Snapshot snapshot = session.snapshot();
+        View editor = definition.createSettingsEditor(
+                getContext(),
+                snapshot.settings,
+                new SkinSettingsProvider.Listener() {
+                    @Override
+                    public void onSettingsChanged(SkinSettings settings) {
+                        session.updateSettings(settings);
+                        status = "Предпросмотр настроек изменён";
+                        listener.onDraftChanged(session.snapshot());
+                        invalidate();
+                    }
+                });
+        new AlertDialog.Builder(getContext())
+                .setTitle("Настройки: " + definition.title)
+                .setView(editor)
+                .setPositiveButton("Готово", null)
+                .show();
+    }
+
+    void showSaveResult(boolean launched) {
+        status = launched
+                ? BuildConfig.DEMO_MODE
+                        ? "Настройки сохранены и запущены"
+                        : "Настройки сохранены и запущены на дисплее 2"
+                : BuildConfig.DEMO_MODE
+                        ? "Настройки сохранены. Не удалось запустить Demo"
+                        : "Настройки сохранены. Дисплей 2 сейчас недоступен";
+        invalidate();
     }
 
     private static CharSequence[] createSkinTitles() {

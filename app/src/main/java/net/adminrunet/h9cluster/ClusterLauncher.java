@@ -16,6 +16,18 @@ public final class ClusterLauncher {
     }
 
     public static boolean startOnClusterDisplay(Context context) {
+        return launchOnClusterDisplay(context, null);
+    }
+
+    static boolean previewOnClusterDisplay(
+            Context context,
+            SkinSettingsSession.Snapshot draft) {
+        return launchOnClusterDisplay(context, draft);
+    }
+
+    private static boolean launchOnClusterDisplay(
+            Context context,
+            SkinSettingsSession.Snapshot draft) {
         DisplayManager displayManager =
                 (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
         boolean clusterDisplayAvailable =
@@ -31,7 +43,15 @@ public final class ClusterLauncher {
         }
 
         Intent intent = new Intent(context, PreviewActivity.class);
-        intent.putExtra(PreviewActivity.EXTRA_RELOAD_SKIN, true);
+        if (draft == null) {
+            intent.putExtra(PreviewActivity.EXTRA_RELOAD_SKIN, true);
+        } else {
+            intent.putExtra(PreviewActivity.EXTRA_HAS_DRAFT, true);
+            intent.putExtra(PreviewActivity.EXTRA_DRAFT_SKIN, draft.skinId);
+            intent.putExtra(
+                    PreviewActivity.EXTRA_DRAFT_SETTINGS,
+                    SkinSettingsTransport.toBundle(draft.settings));
+        }
         intent.putExtra(
                 PreviewActivity.EXTRA_SINGLE_DISPLAY_FALLBACK,
                 ClusterDisplayPolicy.isSingleDisplayFallback(
