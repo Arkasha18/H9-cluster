@@ -24,18 +24,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** Independent renderer for the asymmetric red Sport skin. */
+/** Independent renderer for the user-supplied asymmetric red Sport skin. */
 public final class SportClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float MAX_SPEED_KPH = 220.0f;
     private static final float MAX_RPM = 8000.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
-    // 32 logical pixels are approximately 5 mm on the 1920x720 cluster panel.
-    private static final float SPORT_GAUGE_OFFSET_Y = 32.0f;
-    private static final float SPORT_HALF_WIDTH = LOGICAL_WIDTH * 0.5f;
-    private static final RectF SPORT_TYRE_CAR_BOUNDS =
-            new RectF(1378.0f, 500.0f, 1418.0f, 590.0f);
+    private static final float SPORT_TYRE_CAR_X = 1538.0f;
+    private static final float SPORT_TYRE_CAR_Y = 285.0f;
     // Normalized positions and red-track coordinates for the asymmetric main scales.
     // The shape starts on the short lower inner arm, wraps around the outer edge,
     // and finishes on the long upper inner arm. The RPM scale mirrors these points.
@@ -53,12 +50,12 @@ public final class SportClusterView extends View implements ClusterRenderer {
             1.0f
     };
     private static final float[] SPORT_SCALE_X = {
-            558.0f, 320.0f, 225.0f, 165.0f, 115.0f,
-            95.0f, 120.0f, 205.0f, 345.0f, 525.0f
+            556.0f, 322.0f, 245.0f, 184.0f, 130.0f,
+            96.0f, 118.0f, 202.0f, 360.0f, 526.0f
     };
     private static final float[] SPORT_SCALE_Y = {
-            575.0f, 575.0f, 550.0f, 505.0f, 440.0f,
-            365.0f, 285.0f, 220.0f, 150.0f, 148.0f
+            660.0f, 660.0f, 631.0f, 577.0f, 498.0f,
+            405.0f, 313.0f, 231.0f, 156.0f, 154.0f
     };
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
@@ -82,7 +79,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
             new TransmissionTemperatureAlert();
 
     private final Bitmap staticBackground;
-    private final Bitmap staticOverlay;
+    private final Bitmap tyreCar;
     private final Bitmap mainNeedle;
     private final Bitmap smallNeedle;
     private final Typeface dataTypeface;
@@ -107,7 +104,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         setBackgroundColor(Color.TRANSPARENT);
 
         staticBackground = loadBitmap(context, "dashboard/skins/sport/background.png");
-        staticOverlay = loadBitmap(context, "dashboard/skins/sport/overlay.png");
+        tyreCar = loadBitmap(context, "dashboard/skins/sport/car.png");
         mainNeedle = loadBitmap(context, "dashboard/skins/sport/needle_main.png");
         smallNeedle = loadBitmap(context, "dashboard/skins/sport/needle_small.png");
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
@@ -165,8 +162,16 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private void drawStaticLayer(
             Canvas canvas,
             TransmissionTemperatureAlert.Level transmissionTemperatureLevel) {
-        drawShiftedSportBitmap(canvas, staticBackground, true, false);
-        drawShiftedSportBitmap(canvas, staticOverlay, false, true);
+        canvas.drawBitmap(
+                staticBackground,
+                (Rect) null,
+                logicalBounds,
+                bitmapPaint);
+        canvas.drawBitmap(
+                tyreCar,
+                SPORT_TYRE_CAR_X,
+                SPORT_TYRE_CAR_Y,
+                bitmapPaint);
 
         // The factory turn arrows own 578..696 and 1196..1320. No application
         // card, border or text is drawn in those protected zones.
@@ -185,86 +190,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
         configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
         canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
-    }
-
-    private void drawShiftedSportBitmap(
-            Canvas canvas,
-            Bitmap bitmap,
-            boolean removeScaleArtifacts,
-            boolean preserveTyreCar) {
-        drawShiftedSportHalf(
-                canvas,
-                bitmap,
-                0.0f,
-                SPORT_HALF_WIDTH,
-                removeScaleArtifacts,
-                false);
-        drawShiftedSportHalf(
-                canvas,
-                bitmap,
-                SPORT_HALF_WIDTH,
-                LOGICAL_WIDTH,
-                removeScaleArtifacts,
-                preserveTyreCar);
-
-        if (preserveTyreCar) {
-            int carSave = canvas.save();
-            canvas.clipRect(SPORT_TYRE_CAR_BOUNDS);
-            canvas.drawBitmap(bitmap, (Rect) null, logicalBounds, bitmapPaint);
-            canvas.restoreToCount(carSave);
-        }
-    }
-
-    private void drawShiftedSportHalf(
-            Canvas canvas,
-            Bitmap bitmap,
-            float left,
-            float right,
-            boolean removeScaleArtifacts,
-            boolean removeShiftedTyreCar) {
-        int save = canvas.save();
-        canvas.clipRect(left, 0.0f, right, LOGICAL_HEIGHT);
-
-        if (removeScaleArtifacts) {
-            // The source artwork contains decorative horizontal remnants which
-            // become especially visible over navigation. Exclude only those
-            // source regions while retaining the shaped Sport scale.
-            if (left < SPORT_HALF_WIDTH) {
-                canvas.clipOutRect(
-                        0.0f,
-                        84.0f + SPORT_GAUGE_OFFSET_Y,
-                        568.0f,
-                        109.0f + SPORT_GAUGE_OFFSET_Y);
-                canvas.clipOutRect(
-                        202.0f,
-                        594.0f + SPORT_GAUGE_OFFSET_Y,
-                        444.0f,
-                        617.0f + SPORT_GAUGE_OFFSET_Y);
-            } else {
-                canvas.clipOutRect(
-                        1352.0f,
-                        84.0f + SPORT_GAUGE_OFFSET_Y,
-                        LOGICAL_WIDTH,
-                        109.0f + SPORT_GAUGE_OFFSET_Y);
-                canvas.clipOutRect(
-                        1476.0f,
-                        594.0f + SPORT_GAUGE_OFFSET_Y,
-                        1728.0f,
-                        617.0f + SPORT_GAUGE_OFFSET_Y);
-            }
-        }
-
-        if (removeShiftedTyreCar) {
-            canvas.clipOutRect(
-                    SPORT_TYRE_CAR_BOUNDS.left,
-                    SPORT_TYRE_CAR_BOUNDS.top + SPORT_GAUGE_OFFSET_Y,
-                    SPORT_TYRE_CAR_BOUNDS.right,
-                    SPORT_TYRE_CAR_BOUNDS.bottom + SPORT_GAUGE_OFFSET_Y);
-        }
-
-        canvas.translate(0.0f, SPORT_GAUGE_OFFSET_Y);
-        canvas.drawBitmap(bitmap, (Rect) null, logicalBounds, bitmapPaint);
-        canvas.restoreToCount(save);
     }
 
     private void drawNeedleLayer(Canvas canvas) {
@@ -294,7 +219,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 smallNeedle,
                 620.0f,
-                324.0f + SPORT_GAUGE_OFFSET_Y,
+                378.0f,
                 90.0f,
                 120.0f,
                 120.0f - fuelFraction * 196.0f,
@@ -305,7 +230,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 smallNeedle,
                 1300.0f,
-                324.0f + SPORT_GAUGE_OFFSET_Y,
+                378.0f,
                 90.0f,
                 120.0f,
                 64.0f + coolantFraction * 173.0f,
@@ -377,8 +302,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
             x = LOGICAL_WIDTH - x;
             tangentX = -tangentX;
         }
-        y += SPORT_GAUGE_OFFSET_Y;
-
         float inwardX = mirrored ? tangentY : -tangentY;
         float inwardY = mirrored ? -tangentX : tangentX;
         float inwardLength = (float) Math.hypot(inwardX, inwardY);
@@ -512,22 +435,22 @@ public final class SportClusterView extends View implements ClusterRenderer {
         configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
         canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
 
-        // Keep the fuel values inside the grey insert and clear of the full needle
-        // sweep. Range and fuel fraction are nudged about 1 mm farther right.
+        // Keep the fuel values inside the user-supplied grey insert and clear
+        // of the complete needle sweep.
         configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFE7E8E8, true, -0.08f);
         drawFittedText(
                 canvas,
                 state.rangeKm + " km",
                 602.0f,
-                279.0f + SPORT_GAUGE_OFFSET_Y,
-                72.0f,
+                347.0f,
+                78.0f,
                 29.0f,
                 22.0f);
         drawFittedText(
                 canvas,
                 Math.round(displayedFuel) + " L",
                 596.0f,
-                317.0f + SPORT_GAUGE_OFFSET_Y,
+                385.0f,
                 72.0f,
                 29.0f,
                 22.0f);
@@ -536,20 +459,19 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
                 564.0f,
-                389.0f + SPORT_GAUGE_OFFSET_Y,
-                34.0f,
+                458.0f,
+                40.0f,
                 27.0f,
                 20.0f);
 
-        // Shift the coolant value about 5 mm left at 160 dpi. Its narrower fitted
-        // box still clears the complete 40-to-130 needle sweep.
+        // The coolant value stays in the free area inside the right insert.
         configureText(gaugeTypeface, 31.0f, Paint.Align.CENTER, 0xFFF4F4F2, true, -0.08f);
         drawFittedText(
                 canvas,
                 Integer.toString(Math.round(displayedCoolant)),
                 1300.0f,
-                289.0f + SPORT_GAUGE_OFFSET_Y,
-                40.0f,
+                352.0f,
+                46.0f,
                 31.0f,
                 23.0f);
 
@@ -560,7 +482,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 String.format(Locale.US, "ODO  %.0f km", state.odometerKm),
                 400.0f,
-                260.0f,
+                272.0f,
                 150.0f,
                 21.0f,
                 18.0f);
@@ -568,7 +490,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 String.format(Locale.US, "Day  %.1f km", state.dayKm),
                 400.0f,
-                290.0f,
+                302.0f,
                 150.0f,
                 21.0f,
                 18.0f);
@@ -576,42 +498,42 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 String.format(Locale.US, "Trip  %.1f km", state.tripKm),
                 400.0f,
-                320.0f,
+                332.0f,
                 150.0f,
                 21.0f,
                 18.0f);
 
-        // Keep both rows aligned to the front and rear of the fixed car graphic.
+        // Keep all four pressures around the car position from example.png.
         configureText(gaugeTypeface, 24.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontLeftBar),
-                1335.0f,
-                529.0f,
+                1490.0f,
+                293.0f,
                 74.0f,
                 24.0f,
                 19.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontRightBar),
-                1459.0f,
-                529.0f,
+                1617.0f,
+                293.0f,
                 74.0f,
                 24.0f,
                 19.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearLeftBar),
-                1335.0f,
-                559.0f,
+                1490.0f,
+                346.0f,
                 74.0f,
                 24.0f,
                 19.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearRightBar),
-                1459.0f,
-                559.0f,
+                1617.0f,
+                346.0f,
                 74.0f,
                 24.0f,
                 19.0f);
