@@ -14,9 +14,9 @@
 
 https://4pda.to/forum/index.php?act=announce&f=751&st=250
 
-Пример оформления автомобильного приложения:
+Опубликованная тема H9 Cluster:
 
-https://4pda.to/forum/index.php?showtopic=672503
+https://4pda.to/forum/index.php?showtopic=1124479
 
 Перед публикацией выполнен поиск по разделу Android — Программы и его
 подразделам:
