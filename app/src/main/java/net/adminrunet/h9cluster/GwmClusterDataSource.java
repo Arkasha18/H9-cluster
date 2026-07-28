@@ -387,10 +387,8 @@ public final class GwmClusterDataSource
         long effectiveRpmUpdatedAtMs = useFdbusRpm
                 ? fdbusRpmUpdatedAtMs
                 : binderRpmUpdatedAtMs;
-        int parsedGear = parseInt(values[INDEX_CURRENT_GEAR], -1);
-        int currentGear = parsedGear >= 1 && parsedGear <= 15
-                ? parsedGear
-                : 0;
+        int currentGear = normalizeCurrentGear(
+                parseInt(values[INDEX_CURRENT_GEAR], -1));
 
         ClusterState state = new ClusterState(
                 clamp(parseInt(values[INDEX_SPEED], lastState.speedKph), 0, 220),
@@ -520,6 +518,14 @@ public final class GwmClusterDataSource
     private static int parseInt(String value, int fallback) {
         double parsed = parseDouble(value, Double.NaN);
         return Double.isNaN(parsed) ? fallback : (int) Math.round(parsed);
+    }
+
+    static int normalizeCurrentGear(int rawGear) {
+        if (rawGear >= 1 && rawGear <= 8) {
+            return rawGear;
+        }
+        // The vehicle reports the eighth forward ratio as code 9.
+        return rawGear == 9 ? 8 : 0;
     }
 
     private static float parseFloat(String value, float fallback) {

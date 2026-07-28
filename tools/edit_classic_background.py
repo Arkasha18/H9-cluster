@@ -22,6 +22,12 @@ SOURCE_RADIUS_Y = 246.0
 TARGET_RADIUS_Y = 230.0
 VERTICAL_SCALE = TARGET_RADIUS_Y / SOURCE_RADIUS_Y
 
+# The source artwork accidentally labels both upper speedometer marks as 180.
+# Reuse the existing 6 from the lower "60" label so the corrected "160" keeps
+# the original typeface, slant and antialiasing.
+SPEED_TARGET_DIGIT_BOX = (263, 242, 280, 257)
+SPEED_SOURCE_SIX_BOX = (161, 538, 180, 555)
+
 # The user's reference mask has a straight, mirrored inner edge.
 MASK_TOP_Y = 105
 MASK_BOTTOM_Y = 719
@@ -140,6 +146,94 @@ def remove_bottom_light_streaks(source: Image.Image) -> Image.Image:
     cover = np.maximum(left, right) * vertical
 
     pixels[..., :3] *= 1.0 - cover[..., None]
+    return Image.fromarray(np.clip(pixels, 0.0, 255.0).astype(np.uint8), "RGBA")
+
+
+def correct_speedometer_160(source: Image.Image) -> Image.Image:
+    """Replace only the middle digit of the first upper 180 label with a 6."""
+    pixels = np.asarray(source, dtype=np.float32).copy()
+    left, top, right, bottom = SPEED_TARGET_DIGIT_BOX
+    padding = 4
+    crop_left = left - padding
+    crop_top = top - padding
+    crop_right = right + padding
+    crop_bottom = bottom + padding
+    crop = pixels[crop_top:crop_bottom, crop_left:crop_right].copy()
+
+    digit = crop[
+        padding:padding + (bottom - top),
+        padding:padding + (right - left),
+        :3,
+    ]
+    digit_luminance = np.mean(digit, axis=2)
+    digit_chroma = np.max(digit, axis=2) - np.min(digit, axis=2)
+    digit_mask = (
+        (digit_luminance > 85.0)
+        & (digit_chroma < 45.0)
+    )
+
+    mask = np.zeros(crop.shape[:2], dtype=np.uint8)
+    mask[
+        padding:padding + (bottom - top),
+        padding:padding + (right - left),
+    ] = digit_mask.astype(np.uint8) * 255
+    mask_image = Image.fromarray(mask, "L").filter(ImageFilter.MaxFilter(5))
+    hard_mask = np.asarray(mask_image, dtype=np.uint8) > 0
+
+    # Harmonic inpainting removes the old 8 without introducing a rectangular
+    # patch. Only the dilated glyph footprint is changed.
+    filled = crop.copy()
+    boundary_color = np.median(filled[~hard_mask], axis=0)
+    filled[hard_mask] = boundary_color
+    for _ in range(160):
+        padded = np.pad(filled, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        averaged = (
+            padded[:-2, 1:-1]
+            + padded[2:, 1:-1]
+            + padded[1:-1, :-2]
+            + padded[1:-1, 2:]
+        ) * 0.25
+        filled[hard_mask] = averaged[hard_mask]
+
+    feather = np.asarray(
+        mask_image.filter(ImageFilter.GaussianBlur(0.6)),
+        dtype=np.float32,
+    ) / 255.0
+    crop = crop * (1.0 - feather[..., None]) + filled * feather[..., None]
+    pixels[crop_top:crop_bottom, crop_left:crop_right] = crop
+
+    source_left, source_top, source_right, source_bottom = SPEED_SOURCE_SIX_BOX
+    source_six = source.crop(
+        (source_left, source_top, source_right, source_bottom)
+    ).resize(
+        (right - left, bottom - top),
+        Image.Resampling.LANCZOS,
+    )
+    source_six_array = np.asarray(source_six, dtype=np.float32)
+    source_rgb = source_six_array[..., :3]
+    source_luminance = np.mean(source_rgb, axis=2)
+    source_chroma = np.max(source_rgb, axis=2) - np.min(source_rgb, axis=2)
+    glyph_alpha = np.clip(
+        (source_luminance - 15.0) / 220.0,
+        0.0,
+        1.0,
+    )
+    glyph_alpha *= (source_chroma < 45.0).astype(np.float32)
+    glyph_alpha = np.asarray(
+        Image.fromarray(
+            np.clip(glyph_alpha * 255.0, 0.0, 255.0).astype(np.uint8),
+            "L",
+        ).filter(ImageFilter.GaussianBlur(0.25)),
+        dtype=np.float32,
+    ) / 255.0
+
+    target = pixels[top:bottom, left:right]
+    glyph_color = np.full_like(target[..., :3], 238.0)
+    target[..., :3] = (
+        target[..., :3] * (1.0 - glyph_alpha[..., None])
+        + glyph_color * glyph_alpha[..., None]
+    )
+    pixels[top:bottom, left:right] = target
     return Image.fromarray(np.clip(pixels, 0.0, 255.0).astype(np.uint8), "RGBA")
 
 
@@ -276,6 +370,7 @@ def main() -> None:
 
     edited = vertically_compress_main_dials(source)
     edited = remove_bottom_light_streaks(edited)
+    edited = correct_speedometer_160(edited)
     background, overlay = split_center_layers(edited)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.overlay_output.parent.mkdir(parents=True, exist_ok=True)
