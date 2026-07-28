@@ -39,7 +39,7 @@ H9 Cluster запускает отдельную приборную панель
 2. Установите APK с сохранением настроек:
 
 [code]
-adb install -r H9_Cluster_v9.2.0_adminrunet_release.apk
+adb install -r H9_Cluster_v9.3.1_adminrunet_release.apk
 [/code]
 
 3. Откройте настройки приложения:
