@@ -67,7 +67,9 @@ public final class SettingsView extends View {
                 false);
         drawCenteredText(
                 canvas,
-                "Выберите тему, которая будет автоматически запускаться на дисплее 2",
+                BuildConfig.DEMO_MODE
+                        ? "Выберите тему для автономного Demo"
+                        : "Выберите тему, которая будет автоматически запускаться на дисплее 2",
                 480.0f,
                 125.0f,
                 17.0f,
@@ -81,7 +83,9 @@ public final class SettingsView extends View {
         canvas.drawRoundRect(255.0f, 340.0f, 705.0f, 398.0f, 14.0f, 14.0f, paint);
         drawCenteredText(
                 canvas,
-                "Сохранить и запустить на дисплее 2",
+                BuildConfig.DEMO_MODE
+                        ? "Сохранить и запустить"
+                        : "Сохранить и запустить на дисплее 2",
                 480.0f,
                 376.0f,
                 19.0f,
@@ -91,7 +95,9 @@ public final class SettingsView extends View {
         drawCenteredText(
                 canvas,
                 status.length() == 0
-                        ? "При автозапуске основной дисплей остаётся свободным"
+                        ? BuildConfig.DEMO_MODE
+                                ? "Demo использует только тестовые данные"
+                                : "При автозапуске основной дисплей остаётся свободным"
                         : status,
                 480.0f,
                 455.0f,
@@ -143,9 +149,14 @@ public final class SettingsView extends View {
         }
         if (x >= 255.0f && x <= 705.0f && y >= 340.0f && y <= 398.0f) {
             SkinPreferences.setSelectedSkin(getContext(), selectedSkin);
-            status = ClusterLauncher.startOnClusterDisplay(getContext())
-                    ? "Тема сохранена и запущена на дисплее 2"
-                    : "Тема сохранена. Дисплей 2 сейчас недоступен";
+            boolean launched = ClusterLauncher.startOnClusterDisplay(getContext());
+            status = launched
+                    ? BuildConfig.DEMO_MODE
+                            ? "Тема сохранена и запущена"
+                            : "Тема сохранена и запущена на дисплее 2"
+                    : BuildConfig.DEMO_MODE
+                            ? "Тема сохранена. Не удалось запустить Demo"
+                            : "Тема сохранена. Дисплей 2 сейчас недоступен";
             invalidate();
             return true;
         }

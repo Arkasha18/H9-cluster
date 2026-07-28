@@ -148,6 +148,59 @@ Debug APK собирается без ключей:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Автономный Demo APK с автоматически меняющимися тестовыми значениями:
+
+```bash
+./gradlew assembleDemo
+```
+
+Результат:
+
+```text
+app/build/outputs/apk/demo/app-demo.apk
+```
+
+Demo не подключается к GWM Adapter, FDBus, CAN или TBOX. Для проверки на одном
+экране эмулятора:
+
+```bash
+adb shell settings delete global overlay_display_devices
+adb shell wm size 1920x720
+adb shell wm density 240
+./gradlew installDemo
+adb shell am start -W \
+  -n net.adminrunet.h9cluster.demo/net.adminrunet.h9cluster.SettingsActivity
+```
+
+Кнопка сохранения откроет приборную панель на том же экране. Любой клик по
+панели или системная кнопка Back вернёт настройки. Чтобы вернуть стандартный
+размер эмулятора:
+
+```bash
+adb shell wm size reset
+adb shell wm density reset
+```
+
+Для двухэкранной проверки:
+
+```bash
+adb shell settings put global overlay_display_devices '1920x720/240'
+adb shell am force-stop net.adminrunet.h9cluster.demo
+adb shell am start -W \
+  -n net.adminrunet.h9cluster.demo/net.adminrunet.h9cluster.SettingsActivity
+```
+
+При наличии `Display ID 2` приборная панель автоматически откроется на нём.
+
+Даже если `H9_TBOX_PASSWORD` настроен локально, Demo variant принудительно
+оставляет поля секрета пустыми. Проверка unit-контракта, APK и lint:
+
+```bash
+./gradlew testDemoUnitTest lintDemo assembleDemo
+tools/verify_demo_apk_secrets.sh \
+  app/build/outputs/apk/demo/app-demo.apk
+```
+
 Для release-сборки используйте собственный ключ. Секреты рекомендуется хранить
 в пользовательском `~/.gradle/gradle.properties`, который находится за
 пределами репозитория:
@@ -178,9 +231,10 @@ GitHub Actions для каждого Pull Request:
 
 1. собирает зафиксированный Docker toolchain;
 2. проверяет генерацию Forum Kit и обработку графики темы;
-3. выполняет внутри него `assembleDebug` и Android Lint;
-4. сохраняет debug APK и отчёты Lint как временный Actions artifact;
-5. после попадания проверенного commit в `main` публикует toolchain в GHCR.
+3. тестирует, проверяет lint и собирает Debug и Demo variants;
+4. проверяет отсутствие TBOX secret material в Demo APK;
+5. сохраняет Debug и Demo APK отдельными временными Actions artifacts;
+6. после попадания проверенного commit в `main` публикует toolchain в GHCR.
 
 Production-ключ не используется GitHub Actions и должен оставаться только на
 компьютере владельца.
