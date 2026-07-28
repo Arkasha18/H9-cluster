@@ -1,4 +1,9 @@
-package net.adminrunet.h9cluster;
+package net.adminrunet.h9cluster.skins.sport;
+
+import net.adminrunet.h9cluster.ClusterRenderer;
+import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.PredictiveMotionFilter;
+import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -19,18 +24,37 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/**
- * Complete 1920x720 Canvas renderer. The static PNG contains only the panel body and scales;
- * every changing needle, number, status and indicator is drawn in this class.
- */
-public final class ClassicClusterView extends View implements ClusterRenderer {
+/** Independent renderer for the asymmetric red Sport skin. */
+public final class SportClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float MAX_SPEED_KPH = 220.0f;
     private static final float MAX_RPM = 8000.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
-    private static final float MAIN_DIAL_CENTER_Y = 426.0f;
-    private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+    // Normalized positions and red-track coordinates for the asymmetric main scales.
+    // The shape starts on the short lower inner arm, wraps around the outer edge,
+    // and finishes on the long upper inner arm. The RPM scale mirrors these points.
+    private static final float SPORT_MAIN_NEEDLE_GAP = 16.0f;
+    private static final float[] SPORT_SCALE_FRACTIONS = {
+            0.0f,
+            20.0f / 220.0f,
+            40.0f / 220.0f,
+            60.0f / 220.0f,
+            80.0f / 220.0f,
+            100.0f / 220.0f,
+            120.0f / 220.0f,
+            140.0f / 220.0f,
+            180.0f / 220.0f,
+            1.0f
+    };
+    private static final float[] SPORT_SCALE_X = {
+            558.0f, 320.0f, 225.0f, 165.0f, 115.0f,
+            95.0f, 120.0f, 205.0f, 345.0f, 525.0f
+    };
+    private static final float[] SPORT_SCALE_Y = {
+            575.0f, 575.0f, 550.0f, 505.0f, 440.0f,
+            365.0f, 285.0f, 220.0f, 150.0f, 148.0f
+    };
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
     private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
@@ -54,8 +78,8 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
 
     private final Bitmap staticBackground;
     private final Bitmap staticOverlay;
-    private final Bitmap yellowNeedle;
-    private final Bitmap whiteNeedle;
+    private final Bitmap mainNeedle;
+    private final Bitmap smallNeedle;
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
 
@@ -72,15 +96,15 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private long cachedClockSecond = -1L;
     private String cachedClockText = "00:00";
 
-    public ClassicClusterView(Context context) {
+    public SportClusterView(Context context) {
         super(context);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
-        staticBackground = loadBitmap(context, "dashboard/background_classic.png");
-        staticOverlay = loadBitmap(context, "dashboard/background_classic_overlay.png");
-        yellowNeedle = loadBitmap(context, "dashboard/panel_needle_main_trimmed.png");
-        whiteNeedle = loadBitmap(context, "dashboard/panel_needle_small_trimmed.png");
+        staticBackground = loadBitmap(context, "dashboard/skins/sport/background.png");
+        staticOverlay = loadBitmap(context, "dashboard/skins/sport/overlay.png");
+        mainNeedle = loadBitmap(context, "dashboard/skins/sport/needle_main.png");
+        smallNeedle = loadBitmap(context, "dashboard/skins/sport/needle_small.png");
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
         gaugeTypeface = Typeface.createFromAsset(
                 context.getAssets(), "fonts/Rajdhani-Medium.ttf");
@@ -164,37 +188,28 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
         float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
 
-        // Markers follow polar rays through the real elliptical scales. This keeps the
-        // value-to-angle mapping uniform instead of treating the polar angle as an
-        // ellipse parameter, which caused increasing drift after the first third.
-        drawScaleNeedle(
+        drawSportScaleNeedle(
                 canvas,
-                yellowNeedle,
-                342.0f,
-                MAIN_DIAL_CENTER_Y,
-                260.0f,
-                MAIN_DIAL_RADIUS_Y,
-                90.0f + speedFraction * 220.0f,
-                72.0f,
+                mainNeedle,
+                speedFraction,
+                false,
+                SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
                 12.0f);
-        drawScaleNeedle(
+        drawSportScaleNeedle(
                 canvas,
-                yellowNeedle,
-                1578.0f,
-                MAIN_DIAL_CENTER_Y,
-                260.0f,
-                MAIN_DIAL_RADIUS_Y,
-                90.0f - rpmFraction * 220.0f,
-                72.0f,
+                mainNeedle,
+                rpmFraction,
+                true,
+                SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
                 12.0f);
 
         drawScaleNeedle(
                 canvas,
-                whiteNeedle,
+                smallNeedle,
                 620.0f,
-                305.0f,
+                324.0f,
                 90.0f,
                 120.0f,
                 120.0f - fuelFraction * 196.0f,
@@ -203,15 +218,144 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 10.0f);
         drawScaleNeedle(
                 canvas,
-                whiteNeedle,
+                smallNeedle,
                 1300.0f,
-                305.0f,
+                324.0f,
                 90.0f,
                 120.0f,
                 64.0f + coolantFraction * 173.0f,
                 22.0f,
                 42.0f,
                 10.0f);
+    }
+
+    private void drawSportScaleNeedle(
+            Canvas canvas,
+            Bitmap needle,
+            float fraction,
+            boolean mirrored,
+            float scaleGap,
+            float length,
+            float thickness) {
+        float clampedFraction = clamp(fraction, 0.0f, 1.0f);
+        int lastPoint = SPORT_SCALE_FRACTIONS.length - 1;
+        int segment = lastPoint - 1;
+        for (int index = 0; index < lastPoint; index++) {
+            if (clampedFraction <= SPORT_SCALE_FRACTIONS[index + 1]) {
+                segment = index;
+                break;
+            }
+        }
+
+        float fractionStart = SPORT_SCALE_FRACTIONS[segment];
+        float fractionEnd = SPORT_SCALE_FRACTIONS[segment + 1];
+        float fractionSpan = fractionEnd - fractionStart;
+        float t = fractionSpan > 0.0f
+                ? (clampedFraction - fractionStart) / fractionSpan
+                : 0.0f;
+
+        float startSlopeX = sportScaleSlope(SPORT_SCALE_X, segment);
+        float startSlopeY = sportScaleSlope(SPORT_SCALE_Y, segment);
+        float endSlopeX = sportScaleSlope(SPORT_SCALE_X, segment + 1);
+        float endSlopeY = sportScaleSlope(SPORT_SCALE_Y, segment + 1);
+
+        float x = hermitePosition(
+                SPORT_SCALE_X[segment],
+                SPORT_SCALE_X[segment + 1],
+                startSlopeX,
+                endSlopeX,
+                fractionSpan,
+                t);
+        float y = hermitePosition(
+                SPORT_SCALE_Y[segment],
+                SPORT_SCALE_Y[segment + 1],
+                startSlopeY,
+                endSlopeY,
+                fractionSpan,
+                t);
+        float tangentX = hermiteTangent(
+                SPORT_SCALE_X[segment],
+                SPORT_SCALE_X[segment + 1],
+                startSlopeX,
+                endSlopeX,
+                fractionSpan,
+                t);
+        float tangentY = hermiteTangent(
+                SPORT_SCALE_Y[segment],
+                SPORT_SCALE_Y[segment + 1],
+                startSlopeY,
+                endSlopeY,
+                fractionSpan,
+                t);
+
+        if (mirrored) {
+            x = LOGICAL_WIDTH - x;
+            tangentX = -tangentX;
+        }
+
+        float inwardX = mirrored ? tangentY : -tangentY;
+        float inwardY = mirrored ? -tangentX : tangentX;
+        float inwardLength = (float) Math.hypot(inwardX, inwardY);
+        if (inwardLength < 0.001f) {
+            return;
+        }
+        inwardX /= inwardLength;
+        inwardY /= inwardLength;
+        x += inwardX * scaleGap;
+        y += inwardY * scaleGap;
+
+        float inwardDirection = (float) Math.toDegrees(Math.atan2(inwardY, inwardX));
+        int save = canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(inwardDirection - 180.0f);
+        needleDestination.set(-length, -thickness * 0.5f, 0.0f, thickness * 0.5f);
+        canvas.drawBitmap(needle, (Rect) null, needleDestination, bitmapPaint);
+        canvas.restoreToCount(save);
+    }
+
+    private static float sportScaleSlope(float[] coordinates, int index) {
+        int lastPoint = SPORT_SCALE_FRACTIONS.length - 1;
+        if (index <= 0) {
+            return (coordinates[1] - coordinates[0])
+                    / (SPORT_SCALE_FRACTIONS[1] - SPORT_SCALE_FRACTIONS[0]);
+        }
+        if (index >= lastPoint) {
+            return (coordinates[lastPoint] - coordinates[lastPoint - 1])
+                    / (SPORT_SCALE_FRACTIONS[lastPoint]
+                    - SPORT_SCALE_FRACTIONS[lastPoint - 1]);
+        }
+        return (coordinates[index + 1] - coordinates[index - 1])
+                / (SPORT_SCALE_FRACTIONS[index + 1]
+                - SPORT_SCALE_FRACTIONS[index - 1]);
+    }
+
+    private static float hermitePosition(
+            float start,
+            float end,
+            float startSlope,
+            float endSlope,
+            float fractionSpan,
+            float t) {
+        float t2 = t * t;
+        float t3 = t2 * t;
+        return (2.0f * t3 - 3.0f * t2 + 1.0f) * start
+                + (t3 - 2.0f * t2 + t) * fractionSpan * startSlope
+                + (-2.0f * t3 + 3.0f * t2) * end
+                + (t3 - t2) * fractionSpan * endSlope;
+    }
+
+    private static float hermiteTangent(
+            float start,
+            float end,
+            float startSlope,
+            float endSlope,
+            float fractionSpan,
+            float t) {
+        float t2 = t * t;
+        return (6.0f * t2 - 6.0f * t) * start
+                + (3.0f * t2 - 4.0f * t + 1.0f) * fractionSpan * startSlope
+                + (-6.0f * t2 + 6.0f * t) * end
+                + (3.0f * t2 - 2.0f * t) * fractionSpan * endSlope;
     }
 
     private void drawScaleNeedle(
@@ -286,7 +430,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 state.rangeKm + " km",
                 602.0f,
-                260.0f,
+                279.0f,
                 72.0f,
                 29.0f,
                 22.0f);
@@ -294,7 +438,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 Math.round(displayedFuel) + " L",
                 596.0f,
-                298.0f,
+                317.0f,
                 72.0f,
                 29.0f,
                 22.0f);
@@ -303,7 +447,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
                 564.0f,
-                370.0f,
+                389.0f,
                 34.0f,
                 27.0f,
                 20.0f);
@@ -315,32 +459,46 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 Integer.toString(Math.round(displayedCoolant)),
                 1300.0f,
-                270.0f,
+                289.0f,
                 40.0f,
                 31.0f,
                 23.0f);
 
-        // Three odometer values from the reference layout.
-        configureText(dataTypeface, 20.0f, Paint.Align.LEFT, 0xFFF0F0EE, false, 0.0f);
-        canvas.drawText("ODO:", 407.0f, 555.0f, textPaint);
-        canvas.drawText("Day:", 407.0f, 591.0f, textPaint);
-        canvas.drawText("Trip:", 407.0f, 627.0f, textPaint);
-        configureText(gaugeTypeface, 23.0f, Paint.Align.LEFT, 0xFFF8F8F7, false, -0.05f);
-        canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
-                485.0f, 555.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f  km", state.dayKm),
-                485.0f, 591.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f  km", state.tripKm),
-                485.0f, 627.0f, textPaint);
+        // Center the odometer rows in the free black field above speed.
+        configureText(gaugeTypeface, 20.0f, Paint.Align.CENTER,
+                0xFFF3F3F1, false, -0.04f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "ODO  %.0f km", state.odometerKm),
+                400.0f,
+                260.0f,
+                150.0f,
+                20.0f,
+                17.0f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "Day  %.1f km", state.dayKm),
+                400.0f,
+                290.0f,
+                150.0f,
+                20.0f,
+                17.0f);
+        drawFittedText(
+                canvas,
+                String.format(Locale.US, "Trip  %.1f km", state.tripKm),
+                400.0f,
+                320.0f,
+                150.0f,
+                20.0f,
+                17.0f);
 
-        // The baked car is centered at (1397, 544). Columns and row centers are
-        // perfectly mirrored around that point, including their measured text boxes.
+        // Tyre readings sit 2 mm (13 px) above the Classic layout.
         configureText(gaugeTypeface, 24.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontLeftBar),
                 1335.0f,
-                529.0f,
+                516.0f,
                 74.0f,
                 24.0f,
                 19.0f);
@@ -348,7 +506,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 formatPressure(state.tyreFrontRightBar),
                 1459.0f,
-                529.0f,
+                516.0f,
                 74.0f,
                 24.0f,
                 19.0f);
@@ -356,7 +514,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 formatPressure(state.tyreRearLeftBar),
                 1335.0f,
-                559.0f,
+                546.0f,
                 74.0f,
                 24.0f,
                 19.0f);
@@ -364,7 +522,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 canvas,
                 formatPressure(state.tyreRearRightBar),
                 1459.0f,
-                559.0f,
+                546.0f,
                 74.0f,
                 24.0f,
                 19.0f);

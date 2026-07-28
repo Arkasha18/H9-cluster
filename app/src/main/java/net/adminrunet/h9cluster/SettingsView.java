@@ -1,5 +1,7 @@
 package net.adminrunet.h9cluster;
 
+import net.adminrunet.h9cluster.skins.SkinRegistry;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,16 +20,8 @@ public final class SettingsView extends View {
     private static final int COLOR_TEXT = 0xFFF2F5F7;
     private static final int COLOR_MUTED = 0xFF98A7AE;
     private static final int COLOR_ACCENT = 0xFF31D7C5;
-    private static final SkinOption[] SKINS = {
-        new SkinOption(
-                SkinPreferences.SKIN_CLASSIC,
-                "Classic — утверждённый дизайн",
-                "Финальный дизайн демо v8 с реальными показаниями автомобиля"),
-        new SkinOption(
-                SkinPreferences.SKIN_HORIZON,
-                "Horizon — базовый скин",
-                "Исходный дизайн проекта с подключением к GWM Adapter Service")
-    };
+    private static final SkinRegistry.Definition[] SKINS =
+            SkinRegistry.getDefinitions();
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
@@ -103,7 +97,7 @@ public final class SettingsView extends View {
     }
 
     private void drawSkinSelector(Canvas canvas) {
-        SkinOption option = SKINS[getSelectedSkinIndex()];
+        SkinRegistry.Definition option = SKINS[getSelectedSkinIndex()];
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_CARD_SELECTED);
         canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 280.0f, 16.0f, 16.0f, paint);
@@ -186,18 +180,6 @@ public final class SettingsView extends View {
             titles[index] = SKINS[index].title;
         }
         return titles;
-    }
-
-    private static final class SkinOption {
-        final String id;
-        final String title;
-        final String description;
-
-        SkinOption(String id, String title, String description) {
-            this.id = id;
-            this.title = title;
-            this.description = description;
-        }
     }
 
     private void drawCenteredText(

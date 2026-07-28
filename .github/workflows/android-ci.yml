@@ -49,9 +49,9 @@ jobs:
               mkdir -p "${smoke_dir}/forum-kit"
               python tools/build_forum_design_template.py \
                 --output-dir "${smoke_dir}/forum-kit" \
-                --opacity-source app/src/main/assets/dashboard/background_classic.png
+                --opacity-source app/src/main/assets/dashboard/skins/classic/background.png
               python tools/edit_classic_background.py \
-                --input app/src/main/assets/dashboard/background_classic.png \
+                --input app/src/main/assets/dashboard/skins/classic/background.png \
                 --output "${smoke_dir}/background-classic.png" \
                 --overlay-output "${smoke_dir}/background-classic-overlay.png"
               test -s "${smoke_dir}/forum-kit/01_technical_guide.png"
