@@ -36,6 +36,16 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+    private static final float REFERENCE_PIXELS_PER_MM = 160.0f / 25.4f;
+    private static final float TOP_PANEL_SHIFT_4_MM = 4.0f * REFERENCE_PIXELS_PER_MM;
+    private static final float GEAR_WIDTH_REDUCTION_1_MM = REFERENCE_PIXELS_PER_MM;
+    private static final float OUTSIDE_TEMPERATURE_CENTER_X =
+            1112.0f + TOP_PANEL_SHIFT_4_MM;
+    private static final float CURRENT_GEAR_CENTER_X =
+            1112.0f - TOP_PANEL_SHIFT_4_MM;
+    private static final float ATF_CARD_LEFT = 1330.0f + TOP_PANEL_SHIFT_4_MM;
+    private static final float ATF_CARD_RIGHT = 1478.0f + TOP_PANEL_SHIFT_4_MM;
+    private static final float ATF_CENTER_X = 1404.0f + TOP_PANEL_SHIFT_4_MM;
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
     private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
@@ -153,8 +163,8 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         drawTopCard(canvas, 1038.0f, 1186.0f);
         drawTopCard(
                 canvas,
-                1330.0f,
-                1478.0f,
+                ATF_CARD_LEFT,
+                ATF_CARD_RIGHT,
                 transmissionTemperatureColor(
                         transmissionTemperatureLevel,
                         COLOR_CARD_BORDER));
@@ -259,7 +269,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
-        drawCurrentGearCard(canvas, state);
+        drawCurrentGearValue(canvas, state);
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
         // the measured value would exceed the zone; the position itself never jumps.
@@ -379,9 +389,13 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(dataTypeface, 23.0f, Paint.Align.LEFT, 0xFFF7F7F5, false, 0.0f);
         canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
         configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
-        canvas.drawText(formatOutside(state.outsideTemperatureC), 1112.0f, 55.0f, textPaint);
+        canvas.drawText(
+                formatOutside(state.outsideTemperatureC),
+                OUTSIDE_TEMPERATURE_CENTER_X,
+                55.0f,
+                textPaint);
         configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("ATF", 1404.0f, 32.0f, textPaint);
+        canvas.drawText("ATF", ATF_CENTER_X, 32.0f, textPaint);
         configureText(
                 gaugeTypeface,
                 26.0f,
@@ -393,7 +407,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 -0.04f);
         canvas.drawText(
                 formatTransmissionTemperature(state, frameAtMs),
-                1404.0f,
+                ATF_CENTER_X,
                 61.0f,
                 textPaint);
 
@@ -500,6 +514,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         textPaint.setColor(color);
         textPaint.setFakeBoldText(bold);
         textPaint.setTextSkewX(skewX);
+        textPaint.setTextScaleX(1.0f);
         textPaint.setStyle(Paint.Style.FILL);
     }
 
@@ -545,26 +560,18 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
     }
 
-    private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
-        RectF bounds = new RectF(916.0f, 78.0f, 1004.0f, 140.0f);
-
-        shapePaint.setStyle(Paint.Style.FILL);
-        shapePaint.setColor(0xFF080B0E);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.STROKE);
-        shapePaint.setStrokeWidth(2.0f);
-        shapePaint.setColor(0xFF4C535A);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.FILL);
-
-        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
+    private void drawCurrentGearValue(Canvas canvas, ClusterState state) {
+        String value = state.currentGear > 0
+                ? Integer.toString(state.currentGear)
+                : "";
         configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
-        canvas.drawText(
-                state.currentGear > 0 ? Integer.toString(state.currentGear) : "",
-                bounds.centerX(),
-                130.0f,
-                textPaint);
+        float naturalWidth = textPaint.measureText(value);
+        if (naturalWidth > GEAR_WIDTH_REDUCTION_1_MM) {
+            textPaint.setTextScaleX(
+                    (naturalWidth - GEAR_WIDTH_REDUCTION_1_MM) / naturalWidth);
+        }
+        canvas.drawText(value, CURRENT_GEAR_CENTER_X, 60.0f, textPaint);
+        textPaint.setTextScaleX(1.0f);
     }
 
     private void drawWheelValue(
