@@ -21,7 +21,7 @@ public final class SkinRegistry {
     public static final String SPORT = "sport";
 
     private interface RendererFactory {
-        View create(Context context);
+        View create(Context context, SkinSettings settings);
     }
 
     public static final class Definition {
@@ -29,16 +29,64 @@ public final class SkinRegistry {
         public final String title;
         public final String description;
         private final RendererFactory factory;
+        private final SkinSettingsProvider settingsProvider;
 
         private Definition(
                 String id,
                 String title,
                 String description,
-                RendererFactory factory) {
+                RendererFactory factory,
+                SkinSettingsProvider settingsProvider) {
             this.id = id;
             this.title = title;
             this.description = description;
             this.factory = factory;
+            this.settingsProvider = settingsProvider;
+        }
+
+        public boolean hasSettings() {
+            return settingsProvider != null;
+        }
+
+        public SkinSettings getDefaultSettings() {
+            if (settingsProvider == null) {
+                return SkinSettings.empty();
+            }
+            return safeSettings(settingsProvider.getDefaultSettings());
+        }
+
+        public SkinSettings normalizeSettings(SkinSettings settings) {
+            if (settingsProvider == null) {
+                return SkinSettings.empty();
+            }
+            SkinSettings candidate = settings == null
+                    ? getDefaultSettings()
+                    : settings;
+            SkinSettings normalized = settingsProvider.normalize(candidate);
+            return normalized == null ? getDefaultSettings() : normalized;
+        }
+
+        public View createSettingsEditor(
+                Context context,
+                SkinSettings settings,
+                SkinSettingsProvider.Listener listener) {
+            if (settingsProvider == null) {
+                throw new IllegalStateException(
+                        "Skin has no settings provider: " + id);
+            }
+            View editor = settingsProvider.createEditor(
+                    context,
+                    normalizeSettings(settings),
+                    listener);
+            if (editor == null) {
+                throw new IllegalStateException(
+                        "Skin settings provider returned no editor: " + id);
+            }
+            return editor;
+        }
+
+        private View createRenderer(Context context, SkinSettings settings) {
+            return factory.create(context, normalizeSettings(settings));
         }
     }
 
@@ -49,30 +97,39 @@ public final class SkinRegistry {
                 "Финальный дизайн демо v8 с реальными показаниями автомобиля",
                 new RendererFactory() {
                     @Override
-                    public View create(Context context) {
+                    public View create(
+                            Context context,
+                            SkinSettings settings) {
                         return new ClassicClusterView(context);
                     }
-                }),
+                },
+                null),
         new Definition(
                 SPORT,
                 "Sport — спортивная тема",
                 "Красные асимметричные шкалы и белые указатели скорости и оборотов",
                 new RendererFactory() {
                     @Override
-                    public View create(Context context) {
+                    public View create(
+                            Context context,
+                            SkinSettings settings) {
                         return new SportClusterView(context);
                     }
-                }),
+                },
+                null),
         new Definition(
                 HORIZON,
                 "Horizon — базовый скин",
                 "Исходный дизайн проекта с подключением к GWM Adapter Service",
                 new RendererFactory() {
                     @Override
-                    public View create(Context context) {
+                    public View create(
+                            Context context,
+                            SkinSettings settings) {
                         return new HorizonClusterView(context);
                     }
-                })
+                },
+                null)
     };
 
     private SkinRegistry() {
@@ -99,18 +156,40 @@ public final class SkinRegistry {
         return isSupported(id) ? id : getDefaultId();
     }
 
-    public static View createRenderer(Context context, String id) {
+    public static Definition getDefinition(String id) {
         String normalizedId = normalize(id);
         for (Definition definition : DEFINITIONS) {
             if (definition.id.equals(normalizedId)) {
-                View view = definition.factory.create(context);
-                if (!(view instanceof ClusterRenderer)) {
-                    throw new IllegalStateException(
-                            "Skin renderer must implement ClusterRenderer: " + definition.id);
-                }
-                return view;
+                return definition;
             }
         }
         throw new IllegalStateException("Default skin is not registered");
+    }
+
+    public static SkinSettings normalizeSettings(
+            String id,
+            SkinSettings settings) {
+        return getDefinition(id).normalizeSettings(settings);
+    }
+
+    public static View createRenderer(Context context, String id) {
+        return createRenderer(context, id, SkinSettings.empty());
+    }
+
+    public static View createRenderer(
+            Context context,
+            String id,
+            SkinSettings settings) {
+        Definition definition = getDefinition(id);
+        View view = definition.createRenderer(context, settings);
+        if (!(view instanceof ClusterRenderer)) {
+            throw new IllegalStateException(
+                    "Skin renderer must implement ClusterRenderer: " + definition.id);
+        }
+        return view;
+    }
+
+    private static SkinSettings safeSettings(SkinSettings settings) {
+        return settings == null ? SkinSettings.empty() : settings;
     }
 }

@@ -1,8 +1,10 @@
 package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
+import net.adminrunet.h9cluster.skins.SkinSettings;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
@@ -16,6 +18,9 @@ import android.view.WindowManager;
 @SuppressWarnings("deprecation")
 public final class PreviewActivity extends Activity {
     public static final String EXTRA_RELOAD_SKIN = "reload_skin";
+    public static final String EXTRA_HAS_DRAFT = "has_skin_settings_draft";
+    public static final String EXTRA_DRAFT_SKIN = "draft_skin";
+    public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
     private static final String TAG = "H9Cluster";
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -26,8 +31,9 @@ public final class PreviewActivity extends Activity {
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
 
     private ClusterRenderer clusterRenderer;
-    private String activeSkin;
+    private SkinSettingsSession.Snapshot activeSnapshot;
     private ClusterDataSource dataSource;
+    private ClusterState lastState = ClusterState.empty();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,15 +54,13 @@ public final class PreviewActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
-        activeSkin = SkinPreferences.getSelectedSkin(this);
-        View rendererView = SkinRegistry.createRenderer(this, activeSkin);
-        clusterRenderer = (ClusterRenderer) rendererView;
-        setContentView(rendererView);
+        applySnapshot(resolveSnapshot(getIntent()), true);
 
         dataSource = new GwmClusterDataSource(this);
         dataSource.start(new ClusterDataSource.Listener() {
             @Override
             public void onClusterState(ClusterState state) {
+                lastState = state;
                 clusterRenderer.setClusterState(state);
             }
         });
@@ -64,14 +68,49 @@ public final class PreviewActivity extends Activity {
     }
 
     @Override
-    protected void onNewIntent(android.content.Intent intent) {
+    protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        String selectedSkin = SkinPreferences.getSelectedSkin(this);
-        if (!selectedSkin.equals(activeSkin)
-                || intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false)) {
-            recreate();
+        boolean forceReload = intent != null
+                && intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false);
+        applySnapshot(resolveSnapshot(intent), forceReload);
+    }
+
+    private SkinSettingsSession.Snapshot resolveSnapshot(Intent intent) {
+        boolean hasDraft = intent != null
+                && intent.getBooleanExtra(EXTRA_HAS_DRAFT, false);
+        if (hasDraft) {
+            String draftSkin = intent.getStringExtra(EXTRA_DRAFT_SKIN);
+            if (SkinRegistry.isSupported(draftSkin)) {
+                SkinSettings draftSettings = SkinSettingsTransport.fromBundle(
+                        intent.getBundleExtra(EXTRA_DRAFT_SETTINGS));
+                return new SkinSettingsSession.Snapshot(
+                        draftSkin,
+                        SkinRegistry.normalizeSettings(
+                                draftSkin,
+                                draftSettings));
+            }
         }
+        String persistedSkin = SkinPreferences.getSelectedSkin(this);
+        return new SkinSettingsSession.Snapshot(
+                persistedSkin,
+                SkinSettingsStore.load(this, persistedSkin));
+    }
+
+    private void applySnapshot(
+            SkinSettingsSession.Snapshot snapshot,
+            boolean forceReload) {
+        if (!forceReload && snapshot.equals(activeSnapshot)) {
+            return;
+        }
+        View rendererView = SkinRegistry.createRenderer(
+                this,
+                snapshot.skinId,
+                snapshot.settings);
+        clusterRenderer = (ClusterRenderer) rendererView;
+        activeSnapshot = snapshot;
+        setContentView(rendererView);
+        clusterRenderer.setClusterState(lastState);
     }
 
     @Override
