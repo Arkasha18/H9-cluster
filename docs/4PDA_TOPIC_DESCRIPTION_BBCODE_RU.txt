@@ -80,7 +80,7 @@ adb shell am start --display 2 -W -n net.adminrunet.h9cluster/.PreviewActivity
 [spoiler="Контрольная сумма APK"]
 SHA-256:
 [code]
-f5419936b27f53a35b4c25556b5ef41d3e2a76b5705a4ed42270871861dab4f6
+f0b872e822feb6a8c3aee9ef31ae701623cf15b38303a243cf3a6caa921d1d14
 [/code]
 [/spoiler]
 
