@@ -95,6 +95,7 @@ public final class DemoScenarioTest {
         assertTrue(state.tyreRearLeftBar > 0.0f);
         assertTrue(state.tyreRearRightBar > 0.0f);
         assertTrue(state.consumptionLitersPer100Km > 0.0f);
+        assertTrue(state.instantFuelConsumption > 0.0f);
         assertTrue(state.voltage > 0.0f);
         assertTrue(state.outsideTemperatureC != 0.0f);
         assertTrue(state.steeringAngleDeg != 0.0f);
@@ -104,6 +105,8 @@ public final class DemoScenarioTest {
         assertTrue(state.wheelRearRightKph > 0.0f);
         assertTrue(state.engineFlywheelTorque != 0.0f);
         assertEquals(91_000L, state.rpmUpdatedAtMs);
+        assertEquals(91_000L, state.instantFuelConsumptionUpdatedAtMs);
+        assertEquals(91_000L, state.journeyOdometerUpdatedAtMs);
         assertEquals(91_000L, state.steeringUpdatedAtMs);
         assertEquals(91_000L, state.transmissionTemperatureUpdatedAtMs);
     }

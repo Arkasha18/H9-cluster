@@ -58,6 +58,7 @@ public final class GwmClusterDataSource
     private static final int INDEX_TPMS_UNITS = 12;
     private static final int INDEX_AVG_CONSUMPTION_B = 13;
     private static final int INDEX_AVG_CONSUMPTION_A = 14;
+    private static final int INDEX_INSTANT_CONSUMPTION = 15;
     private static final int INDEX_VOLTAGE = 16;
     private static final int INDEX_STEERING_ANGLE = 18;
     private static final int INDEX_WHEEL_FRONT_LEFT = 19;
@@ -112,6 +113,8 @@ public final class GwmClusterDataSource
     private long binderRpmUpdatedAtMs;
     private long fdbusRpmUpdatedAtMs;
     private int fdbusRpm;
+    private long instantFuelConsumptionUpdatedAtMs;
+    private long journeyOdometerUpdatedAtMs;
     private long steeringUpdatedAtMs;
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
@@ -241,6 +244,10 @@ public final class GwmClusterDataSource
                     long now = SystemClock.elapsedRealtime();
                     if (index == INDEX_RPM) {
                         binderRpmUpdatedAtMs = now;
+                    } else if (index == INDEX_DAY) {
+                        journeyOdometerUpdatedAtMs = now;
+                    } else if (index == INDEX_INSTANT_CONSUMPTION) {
+                        instantFuelConsumptionUpdatedAtMs = now;
                     } else if (index == INDEX_STEERING_ANGLE) {
                         steeringUpdatedAtMs = now;
                     }
@@ -291,6 +298,10 @@ public final class GwmClusterDataSource
                         values[index] = value;
                         if (index == INDEX_RPM) {
                             binderRpmUpdatedAtMs = now;
+                        } else if (index == INDEX_DAY) {
+                            journeyOdometerUpdatedAtMs = now;
+                        } else if (index == INDEX_INSTANT_CONSUMPTION) {
+                            instantFuelConsumptionUpdatedAtMs = now;
                         } else if (index == INDEX_STEERING_ANGLE) {
                             steeringUpdatedAtMs = now;
                         }
@@ -406,6 +417,7 @@ public final class GwmClusterDataSource
                 pressures[2],
                 pressures[3],
                 Math.max(0.0f, consumption),
+                parseFloat(values[INDEX_INSTANT_CONSUMPTION], Float.NaN),
                 Math.max(0.0f, parseFloat(values[INDEX_VOLTAGE], lastState.voltage)),
                 clamp(parseFloat(
                         values[INDEX_OUTSIDE_TEMP],
@@ -429,6 +441,8 @@ public final class GwmClusterDataSource
                         values[INDEX_ENGINE_FLYWHEEL_TORQUE],
                         lastState.engineFlywheelTorque), -2000.0f, 2000.0f),
                 effectiveRpmUpdatedAtMs,
+                instantFuelConsumptionUpdatedAtMs,
+                journeyOdometerUpdatedAtMs,
                 steeringUpdatedAtMs,
                 transmissionTemperatureUpdatedAtMs,
                 lastState.driveMode);

@@ -58,6 +58,9 @@ final class DemoScenario {
                 2.42f + 0.02f * sin(seconds / 3.0f + 1.0f),
                 2.40f + 0.02f * sin(seconds / 3.0f + 1.5f),
                 9.2f + 1.4f * sin(seconds / 2.0f),
+                speed <= 0.1f
+                        ? 1.1f
+                        : 9.2f + 1.4f * sin(seconds / 2.0f),
                 14.1f + 0.1f * sin(seconds / 4.0f),
                 18.5f + 0.5f * sin(seconds / 8.0f),
                 steering,
@@ -66,6 +69,8 @@ final class DemoScenario {
                 Math.max(0.0f, speed - turnDelta * 0.7f),
                 Math.max(0.0f, speed + turnDelta * 0.7f),
                 180.0f + 90.0f * sin(seconds / 1.7f),
+                nowMs,
+                nowMs,
                 nowMs,
                 nowMs,
                 nowMs,
