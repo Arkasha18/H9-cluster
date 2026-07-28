@@ -476,7 +476,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 23.0f);
 
         // Center the odometer rows in the free black field above speed.
-        configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER,
+        configureText(gaugeTypeface, 22.0f, Paint.Align.CENTER,
                 0xFFF3F3F1, false, -0.04f);
         drawFittedText(
                 canvas,
@@ -484,59 +484,59 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 400.0f,
                 272.0f,
                 150.0f,
-                21.0f,
-                18.0f);
+                22.0f,
+                19.0f);
         drawFittedText(
                 canvas,
                 String.format(Locale.US, "Day  %.1f km", state.dayKm),
                 400.0f,
                 302.0f,
                 150.0f,
-                21.0f,
-                18.0f);
+                22.0f,
+                19.0f);
         drawFittedText(
                 canvas,
                 String.format(Locale.US, "Trip  %.1f km", state.tripKm),
                 400.0f,
                 332.0f,
                 150.0f,
-                21.0f,
-                18.0f);
+                22.0f,
+                19.0f);
 
         // Keep all four pressures around the car position from example.png.
-        configureText(gaugeTypeface, 24.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
+        configureText(gaugeTypeface, 25.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontLeftBar),
                 1490.0f,
                 293.0f,
                 74.0f,
-                24.0f,
-                19.0f);
+                25.0f,
+                20.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontRightBar),
                 1617.0f,
                 293.0f,
                 74.0f,
-                24.0f,
-                19.0f);
+                25.0f,
+                20.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearLeftBar),
                 1490.0f,
                 346.0f,
                 74.0f,
-                24.0f,
-                19.0f);
+                25.0f,
+                20.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearRightBar),
                 1617.0f,
                 346.0f,
                 74.0f,
-                24.0f,
-                19.0f);
+                25.0f,
+                20.0f);
 
         // Live outside temperature and steering angle remain at the top.
         drawSteeringWheel(canvas, 762.0f, 44.0f, 13.0f, 0xFFD9DEE2);

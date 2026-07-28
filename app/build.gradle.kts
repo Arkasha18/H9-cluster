@@ -82,7 +82,7 @@ android {
         debug {
             applicationIdSuffix = ".fdbusprobe"
             versionNameSuffix = "-debug"
-            manifestPlaceholders["bootReceiverEnabled"] = "false"
+            manifestPlaceholders["bootReceiverEnabled"] = "true"
             manifestPlaceholders["fdbusProbeEnabled"] = "true"
         }
         release {
