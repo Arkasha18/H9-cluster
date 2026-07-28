@@ -1,6 +1,7 @@
 package net.adminrunet.h9cluster;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
@@ -13,7 +14,10 @@ import android.view.WindowManager;
 /** Full-screen host for the live cluster renderer. */
 @SuppressWarnings("deprecation")
 public final class PreviewActivity extends Activity {
-    public static final String EXTRA_RELOAD_SKIN = "reload_skin";
+    public static final String EXTRA_HAS_DRAFT = "has_draft";
+    public static final String EXTRA_DRAFT_SKIN = "draft_skin";
+    public static final String EXTRA_DRAFT_VISIBILITY_MASK =
+            "draft_visibility_mask";
     private static final String TAG = "H9Cluster";
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -26,6 +30,7 @@ public final class PreviewActivity extends Activity {
     private ClusterRenderer clusterRenderer;
     private String activeSkin;
     private ClusterDataSource dataSource;
+    private ClusterState lastState = ClusterState.empty();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,23 +51,13 @@ public final class PreviewActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
-        activeSkin = SkinPreferences.getSelectedSkin(this);
-        View rendererView;
-        if (SkinPreferences.SKIN_HORIZON.equals(activeSkin)) {
-            ClusterView horizonView = new ClusterView(this);
-            clusterRenderer = horizonView;
-            rendererView = horizonView;
-        } else {
-            ClassicClusterView classicView = new ClassicClusterView(this);
-            clusterRenderer = classicView;
-            rendererView = classicView;
-        }
-        setContentView(rendererView);
+        applyRequest(resolveRequest(getIntent()));
 
         dataSource = new GwmClusterDataSource(this);
         dataSource.start(new ClusterDataSource.Listener() {
             @Override
             public void onClusterState(ClusterState state) {
+                lastState = state;
                 clusterRenderer.setClusterState(state);
             }
         });
@@ -70,14 +65,60 @@ public final class PreviewActivity extends Activity {
     }
 
     @Override
-    protected void onNewIntent(android.content.Intent intent) {
+    protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        String selectedSkin = SkinPreferences.getSelectedSkin(this);
-        if (!selectedSkin.equals(activeSkin)
-                || intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false)) {
-            recreate();
+        applyRequest(resolveRequest(intent));
+    }
+
+    private PreviewRequest resolveRequest(Intent intent) {
+        boolean hasDraft =
+                intent != null && intent.getBooleanExtra(EXTRA_HAS_DRAFT, false);
+        String draftSkin = hasDraft
+                ? intent.getStringExtra(EXTRA_DRAFT_SKIN)
+                : null;
+        Object draftMask = hasDraft
+                && intent.hasExtra(EXTRA_DRAFT_VISIBILITY_MASK)
+                ? Long.valueOf(intent.getLongExtra(
+                        EXTRA_DRAFT_VISIBILITY_MASK,
+                        Long.MIN_VALUE))
+                : null;
+        return PreviewRequest.resolve(
+                ClusterPreferences.load(this),
+                hasDraft,
+                draftSkin,
+                draftMask);
+    }
+
+    private void applyRequest(PreviewRequest request) {
+        if (request.skin.equals(activeSkin)
+                && clusterRenderer instanceof ClassicCustomClusterView) {
+            ((ClassicCustomClusterView) clusterRenderer)
+                    .setBlockVisibility(request.visibility);
+            return;
         }
+        if (request.skin.equals(activeSkin) && clusterRenderer != null) {
+            return;
+        }
+
+        View rendererView;
+        if (SkinPreferences.SKIN_HORIZON.equals(request.skin)) {
+            ClusterView horizonView = new ClusterView(this);
+            clusterRenderer = horizonView;
+            rendererView = horizonView;
+        } else if (SkinPreferences.SKIN_CLASSIC_CUSTOM.equals(request.skin)) {
+            ClassicCustomClusterView customView =
+                    new ClassicCustomClusterView(this, request.visibility);
+            clusterRenderer = customView;
+            rendererView = customView;
+        } else {
+            ClassicClusterView classicView = new ClassicClusterView(this);
+            clusterRenderer = classicView;
+            rendererView = classicView;
+        }
+        activeSkin = request.skin;
+        setContentView(rendererView);
+        clusterRenderer.setClusterState(lastState);
     }
 
     @Override

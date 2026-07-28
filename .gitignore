@@ -1,6 +1,7 @@
 # Android / Gradle
 /.gradle/
 /.gradle-ci/
+/.superpowers/
 /.idea/
 /**/build/
 /local.properties

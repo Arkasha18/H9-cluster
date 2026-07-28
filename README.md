@@ -20,7 +20,7 @@
 
 ## Возможности
 
-- темы `Classic` и `Horizon`;
+- темы `Classic`, `Horizon` и `Classic Custom`;
 - скорость, обороты, пробег, топливо и запас хода;
 - температура охлаждающей жидкости и наружного воздуха;
 - температура масла автоматической трансмиссии;
@@ -29,6 +29,8 @@
 - четыре отдельные скорости колёс;
 - момент маховика, расход топлива и напряжение бортовой сети;
 - выбор темы на основном экране;
+- отдельное включение и отключение каждого информационного блока в
+  `Classic Custom`;
 - автоматический запуск панели на `Display ID 2`.
 
 ## Источники данных и безопасность
@@ -148,6 +150,56 @@ Debug APK собирается без ключей:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Проверка настроек видимости и воспроизводимости графических слоёв
+`Classic Custom`:
+
+```bash
+./gradlew testDebugUnitTest lintDebug
+./.venv/bin/python -m unittest discover -s tools/tests -v
+```
+
+### Проверка в Android Emulator
+
+Для экрана настроек установите размер основного дисплея `960×540`, а приборную
+панель создайте отдельным `Display ID 2` размером `1920×720`:
+
+```bash
+adb shell wm size 960x540
+adb shell wm density 160
+adb shell settings put global overlay_display_devices '1920x720/240'
+adb shell cmd display get-displays
+```
+
+После установки APK откройте настройки:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -W -n net.adminrunet.h9cluster/.SettingsActivity
+```
+
+Выберите `Classic Custom`. Переключатели блоков появляются только для этой
+темы. Изменения сразу отображаются на `Display ID 2`, но сохраняются только
+кнопкой `Сохранить`. Если закрыть настройки без сохранения, предпросмотр
+вернётся к ранее сохранённому состоянию.
+
+Чтобы проверить панель на единственном экране без оверлея:
+
+```bash
+adb shell settings delete global overlay_display_devices
+adb shell wm size 1920x720
+adb shell wm density 240
+adb shell am start --display 0 -W \
+  -n net.adminrunet.h9cluster/.PreviewActivity
+```
+
+Возврат к параметрам эмулятора по умолчанию:
+
+```bash
+adb shell wm size reset
+adb shell wm density reset
+adb shell settings delete global overlay_display_devices
+```
+
 Для release-сборки используйте собственный ключ. Секреты рекомендуется хранить
 в пользовательском `~/.gradle/gradle.properties`, который находится за
 пределами репозитория:
@@ -177,8 +229,8 @@ H9_CLUSTER_KEY_PASSWORD=your-password
 GitHub Actions для каждого Pull Request:
 
 1. собирает зафиксированный Docker toolchain;
-2. проверяет генерацию Forum Kit и обработку графики темы;
-3. выполняет внутри него `assembleDebug` и Android Lint;
+2. проверяет генерацию Forum Kit, графические слои и их Python-тесты;
+3. выполняет JVM-тесты, `assembleDebug` и Android Lint;
 4. сохраняет debug APK и отчёты Lint как временный Actions artifact;
 5. после попадания проверенного commit в `main` публикует toolchain в GHCR.
 
@@ -238,7 +290,9 @@ Connected to read-only TBOX temperature source
 
 - `build_forum_design_template.py` — создаёт нейтральный комплект масок;
 - `edit_classic_background.py` — формирует подложку и независимый overlay
-  Classic с утверждённой геометрией.
+  Classic с утверждённой геометрией;
+- `build_classic_custom_layers.py` — воспроизводимо создаёт независимые
+  семантические слои для `Classic Custom`.
 
 Для запуска инструментов нужны Python 3, Pillow и NumPy:
 

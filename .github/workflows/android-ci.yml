@@ -54,12 +54,13 @@ jobs:
                 --input app/src/main/assets/dashboard/background_classic.png \
                 --output "${smoke_dir}/background-classic.png" \
                 --overlay-output "${smoke_dir}/background-classic-overlay.png"
+              python -m unittest discover -s tools/tests -v
               test -s "${smoke_dir}/forum-kit/01_technical_guide.png"
               test -s "${smoke_dir}/background-classic.png"
               test -s "${smoke_dir}/background-classic-overlay.png"
             '
 
-      - name: Build debug APK and run Android Lint
+      - name: Test, build debug APK, and run Android Lint
         run: |
           docker run --rm \
             --platform linux/amd64 \
@@ -67,7 +68,7 @@ jobs:
             --workdir /workspace \
             --env GRADLE_USER_HOME=/workspace/.gradle-ci \
             h9-cluster-build:ci \
-            ./gradlew --no-daemon --stacktrace assembleDebug lint
+            ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleDebug lintDebug
 
       - name: Upload debug APK and lint reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
