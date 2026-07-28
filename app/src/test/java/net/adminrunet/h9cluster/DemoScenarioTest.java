@@ -149,4 +149,37 @@ public final class DemoScenarioTest {
         assertEquals(start.currentGear, wrapped.currentGear);
         assertEquals(start.steeringAngleDeg, wrapped.steeringAngleDeg, 0.001f);
     }
+
+    @Test
+    public void stoppedSnapshotFreezesDistanceAndPublishesFreshZeroMotion() {
+        DemoScenario scenario = new DemoScenario();
+        ClusterState frozen = scenario.snapshot(12_000L, 20_000L);
+        ClusterState stopped = scenario.stoppedSnapshot(
+                12_000L,
+                25_000L,
+                false);
+
+        assertEquals(0, stopped.speedKph);
+        assertEquals(0, stopped.rpm);
+        assertEquals(0, stopped.currentGear);
+        assertEquals(0.0f, stopped.wheelFrontLeftKph, 0.0f);
+        assertEquals(0.0f, stopped.wheelFrontRightKph, 0.0f);
+        assertEquals(0.0f, stopped.wheelRearLeftKph, 0.0f);
+        assertEquals(0.0f, stopped.wheelRearRightKph, 0.0f);
+        assertEquals(frozen.dayKm, stopped.dayKm, 0.0f);
+        assertEquals(25_000L, stopped.rpmUpdatedAtMs);
+        assertEquals(25_000L, stopped.journeyOdometerUpdatedAtMs);
+        assertEquals(25_000L, stopped.instantFuelConsumptionUpdatedAtMs);
+        assertTrue(stopped.instantFuelConsumption > 0.0f);
+    }
+
+    @Test
+    public void invalidConsumptionModeKeepsOtherTelemetryLive() {
+        DemoScenario scenario = new DemoScenario();
+        ClusterState state = scenario.snapshot(12_000L, 20_000L, true);
+
+        assertTrue(Float.isNaN(state.instantFuelConsumption));
+        assertTrue(state.dayKm > 0.0f);
+        assertEquals(20_000L, state.instantFuelConsumptionUpdatedAtMs);
+    }
 }

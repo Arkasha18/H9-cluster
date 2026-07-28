@@ -26,10 +26,13 @@ final class DemoClusterDataSource implements ClusterDataSource {
     private final DemoScenario scenario;
     private final Clock clock;
     private final Scheduler scheduler;
+    private final boolean invalidConsumption;
 
     private Listener listener;
     private boolean started;
     private long startedAtMs;
+    private boolean engineStopRequested;
+    private long frozenElapsedMs;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -42,8 +45,16 @@ final class DemoClusterDataSource implements ClusterDataSource {
             if (currentListener == null) {
                 return;
             }
-            currentListener.onClusterState(
-                    scenario.snapshot(nowMs - startedAtMs, nowMs));
+            ClusterState state = engineStopRequested
+                    ? scenario.stoppedSnapshot(
+                            frozenElapsedMs,
+                            nowMs,
+                            invalidConsumption)
+                    : scenario.snapshot(
+                            nowMs - startedAtMs,
+                            nowMs,
+                            invalidConsumption);
+            currentListener.onClusterState(state);
             if (started) {
                 scheduler.postDelayed(this, FRAME_MS);
             }
@@ -51,19 +62,33 @@ final class DemoClusterDataSource implements ClusterDataSource {
     };
 
     DemoClusterDataSource(Context context) {
+        this(context, false);
+    }
+
+    DemoClusterDataSource(Context context, boolean invalidConsumption) {
         this(
                 new DemoScenario(),
                 SystemClock::elapsedRealtime,
-                mainThreadScheduler());
+                mainThreadScheduler(),
+                invalidConsumption);
     }
 
     DemoClusterDataSource(
             DemoScenario scenario,
             Clock clock,
             Scheduler scheduler) {
+        this(scenario, clock, scheduler, false);
+    }
+
+    DemoClusterDataSource(
+            DemoScenario scenario,
+            Clock clock,
+            Scheduler scheduler,
+            boolean invalidConsumption) {
         this.scenario = Objects.requireNonNull(scenario, "scenario");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.invalidConsumption = invalidConsumption;
     }
 
     @Override
@@ -75,6 +100,8 @@ final class DemoClusterDataSource implements ClusterDataSource {
         this.listener = listener;
         started = true;
         startedAtMs = clock.nowMs();
+        engineStopRequested = false;
+        frozenElapsedMs = 0L;
         scheduler.post(tick);
     }
 
@@ -83,6 +110,15 @@ final class DemoClusterDataSource implements ClusterDataSource {
         started = false;
         scheduler.removeCallbacks(tick);
         listener = null;
+    }
+
+    boolean requestEngineStop() {
+        if (!started || engineStopRequested) {
+            return false;
+        }
+        frozenElapsedMs = Math.max(0L, clock.nowMs() - startedAtMs);
+        engineStopRequested = true;
+        return true;
     }
 
     private static Scheduler mainThreadScheduler() {

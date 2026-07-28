@@ -26,6 +26,13 @@ final class DemoScenario {
     };
 
     ClusterState snapshot(long elapsedMs, long nowMs) {
+        return snapshot(elapsedMs, nowMs, false);
+    }
+
+    ClusterState snapshot(
+            long elapsedMs,
+            long nowMs,
+            boolean invalidConsumption) {
         long cycleTimeMs = Math.floorMod(elapsedMs, CYCLE_MS);
         float seconds = cycleTimeMs / 1_000.0f;
         float speed = speedAt(seconds);
@@ -58,7 +65,9 @@ final class DemoScenario {
                 2.42f + 0.02f * sin(seconds / 3.0f + 1.0f),
                 2.40f + 0.02f * sin(seconds / 3.0f + 1.5f),
                 9.2f + 1.4f * sin(seconds / 2.0f),
-                speed <= 0.1f
+                invalidConsumption
+                        ? Float.NaN
+                        : speed <= 0.1f
                         ? 1.1f
                         : 9.2f + 1.4f * sin(seconds / 2.0f),
                 14.1f + 0.1f * sin(seconds / 4.0f),
@@ -75,6 +84,45 @@ final class DemoScenario {
                 nowMs,
                 nowMs,
                 driveModeAt(seconds));
+    }
+
+    ClusterState stoppedSnapshot(
+            long frozenElapsedMs,
+            long nowMs,
+            boolean invalidConsumption) {
+        ClusterState frozen =
+                snapshot(frozenElapsedMs, nowMs, invalidConsumption);
+        return new ClusterState(
+                0,
+                0,
+                0,
+                frozen.coolantC,
+                frozen.transmissionTemperatureC,
+                frozen.fuelLiters,
+                frozen.rangeKm,
+                frozen.odometerKm,
+                frozen.dayKm,
+                frozen.tripKm,
+                frozen.tyreFrontLeftBar,
+                frozen.tyreFrontRightBar,
+                frozen.tyreRearLeftBar,
+                frozen.tyreRearRightBar,
+                frozen.consumptionLitersPer100Km,
+                invalidConsumption ? Float.NaN : 1.1f,
+                frozen.voltage,
+                frozen.outsideTemperatureC,
+                frozen.steeringAngleDeg,
+                0.0f,
+                0.0f,
+                0.0f,
+                0.0f,
+                frozen.engineFlywheelTorque,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                frozen.driveMode);
     }
 
     private static float speedAt(float seconds) {
