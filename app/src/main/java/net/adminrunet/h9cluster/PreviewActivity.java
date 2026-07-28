@@ -1,5 +1,7 @@
 package net.adminrunet.h9cluster;
 
+import net.adminrunet.h9cluster.skins.SkinRegistry;
+
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -47,16 +49,8 @@ public final class PreviewActivity extends Activity {
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
         activeSkin = SkinPreferences.getSelectedSkin(this);
-        View rendererView;
-        if (SkinPreferences.SKIN_HORIZON.equals(activeSkin)) {
-            ClusterView horizonView = new ClusterView(this);
-            clusterRenderer = horizonView;
-            rendererView = horizonView;
-        } else {
-            ClassicClusterView classicView = new ClassicClusterView(this);
-            clusterRenderer = classicView;
-            rendererView = classicView;
-        }
+        View rendererView = SkinRegistry.createRenderer(this, activeSkin);
+        clusterRenderer = (ClusterRenderer) rendererView;
         setContentView(rendererView);
 
         dataSource = new GwmClusterDataSource(this);

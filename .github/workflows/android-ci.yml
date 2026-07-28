@@ -49,9 +49,9 @@ jobs:
               mkdir -p "${smoke_dir}/forum-kit"
               python tools/build_forum_design_template.py \
                 --output-dir "${smoke_dir}/forum-kit" \
-                --opacity-source app/src/main/assets/dashboard/background_classic.png
+                --opacity-source app/src/main/assets/dashboard/skins/classic/background.png
               python tools/edit_classic_background.py \
-                --input app/src/main/assets/dashboard/background_classic.png \
+                --input app/src/main/assets/dashboard/skins/classic/background.png \
                 --output "${smoke_dir}/background-classic.png" \
                 --overlay-output "${smoke_dir}/background-classic-overlay.png"
               test -s "${smoke_dir}/forum-kit/01_technical_guide.png"
@@ -60,12 +60,28 @@ jobs:
             '
 
       - name: Build debug APK and run Android Lint
+        if: github.event_name != 'workflow_dispatch'
         run: |
           docker run --rm \
             --platform linux/amd64 \
             --volume "${GITHUB_WORKSPACE}:/workspace" \
             --workdir /workspace \
             --env GRADLE_USER_HOME=/workspace/.gradle-ci \
+            h9-cluster-build:ci \
+            ./gradlew --no-daemon --stacktrace assembleDebug lint
+
+      - name: Build debug APK with TBOX temperature and run Android Lint
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          H9_TBOX_PASSWORD: ${{ secrets.H9_TBOX_PASSWORD }}
+        run: |
+          test -n "${H9_TBOX_PASSWORD}"
+          docker run --rm \
+            --platform linux/amd64 \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --workdir /workspace \
+            --env GRADLE_USER_HOME=/workspace/.gradle-ci \
+            --env H9_TBOX_PASSWORD \
             h9-cluster-build:ci \
             ./gradlew --no-daemon --stacktrace assembleDebug lint
 
