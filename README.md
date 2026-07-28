@@ -1,4 +1,4 @@
-# H9 Cluster 9.2.0
+# H9 Cluster 9.3.0
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -20,7 +20,7 @@
 
 ## Возможности
 
-- темы `Classic` и `Horizon`;
+- независимые темы `Classic`, `Sport` и `Horizon`;
 - скорость, обороты, пробег, топливо и запас хода;
 - температура охлаждающей жидкости и наружного воздуха;
 - температура масла автоматической трансмиссии;
