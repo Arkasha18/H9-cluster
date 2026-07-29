@@ -4,6 +4,7 @@ import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
+import net.adminrunet.h9cluster.skins.simplered.SimpleRedClusterView;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
 
 import android.content.Context;
@@ -19,6 +20,7 @@ import android.view.View;
 public final class SkinRegistry {
     public static final String CLASSIC = "classic";
     public static final String HORIZON = "horizon";
+    public static final String SIMPLE_RED = "simple_red";
     public static final String SPORT = "sport";
 
     private interface RendererFactory {
@@ -117,6 +119,19 @@ public final class SkinRegistry {
                             Context context,
                             SkinSettings settings) {
                         return new SportClusterView(context);
+                    }
+                },
+                null),
+        new Definition(
+                SIMPLE_RED,
+                "Simple Red — простая красная тема",
+                "Компактные красные шкалы со свободными зонами штатных индикаторов",
+                new RendererFactory() {
+                    @Override
+                    public View create(
+                            Context context,
+                            SkinSettings settings) {
+                        return new SimpleRedClusterView(context);
                     }
                 },
                 null),
