@@ -13,12 +13,6 @@ public final class TripSessionStore implements TripSessionPersistence {
     private static final String KEY_LAST_JOURNEY = "last_journey";
     private static final String KEY_LAST_JOURNEY_VALID = "last_journey_valid";
     private static final String KEY_DISTANCE_VALID = "distance_valid";
-    private static final String KEY_FUEL = "fuel";
-    private static final String KEY_LAST_FUEL = "last_fuel";
-    private static final String KEY_LAST_FUEL_VALID = "last_fuel_valid";
-    private static final String KEY_LAST_SPEED = "last_speed";
-    private static final String KEY_FUEL_RELIABLE = "fuel_reliable";
-    private static final String KEY_HAS_FUEL_INTERVAL = "has_fuel_interval";
     private static final String KEY_LAST_AVERAGE_FUEL =
             "last_average_fuel";
     private static final String KEY_LAST_AVERAGE_FUEL_VALID =
@@ -45,12 +39,6 @@ public final class TripSessionStore implements TripSessionPersistence {
                 decodeDouble(KEY_LAST_JOURNEY),
                 preferences.getBoolean(KEY_LAST_JOURNEY_VALID, false),
                 preferences.getBoolean(KEY_DISTANCE_VALID, false),
-                decodeDouble(KEY_FUEL),
-                decodeFloat(KEY_LAST_FUEL),
-                preferences.getBoolean(KEY_LAST_FUEL_VALID, false),
-                preferences.getInt(KEY_LAST_SPEED, 0),
-                preferences.getBoolean(KEY_FUEL_RELIABLE, false),
-                preferences.getBoolean(KEY_HAS_FUEL_INTERVAL, false),
                 decodeFloat(KEY_LAST_AVERAGE_FUEL),
                 preferences.getBoolean(
                         KEY_LAST_AVERAGE_FUEL_VALID,
@@ -99,21 +87,6 @@ public final class TripSessionStore implements TripSessionPersistence {
                         KEY_LAST_JOURNEY_VALID,
                         session.lastJourneyOdometerValid)
                 .putBoolean(KEY_DISTANCE_VALID, session.distanceValid)
-                .putLong(
-                        KEY_FUEL,
-                        Double.doubleToRawLongBits(session.fuelLiters))
-                .putInt(
-                        KEY_LAST_FUEL,
-                        Float.floatToRawIntBits(
-                                session.lastFuelConsumption))
-                .putBoolean(
-                        KEY_LAST_FUEL_VALID,
-                        session.lastFuelConsumptionValid)
-                .putInt(KEY_LAST_SPEED, session.lastSpeedKph)
-                .putBoolean(KEY_FUEL_RELIABLE, session.fuelReliable)
-                .putBoolean(
-                        KEY_HAS_FUEL_INTERVAL,
-                        session.hasFuelInterval)
                 .putInt(
                         KEY_LAST_AVERAGE_FUEL,
                         Float.floatToRawIntBits(

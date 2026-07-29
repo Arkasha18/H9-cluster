@@ -19,7 +19,7 @@ public final class TripSessionNormalizerTest {
         assertEquals(10_000L, normalized.startedAtMs);
         assertEquals(15_000L, normalized.lastUpdatedAtMs);
         assertEquals(2.5, normalized.distanceKm, 0.0);
-        assertEquals(0.25, normalized.fuelLiters, 0.0);
+        assertEquals(8.5f, normalized.lastAverageFuelConsumption, 0.0f);
     }
 
     @Test
@@ -50,19 +50,6 @@ public final class TripSessionNormalizerTest {
         assertNotNull(normalized);
         assertEquals(0.0, normalized.distanceKm, 0.0);
         assertFalse(normalized.distanceValid);
-        assertFalse(normalized.fuelReliable);
-    }
-
-    @Test
-    public void invalidFuelNeverBecomesZeroValid() {
-        TripSession normalized = TripSessionNormalizer.normalize(
-                withFuel(validSession(), Double.POSITIVE_INFINITY, true, true),
-                20_000L);
-
-        assertNotNull(normalized);
-        assertEquals(0.0, normalized.fuelLiters, 0.0);
-        assertFalse(normalized.fuelReliable);
-        assertFalse(normalized.hasFuelInterval);
     }
 
     @Test
@@ -75,11 +62,7 @@ public final class TripSessionNormalizerTest {
                 Double.NaN,
                 true,
                 true,
-                0.25,
-                Float.NaN,
-                true,
-                50,
-                true,
+                8.5f,
                 true);
 
         TripSession normalized =
@@ -87,8 +70,6 @@ public final class TripSessionNormalizerTest {
 
         assertNotNull(normalized);
         assertFalse(normalized.lastJourneyOdometerValid);
-        assertFalse(normalized.lastFuelConsumptionValid);
-        assertFalse(normalized.fuelReliable);
     }
 
     private static TripSession validSession() {
@@ -100,11 +81,7 @@ public final class TripSessionNormalizerTest {
                 42.5,
                 true,
                 true,
-                0.25,
                 8.5f,
-                true,
-                50,
-                true,
                 true);
     }
 
@@ -114,10 +91,7 @@ public final class TripSessionNormalizerTest {
                 active,
                 source.lastUpdatedAtMs,
                 source.distanceKm,
-                source.distanceValid,
-                source.fuelLiters,
-                source.fuelReliable,
-                source.hasFuelInterval);
+                source.distanceValid);
     }
 
     private static TripSession withLastUpdated(
@@ -128,10 +102,7 @@ public final class TripSessionNormalizerTest {
                 source.active,
                 lastUpdatedAtMs,
                 source.distanceKm,
-                source.distanceValid,
-                source.fuelLiters,
-                source.fuelReliable,
-                source.hasFuelInterval);
+                source.distanceValid);
     }
 
     private static TripSession withDistance(
@@ -143,26 +114,7 @@ public final class TripSessionNormalizerTest {
                 source.active,
                 source.lastUpdatedAtMs,
                 distanceKm,
-                distanceValid,
-                source.fuelLiters,
-                source.fuelReliable,
-                source.hasFuelInterval);
-    }
-
-    private static TripSession withFuel(
-            TripSession source,
-            double fuelLiters,
-            boolean fuelReliable,
-            boolean hasFuelInterval) {
-        return copy(
-                source,
-                source.active,
-                source.lastUpdatedAtMs,
-                source.distanceKm,
-                source.distanceValid,
-                fuelLiters,
-                fuelReliable,
-                hasFuelInterval);
+                distanceValid);
     }
 
     private static TripSession copy(
@@ -170,10 +122,7 @@ public final class TripSessionNormalizerTest {
             boolean active,
             long lastUpdatedAtMs,
             double distanceKm,
-            boolean distanceValid,
-            double fuelLiters,
-            boolean fuelReliable,
-            boolean hasFuelInterval) {
+            boolean distanceValid) {
         return new TripSession(
                 active,
                 source.startedAtMs,
@@ -182,11 +131,7 @@ public final class TripSessionNormalizerTest {
                 source.lastJourneyOdometerKm,
                 source.lastJourneyOdometerValid,
                 distanceValid,
-                fuelLiters,
-                source.lastFuelConsumption,
-                source.lastFuelConsumptionValid,
-                source.lastSpeedKph,
-                fuelReliable,
-                hasFuelInterval);
+                source.lastAverageFuelConsumption,
+                source.lastAverageFuelConsumptionValid);
     }
 }

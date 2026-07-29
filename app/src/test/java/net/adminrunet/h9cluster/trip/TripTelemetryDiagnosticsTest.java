@@ -16,8 +16,6 @@ public final class TripTelemetryDiagnosticsTest {
                 42.3f,
                 42.3,
                 true,
-                9.1f,
-                true,
                 8.7f,
                 true);
 
@@ -30,7 +28,7 @@ public final class TripTelemetryDiagnosticsTest {
 
         assertTrue(line.contains("journeyRaw=42.300"));
         assertTrue(line.contains("journeyKm=42.300"));
-        assertTrue(line.contains("instantFuelRaw=9.100"));
+        assertFalse(line.contains("instantFuelRaw"));
         assertTrue(line.contains("averageFuelRaw=8.700"));
         assertTrue(line.contains("averageFuelValid=true"));
         assertTrue(line.contains("rpmRaw=800"));

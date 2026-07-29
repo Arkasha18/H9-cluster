@@ -131,10 +131,10 @@ public final class TripSummaryCoordinatorTest {
 
         clock.now = 3_000L;
         coordinator.onClusterState(state(
-                0, 0, 10.1f, Float.NaN, Float.NaN, clock.nowMs()));
+                0, 0, 10.1f, Float.NaN, clock.nowMs()));
         clock.now = 5_500L;
         coordinator.onClusterState(state(
-                0, 0, 10.1f, Float.NaN, Float.NaN, clock.nowMs()));
+                0, 0, 10.1f, Float.NaN, clock.nowMs()));
 
         TripSummary summary = listener.summaries.get(0);
         assertTrue(summary.distanceValid);
@@ -156,7 +156,6 @@ public final class TripSummaryCoordinatorTest {
                 800,
                 0,
                 10.1f,
-                Float.NaN,
                 9.0f,
                 2_000L,
                 clock.nowMs()));
@@ -249,39 +248,22 @@ public final class TripSummaryCoordinatorTest {
             float averageFuel) {
         clock.now = 1_000L;
         coordinator.onClusterState(
-                state(400, 0, journeyKm, 1.0f, averageFuel, clock.nowMs()));
+                state(400, 0, journeyKm, averageFuel, clock.nowMs()));
         clock.now = 2_000L;
         coordinator.onClusterState(
-                state(400, 0, journeyKm, 1.0f, averageFuel, clock.nowMs()));
+                state(400, 0, journeyKm, averageFuel, clock.nowMs()));
     }
 
     private static ClusterState state(
             int rpm,
             int speedKph,
             float journeyKm,
-            float instantFuel,
-            long nowMs) {
-        return state(
-                rpm,
-                speedKph,
-                journeyKm,
-                instantFuel,
-                9.0f,
-                nowMs);
-    }
-
-    private static ClusterState state(
-            int rpm,
-            int speedKph,
-            float journeyKm,
-            float instantFuel,
             float averageFuel,
             long nowMs) {
         return state(
                 rpm,
                 speedKph,
                 journeyKm,
-                instantFuel,
                 averageFuel,
                 nowMs,
                 nowMs);
@@ -291,7 +273,6 @@ public final class TripSummaryCoordinatorTest {
             int rpm,
             int speedKph,
             float journeyKm,
-            float instantFuel,
             float averageFuel,
             long rpmUpdatedAtMs,
             long nowMs) {
@@ -311,7 +292,7 @@ public final class TripSummaryCoordinatorTest {
                 2.3f,
                 2.3f,
                 averageFuel,
-                instantFuel,
+                Float.NaN,
                 14.0f,
                 20.0f,
                 0.0f,

@@ -21,13 +21,11 @@ public final class TripTelemetryDiagnostics {
         return String.format(
                 Locale.US,
                 "journeyRaw=%.3f journeyKm=%.3f "
-                        + "instantFuelRaw=%.3f "
                         + "averageFuelRaw=%.3f averageFuelValid=%s "
                         + "rpmRaw=%d rpmAgeMs=%d "
                         + "speedKph=%d elapsedMs=%d",
                 telemetry.rawJourneyOdometer,
                 convertedJourneyKm,
-                telemetry.instantFuelConsumption,
                 telemetry.averageFuelConsumption,
                 telemetry.averageFuelConsumptionValid,
                 rpm,

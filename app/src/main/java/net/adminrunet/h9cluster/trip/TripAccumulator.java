@@ -8,12 +8,6 @@ public final class TripAccumulator {
     private double lastJourneyOdometerKm;
     private boolean lastJourneyOdometerValid;
     private boolean distanceValid;
-    private double fuelLiters;
-    private float lastFuelConsumption;
-    private boolean lastFuelConsumptionValid;
-    private int lastSpeedKph;
-    private boolean fuelReliable;
-    private boolean hasFuelInterval;
     private float lastAverageFuelConsumption;
     private boolean lastAverageFuelConsumptionValid;
 
@@ -24,12 +18,6 @@ public final class TripAccumulator {
         lastJourneyOdometerKm = session.lastJourneyOdometerKm;
         lastJourneyOdometerValid = session.lastJourneyOdometerValid;
         distanceValid = session.distanceValid;
-        fuelLiters = session.fuelLiters;
-        lastFuelConsumption = session.lastFuelConsumption;
-        lastFuelConsumptionValid = session.lastFuelConsumptionValid;
-        lastSpeedKph = session.lastSpeedKph;
-        fuelReliable = session.fuelReliable;
-        hasFuelInterval = session.hasFuelInterval;
         lastAverageFuelConsumption = session.lastAverageFuelConsumption;
         lastAverageFuelConsumptionValid =
                 session.lastAverageFuelConsumptionValid;
@@ -44,12 +32,6 @@ public final class TripAccumulator {
                 Double.NaN,
                 false,
                 false,
-                0.0,
-                Float.NaN,
-                false,
-                0,
-                true,
-                false,
                 Float.NaN,
                 false));
     }
@@ -63,16 +45,8 @@ public final class TripAccumulator {
             return;
         }
 
-        long elapsedMs = telemetry.capturedAtMs - lastUpdatedAtMs;
-        double distanceDeltaKm = updateDistance(telemetry);
-        if (elapsedMs > 0L) {
-            updateFuel(distanceDeltaKm, elapsedMs);
-        }
-
+        updateDistance(telemetry);
         lastUpdatedAtMs = telemetry.capturedAtMs;
-        lastFuelConsumption = telemetry.instantFuelConsumption;
-        lastFuelConsumptionValid = telemetry.instantFuelConsumptionValid;
-        lastSpeedKph = telemetry.speedKph;
         if (telemetry.averageFuelConsumptionValid) {
             lastAverageFuelConsumption = telemetry.averageFuelConsumption;
             lastAverageFuelConsumptionValid = true;
@@ -88,12 +62,6 @@ public final class TripAccumulator {
                 lastJourneyOdometerKm,
                 lastJourneyOdometerValid,
                 distanceValid,
-                fuelLiters,
-                lastFuelConsumption,
-                lastFuelConsumptionValid,
-                lastSpeedKph,
-                fuelReliable,
-                hasFuelInterval,
                 lastAverageFuelConsumption,
                 lastAverageFuelConsumptionValid);
     }
@@ -102,25 +70,16 @@ public final class TripAccumulator {
         boolean durationValid =
                 stoppedAtMs >= startedAtMs && startedAtMs >= 0L;
         long durationMs = durationValid ? stoppedAtMs - startedAtMs : 0L;
-        boolean integratedFuelValid = fuelReliable
-                && hasFuelInterval
-                && Double.isFinite(fuelLiters)
-                && fuelLiters >= 0.0;
-        boolean fallbackFuelValid = !integratedFuelValid
-                && distanceValid
+        boolean consumptionValid = distanceValid
                 && distanceKm > 0.0
                 && lastAverageFuelConsumptionValid
                 && Float.isFinite(lastAverageFuelConsumption)
                 && lastAverageFuelConsumption > 0.0f;
-        boolean fuelUsedValid = integratedFuelValid || fallbackFuelValid;
-        double summaryFuelLiters = fallbackFuelValid
+        double summaryFuelLiters = consumptionValid
                 ? distanceKm * lastAverageFuelConsumption / 100.0
-                : fuelLiters;
-        boolean consumptionValid = distanceValid
-                && distanceKm > 0.0
-                && fuelUsedValid;
+                : Double.NaN;
         double averageConsumption = consumptionValid
-                ? summaryFuelLiters / distanceKm * 100.0
+                ? lastAverageFuelConsumption
                 : Double.NaN;
         return new TripSummary(
                 distanceKm,
@@ -130,46 +89,24 @@ public final class TripAccumulator {
                 durationMs,
                 durationValid,
                 summaryFuelLiters,
-                fuelUsedValid);
+                consumptionValid);
     }
 
-    private double updateDistance(TripTelemetry telemetry) {
+    private void updateDistance(TripTelemetry telemetry) {
         if (!telemetry.journeyOdometerValid) {
             lastJourneyOdometerValid = false;
-            return Double.NaN;
+            return;
         }
 
-        double deltaKm = Double.NaN;
         if (lastJourneyOdometerValid) {
             double candidateDelta =
                     telemetry.journeyOdometerKm - lastJourneyOdometerKm;
             if (candidateDelta >= 0.0 && Double.isFinite(candidateDelta)) {
-                deltaKm = candidateDelta;
                 distanceKm += candidateDelta;
                 distanceValid = true;
             }
         }
         lastJourneyOdometerKm = telemetry.journeyOdometerKm;
         lastJourneyOdometerValid = true;
-        return deltaKm;
-    }
-
-    private void updateFuel(double distanceDeltaKm, long elapsedMs) {
-        double intervalDistanceKm = lastSpeedKph > 0
-                ? distanceDeltaKm
-                : 0.0;
-        double intervalFuel = lastFuelConsumptionValid
-                ? TripTelemetryConverter.fuelLitersForInterval(
-                        lastFuelConsumption,
-                        lastSpeedKph,
-                        intervalDistanceKm,
-                        elapsedMs)
-                : Double.NaN;
-        if (!Double.isFinite(intervalFuel)) {
-            fuelReliable = false;
-            return;
-        }
-        fuelLiters += intervalFuel;
-        hasFuelInterval = true;
     }
 }

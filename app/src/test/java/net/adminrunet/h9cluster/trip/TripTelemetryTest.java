@@ -10,49 +10,48 @@ import org.junit.Test;
 
 public final class TripTelemetryTest {
     @Test
-    public void acceptsFreshFiniteTripValues() {
+    public void acceptsObservedFiniteTripValues() {
         TripTelemetry telemetry = TripTelemetry.from(
-                state(62, 42.75f, 9_000L, 8.4f, 9_000L),
+                state(62, 42.75f, 9_000L, 8.4f),
                 10_000L);
 
         assertEquals(62, telemetry.speedKph);
         assertTrue(telemetry.journeyOdometerValid);
         assertEquals(42.75, telemetry.journeyOdometerKm, 0.0001);
-        assertTrue(telemetry.instantFuelConsumptionValid);
-        assertEquals(8.4f, telemetry.instantFuelConsumption, 0.0001f);
+        assertTrue(telemetry.averageFuelConsumptionValid);
+        assertEquals(8.4f, telemetry.averageFuelConsumption, 0.0001f);
     }
 
     @Test
     public void keepsObservedJourneyOdometerValidWhileValueIsUnchanged() {
         TripTelemetry telemetry = TripTelemetry.from(
-                state(0, 42.75f, 1_000L, 8.4f, 19_000L),
+                state(0, 42.75f, 1_000L, 8.4f),
                 20_000L);
 
         assertTrue(telemetry.journeyOdometerValid);
-        assertTrue(telemetry.instantFuelConsumptionValid);
+        assertTrue(telemetry.averageFuelConsumptionValid);
     }
 
     @Test
     public void rejectsFutureAndNonFiniteValuesIndependently() {
-        TripTelemetry futureFuel = TripTelemetry.from(
-                state(0, 42.75f, 9_000L, 8.4f, 10_001L),
+        TripTelemetry futureJourney = TripTelemetry.from(
+                state(0, 42.75f, 10_001L, 8.4f),
                 10_000L);
-        assertTrue(futureFuel.journeyOdometerValid);
-        assertFalse(futureFuel.instantFuelConsumptionValid);
+        assertFalse(futureJourney.journeyOdometerValid);
+        assertTrue(futureJourney.averageFuelConsumptionValid);
 
         TripTelemetry nonFinite = TripTelemetry.from(
-                state(0, Float.NaN, 9_000L, Float.POSITIVE_INFINITY, 9_000L),
+                state(0, Float.NaN, 9_000L, Float.POSITIVE_INFINITY),
                 10_000L);
         assertFalse(nonFinite.journeyOdometerValid);
-        assertFalse(nonFinite.instantFuelConsumptionValid);
+        assertFalse(nonFinite.averageFuelConsumptionValid);
     }
 
     private static ClusterState state(
             int speedKph,
             float journeyOdometer,
             long journeyUpdatedAtMs,
-            float instantFuel,
-            long fuelUpdatedAtMs) {
+            float averageFuel) {
         return new ClusterState(
                 speedKph,
                 800,
@@ -68,8 +67,8 @@ public final class TripTelemetryTest {
                 2.3f,
                 2.3f,
                 2.3f,
-                9.0f,
-                instantFuel,
+                averageFuel,
+                Float.NaN,
                 14.0f,
                 20.0f,
                 0.0f,
@@ -79,7 +78,7 @@ public final class TripTelemetryTest {
                 speedKph,
                 100.0f,
                 10_000L,
-                fuelUpdatedAtMs,
+                0L,
                 journeyUpdatedAtMs,
                 10_000L,
                 10_000L,
