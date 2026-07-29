@@ -31,8 +31,6 @@ import java.util.Locale;
 public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
-    private static final float MAX_SPEED_KPH = 220.0f;
-    private static final float MAX_RPM = 8000.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
@@ -169,14 +167,11 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawNeedleLayer(Canvas canvas) {
-        float speedFraction = clamp(displayedSpeed / MAX_SPEED_KPH, 0.0f, 1.0f);
-        float rpmFraction = clamp(displayedRpm / MAX_RPM, 0.0f, 1.0f);
         float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
         float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
 
-        // Markers follow polar rays through the real elliptical scales. This keeps the
-        // value-to-angle mapping uniform instead of treating the polar angle as an
-        // ellipse parameter, which caused increasing drift after the first third.
+        // The Classic artwork has a compressed elliptical scale. Its measured major
+        // ticks provide the polar rays so the needles agree with every printed value.
         drawScaleNeedle(
                 canvas,
                 yellowNeedle,
@@ -184,7 +179,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 MAIN_DIAL_CENTER_Y,
                 260.0f,
                 MAIN_DIAL_RADIUS_Y,
-                90.0f + speedFraction * 220.0f,
+                ClassicDialCalibration.speedAngleDeg(displayedSpeed),
                 72.0f,
                 56.0f,
                 12.0f);
@@ -195,7 +190,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 MAIN_DIAL_CENTER_Y,
                 260.0f,
                 MAIN_DIAL_RADIUS_Y,
-                90.0f - rpmFraction * 220.0f,
+                ClassicDialCalibration.rpmAngleDeg(displayedRpm),
                 72.0f,
                 56.0f,
                 12.0f);
