@@ -82,7 +82,9 @@ public final class SettingsView extends View {
                 false);
         drawCenteredText(
                 canvas,
-                "Выберите тему, которая будет автоматически запускаться на дисплее 2",
+                BuildConfig.DEMO_MODE
+                        ? "Выберите тему для автономного Demo"
+                        : "Выберите тему, которая будет автоматически запускаться на дисплее 2",
                 480.0f,
                 125.0f,
                 17.0f,
@@ -114,7 +116,9 @@ public final class SettingsView extends View {
                 paint);
         drawCenteredText(
                 canvas,
-                "Сохранить и запустить на дисплее 2",
+                BuildConfig.DEMO_MODE
+                        ? "Сохранить и запустить"
+                        : "Сохранить и запустить на дисплее 2",
                 480.0f,
                 saveTop + 36.0f,
                 19.0f,
@@ -124,7 +128,9 @@ public final class SettingsView extends View {
         drawCenteredText(
                 canvas,
                 status.length() == 0
-                        ? "При автозапуске основной дисплей остаётся свободным"
+                        ? BuildConfig.DEMO_MODE
+                                ? "Demo использует только тестовые данные"
+                                : "При автозапуске основной дисплей остаётся свободным"
                         : status,
                 480.0f,
                 455.0f,
@@ -298,8 +304,12 @@ public final class SettingsView extends View {
 
     void showSaveResult(boolean launched) {
         status = launched
-                ? "Настройки сохранены и запущены на дисплее 2"
-                : "Настройки сохранены. Дисплей 2 сейчас недоступен";
+                ? BuildConfig.DEMO_MODE
+                        ? "Настройки сохранены и запущены"
+                        : "Настройки сохранены и запущены на дисплее 2"
+                : BuildConfig.DEMO_MODE
+                        ? "Настройки сохранены. Не удалось запустить Demo"
+                        : "Настройки сохранены. Дисплей 2 сейчас недоступен";
         invalidate();
     }
 

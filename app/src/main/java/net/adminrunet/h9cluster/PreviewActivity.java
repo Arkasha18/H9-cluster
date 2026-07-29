@@ -4,6 +4,7 @@ import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
 
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -18,6 +19,7 @@ import android.view.WindowManager;
 @SuppressWarnings("deprecation")
 public final class PreviewActivity extends Activity {
     public static final String EXTRA_RELOAD_SKIN = "reload_skin";
+    public static final String EXTRA_SINGLE_DISPLAY_FALLBACK = "single_display_fallback";
     public static final String EXTRA_HAS_DRAFT = "has_skin_settings_draft";
     public static final String EXTRA_DRAFT_SKIN = "draft_skin";
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
@@ -48,15 +50,20 @@ public final class PreviewActivity extends Activity {
                         | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setDimAmount(0.0f);
-        getWindow().setFormat(PixelFormat.TRANSLUCENT);
-        getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        getWindow().getDecorView().setBackgroundColor(Color.TRANSPARENT);
+        getWindow().setFormat(PreviewAppearance.usesOpaqueWindow(BuildConfig.DEMO_MODE)
+                ? PixelFormat.OPAQUE
+                : PixelFormat.TRANSLUCENT);
+        int backgroundColor = PreviewAppearance.backgroundColor(BuildConfig.DEMO_MODE);
+        getWindow().setBackgroundDrawable(new ColorDrawable(backgroundColor));
+        getWindow().getDecorView().setBackgroundColor(backgroundColor);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
         applySnapshot(resolveSnapshot(getIntent()), true);
 
-        dataSource = new GwmClusterDataSource(this);
+        dataSource = BuildConfig.DEMO_MODE
+                ? new DemoClusterDataSource(this)
+                : new GwmClusterDataSource(this);
         dataSource.start(new ClusterDataSource.Listener() {
             @Override
             public void onClusterState(ClusterState state) {
@@ -109,6 +116,16 @@ public final class PreviewActivity extends Activity {
                 snapshot.settings);
         clusterRenderer = (ClusterRenderer) rendererView;
         activeSnapshot = snapshot;
+        rendererView.setBackgroundColor(
+                PreviewAppearance.backgroundColor(BuildConfig.DEMO_MODE));
+        if (shouldReturnToSettingsOnInteraction()) {
+            rendererView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    returnToSettings();
+                }
+            });
+        }
         setContentView(rendererView);
         clusterRenderer.setClusterState(lastState);
     }
@@ -128,6 +145,16 @@ public final class PreviewActivity extends Activity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        if (shouldReturnToSettingsOnInteraction()) {
+            returnToSettings();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
@@ -137,5 +164,23 @@ public final class PreviewActivity extends Activity {
 
     private void hideSystemUi() {
         getWindow().getDecorView().setSystemUiVisibility(IMMERSIVE_FLAGS);
+    }
+
+    private boolean shouldReturnToSettingsOnInteraction() {
+        return ClusterDisplayPolicy.shouldReturnToSettingsOnInteraction(
+                BuildConfig.DEMO_MODE,
+                getIntent().getBooleanExtra(EXTRA_SINGLE_DISPLAY_FALLBACK, false));
+    }
+
+    @SuppressWarnings("deprecation")
+    private void returnToSettings() {
+        int currentDisplayId = getWindowManager().getDefaultDisplay().getDisplayId();
+        Intent settingsIntent = new Intent(this, SettingsActivity.class);
+        settingsIntent.addFlags(
+                Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        ActivityOptions options = ActivityOptions.makeBasic();
+        options.setLaunchDisplayId(currentDisplayId);
+        startActivity(settingsIntent, options.toBundle());
+        finish();
     }
 }

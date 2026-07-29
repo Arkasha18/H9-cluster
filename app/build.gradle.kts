@@ -84,9 +84,32 @@ android {
             versionNameSuffix = "-debug"
             manifestPlaceholders["bootReceiverEnabled"] = "true"
             manifestPlaceholders["fdbusProbeEnabled"] = "true"
+            buildConfigField("boolean", "DEMO_MODE", "false")
+        }
+        create("demo") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".demo"
+            versionNameSuffix = "-demo"
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            manifestPlaceholders["bootReceiverEnabled"] = "false"
+            manifestPlaceholders["fdbusProbeEnabled"] = "false"
+            buildConfigField("boolean", "DEMO_MODE", "true")
+            buildConfigField(
+                "String",
+                "TBOX_SECRET_MASK",
+                buildConfigString("")
+            )
+            buildConfigField(
+                "String",
+                "TBOX_SECRET_DATA",
+                buildConfigString("")
+            )
+            matchingFallbacks += listOf("debug")
         }
         release {
             isMinifyEnabled = false
+            buildConfigField("boolean", "DEMO_MODE", "false")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("releaseKey")
             }
