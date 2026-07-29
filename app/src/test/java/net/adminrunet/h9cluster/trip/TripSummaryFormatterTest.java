@@ -1,10 +1,49 @@
 package net.adminrunet.h9cluster.trip;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 public final class TripSummaryFormatterTest {
+    @Test
+    public void exposesDurationNumbersSeparatelyFromUnits() {
+        TripSummaryFormatter.DurationParts zero =
+                TripSummaryFormatter.durationParts(new TripSummary(
+                        0.0,
+                        false,
+                        0.0,
+                        false,
+                        0L,
+                        true));
+        assertTrue(zero.valid);
+        assertEquals(0L, zero.hours);
+        assertEquals(0L, zero.minutes);
+
+        TripSummaryFormatter.DurationParts longTrip =
+                TripSummaryFormatter.durationParts(new TripSummary(
+                        0.0,
+                        false,
+                        0.0,
+                        false,
+                        4_680_000L,
+                        true));
+        assertTrue(longTrip.valid);
+        assertEquals(1L, longTrip.hours);
+        assertEquals(18L, longTrip.minutes);
+
+        TripSummaryFormatter.DurationParts invalid =
+                TripSummaryFormatter.durationParts(new TripSummary(
+                        0.0,
+                        false,
+                        0.0,
+                        false,
+                        0L,
+                        false));
+        assertFalse(invalid.valid);
+    }
+
     @Test
     public void formatsValidMetricsForTheCluster() {
         TripSummary summary = new TripSummary(
@@ -40,6 +79,32 @@ public final class TripSummaryFormatterTest {
                         false,
                         0L,
                         true)));
+    }
+
+    @Test
+    public void formatsFuelUsedWithIndependentValidity() {
+        assertEquals(
+                "0.03",
+                TripSummaryFormatter.fuelUsed(new TripSummary(
+                        0.0,
+                        false,
+                        0.0,
+                        false,
+                        0L,
+                        false,
+                        0.026,
+                        true)));
+        assertEquals(
+                "—",
+                TripSummaryFormatter.fuelUsed(new TripSummary(
+                        0.0,
+                        false,
+                        0.0,
+                        false,
+                        0L,
+                        false,
+                        Double.NaN,
+                        false)));
     }
 
     @Test

@@ -19,6 +19,10 @@ public final class TripSessionStore implements TripSessionPersistence {
     private static final String KEY_LAST_SPEED = "last_speed";
     private static final String KEY_FUEL_RELIABLE = "fuel_reliable";
     private static final String KEY_HAS_FUEL_INTERVAL = "has_fuel_interval";
+    private static final String KEY_LAST_AVERAGE_FUEL =
+            "last_average_fuel";
+    private static final String KEY_LAST_AVERAGE_FUEL_VALID =
+            "last_average_fuel_valid";
 
     private final SharedPreferences preferences;
 
@@ -46,7 +50,11 @@ public final class TripSessionStore implements TripSessionPersistence {
                 preferences.getBoolean(KEY_LAST_FUEL_VALID, false),
                 preferences.getInt(KEY_LAST_SPEED, 0),
                 preferences.getBoolean(KEY_FUEL_RELIABLE, false),
-                preferences.getBoolean(KEY_HAS_FUEL_INTERVAL, false));
+                preferences.getBoolean(KEY_HAS_FUEL_INTERVAL, false),
+                decodeFloat(KEY_LAST_AVERAGE_FUEL),
+                preferences.getBoolean(
+                        KEY_LAST_AVERAGE_FUEL_VALID,
+                        false));
         TripSession normalized =
                 TripSessionNormalizer.normalize(decoded, nowMs);
         if (normalized == null) {
@@ -105,7 +113,14 @@ public final class TripSessionStore implements TripSessionPersistence {
                 .putBoolean(KEY_FUEL_RELIABLE, session.fuelReliable)
                 .putBoolean(
                         KEY_HAS_FUEL_INTERVAL,
-                        session.hasFuelInterval);
+                        session.hasFuelInterval)
+                .putInt(
+                        KEY_LAST_AVERAGE_FUEL,
+                        Float.floatToRawIntBits(
+                                session.lastAverageFuelConsumption))
+                .putBoolean(
+                        KEY_LAST_AVERAGE_FUEL_VALID,
+                        session.lastAverageFuelConsumptionValid);
     }
 
     private double decodeDouble(String key) {

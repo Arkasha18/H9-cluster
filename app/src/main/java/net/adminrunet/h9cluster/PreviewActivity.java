@@ -6,6 +6,8 @@ import net.adminrunet.h9cluster.trip.DemoSpeedometerHotspot;
 import net.adminrunet.h9cluster.trip.TripSessionStore;
 import net.adminrunet.h9cluster.trip.TripSummary;
 import net.adminrunet.h9cluster.trip.TripSummaryCoordinator;
+import net.adminrunet.h9cluster.trip.TripSummaryLayerState;
+import net.adminrunet.h9cluster.trip.TripSummaryLayerStore;
 import net.adminrunet.h9cluster.trip.TripSummaryView;
 import net.adminrunet.h9cluster.trip.TripTelemetry;
 import net.adminrunet.h9cluster.trip.TripTelemetryDiagnostics;
@@ -17,6 +19,8 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -37,6 +41,7 @@ public final class PreviewActivity extends Activity {
             "demo_invalid_consumption";
     private static final String TAG = "H9Cluster";
     private static final String TRIP_TELEMETRY_TAG = "H9TripTelemetry";
+    private static final long TRIP_HEARTBEAT_MS = 500L;
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -46,13 +51,27 @@ public final class PreviewActivity extends Activity {
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
 
     private ClusterRenderer clusterRenderer;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private View rendererView;
+    private TripSummaryView tripSummaryView;
+    private TripSummaryLayerState tripSummaryLayers;
+    private TripSummaryLayerStore tripSummaryLayerStore;
     private FrameLayout rootView;
     private SkinSettingsSession.Snapshot activeSnapshot;
     private ClusterDataSource dataSource;
     private TripSummaryCoordinator tripCoordinator;
     private ClusterState lastState = ClusterState.empty();
     private long lastTripTelemetryLogAtMs = -1L;
+    private final Runnable tripHeartbeat = new Runnable() {
+        @Override
+        public void run() {
+            if (tripCoordinator == null) {
+                return;
+            }
+            tripCoordinator.onClockTick();
+            mainHandler.postDelayed(this, TRIP_HEARTBEAT_MS);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,11 +98,27 @@ public final class PreviewActivity extends Activity {
         rootView = new FrameLayout(this);
         rootView.setBackgroundColor(backgroundColor);
         setContentView(rootView);
+        tripSummaryLayerStore = new TripSummaryLayerStore(this);
+        tripSummaryLayers = new TripSummaryLayerState(
+                tripSummaryLayerStore.isRendererSuppressed());
         applySnapshot(resolveSnapshot(getIntent()), true);
 
         tripCoordinator = new TripSummaryCoordinator(
                 new TripSessionStore(this),
                 new TripSummaryCoordinator.Listener() {
+                    @Override
+                    public void onEngineStartSignal() {
+                        tripSummaryLayers.onSummaryDismissed();
+                        removeTripSummary();
+                    }
+
+                    @Override
+                    public void onEngineStarted() {
+                        tripSummaryLayerStore.setRendererSuppressed(false);
+                        tripSummaryLayers.onEngineStarted();
+                        syncRendererVisibility();
+                    }
+
                     @Override
                     public void onTripSummary(TripSummary summary) {
                         showTripSummary(summary);
@@ -109,6 +144,7 @@ public final class PreviewActivity extends Activity {
                 tripCoordinator.onClusterState(state);
             }
         });
+        mainHandler.postDelayed(tripHeartbeat, TRIP_HEARTBEAT_MS);
         hideSystemUi();
     }
 
@@ -160,12 +196,7 @@ public final class PreviewActivity extends Activity {
             rootView.removeView(rendererView);
         }
         rendererView = replacement;
-        rootView.addView(
-                rendererView,
-                0,
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT));
+        syncRendererVisibility();
         clusterRenderer.setClusterState(lastState);
     }
 
@@ -199,7 +230,24 @@ public final class PreviewActivity extends Activity {
     }
 
     private void showTripSummary(TripSummary summary) {
-        TripSummaryView summaryView = new TripSummaryView(this, summary);
+        removeTripSummary();
+        tripSummaryLayerStore.setRendererSuppressed(true);
+        tripSummaryLayers.onSummaryShown();
+        syncRendererVisibility();
+        final TripSummaryView summaryView =
+                new TripSummaryView(this, summary);
+        tripSummaryView = summaryView;
+        summaryView.setOnDismissListener(
+                new TripSummaryView.OnDismissListener() {
+                    @Override
+                    public void onDismiss() {
+                        if (tripSummaryView == summaryView) {
+                            tripSummaryLayers.onSummaryDismissed();
+                            removeTripSummary();
+                            syncRendererVisibility();
+                        }
+                    }
+                });
         if (BuildConfig.DEMO_MODE) {
             summaryView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -215,6 +263,32 @@ public final class PreviewActivity extends Activity {
                         FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
+    private void removeTripSummary() {
+        if (tripSummaryView == null) {
+            return;
+        }
+        rootView.removeView(tripSummaryView);
+        tripSummaryView = null;
+    }
+
+    private void syncRendererVisibility() {
+        if (rendererView == null) {
+            return;
+        }
+        if (tripSummaryLayers.isRendererVisible()) {
+            if (rendererView.getParent() == null) {
+                rootView.addView(
+                        rendererView,
+                        0,
+                        new FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                                FrameLayout.LayoutParams.MATCH_PARENT));
+            }
+        } else if (rendererView.getParent() == rootView) {
+            rootView.removeView(rendererView);
+        }
+    }
+
     private void logTripTelemetryIfDue(ClusterState state) {
         long nowMs = SystemClock.elapsedRealtime();
         if (!TripTelemetryDiagnostics.shouldLog(
@@ -227,7 +301,9 @@ public final class PreviewActivity extends Activity {
                 TRIP_TELEMETRY_TAG,
                 TripTelemetryDiagnostics.format(
                         telemetry,
-                        telemetry.journeyOdometerKm));
+                        telemetry.journeyOdometerKm,
+                        state.rpm,
+                        state.rpmUpdatedAtMs));
         lastTripTelemetryLogAtMs = nowMs;
     }
 
@@ -239,6 +315,7 @@ public final class PreviewActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        mainHandler.removeCallbacks(tripHeartbeat);
         if (tripCoordinator != null) {
             tripCoordinator.flush();
         }

@@ -6,10 +6,11 @@ public final class EngineRunDetector {
     private static final int STOP_RPM = 50;
     private static final long RPM_FRESH_MS = 1_000L;
     private static final long START_HOLD_MS = 1_000L;
-    private static final long STOP_HOLD_MS = 2_500L;
+    private static final long STOP_HOLD_MS = 1_500L;
 
     public enum Event {
         NONE,
+        STARTING,
         STARTED,
         STOPPED
     }
@@ -33,16 +34,21 @@ public final class EngineRunDetector {
             int speedKph,
             long rpmUpdatedAtMs,
             long nowMs) {
-        boolean freshRpm = rpmUpdatedAtMs > 0L
-                && nowMs >= rpmUpdatedAtMs
+        boolean observedRpm =
+                rpmUpdatedAtMs > 0L && nowMs >= rpmUpdatedAtMs;
+        boolean freshRpm = observedRpm
                 && nowMs - rpmUpdatedAtMs <= RPM_FRESH_MS;
+        boolean silentRpm = observedRpm
+                && nowMs - rpmUpdatedAtMs > RPM_FRESH_MS;
         boolean startCondition = freshRpm && rpm >= START_RPM;
-        boolean stopCondition = freshRpm && rpm <= STOP_RPM && speedKph == 0;
+        boolean stopCondition = speedKph == 0
+                && ((freshRpm && rpm <= STOP_RPM) || silentRpm);
 
         switch (state) {
             case OFF:
                 if (startCondition) {
                     beginCandidate(State.STARTING, nowMs);
+                    return Event.STARTING;
                 }
                 return Event.NONE;
             case STARTING:

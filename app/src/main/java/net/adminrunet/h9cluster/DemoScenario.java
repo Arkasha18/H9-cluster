@@ -64,7 +64,9 @@ final class DemoScenario {
                 2.37f + 0.02f * sin(seconds / 3.0f + 0.5f),
                 2.42f + 0.02f * sin(seconds / 3.0f + 1.0f),
                 2.40f + 0.02f * sin(seconds / 3.0f + 1.5f),
-                9.2f + 1.4f * sin(seconds / 2.0f),
+                invalidConsumption
+                        ? Float.NaN
+                        : 9.2f + 1.4f * sin(seconds / 2.0f),
                 invalidConsumption
                         ? Float.NaN
                         : speed <= 0.1f

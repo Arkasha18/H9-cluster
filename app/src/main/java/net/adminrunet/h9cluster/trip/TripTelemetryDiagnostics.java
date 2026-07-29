@@ -11,14 +11,27 @@ public final class TripTelemetryDiagnostics {
 
     public static String format(
             TripTelemetry telemetry,
-            double convertedJourneyKm) {
+            double convertedJourneyKm,
+            int rpm,
+            long rpmUpdatedAtMs) {
+        long rpmAgeMs = rpmUpdatedAtMs > 0L
+                && telemetry.capturedAtMs >= rpmUpdatedAtMs
+                ? telemetry.capturedAtMs - rpmUpdatedAtMs
+                : -1L;
         return String.format(
                 Locale.US,
                 "journeyRaw=%.3f journeyKm=%.3f "
-                        + "instantFuelRaw=%.3f speedKph=%d elapsedMs=%d",
+                        + "instantFuelRaw=%.3f "
+                        + "averageFuelRaw=%.3f averageFuelValid=%s "
+                        + "rpmRaw=%d rpmAgeMs=%d "
+                        + "speedKph=%d elapsedMs=%d",
                 telemetry.rawJourneyOdometer,
                 convertedJourneyKm,
                 telemetry.instantFuelConsumption,
+                telemetry.averageFuelConsumption,
+                telemetry.averageFuelConsumptionValid,
+                rpm,
+                rpmAgeMs,
                 telemetry.speedKph,
                 telemetry.capturedAtMs);
     }

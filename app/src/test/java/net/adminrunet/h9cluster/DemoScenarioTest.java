@@ -179,6 +179,7 @@ public final class DemoScenarioTest {
         ClusterState state = scenario.snapshot(12_000L, 20_000L, true);
 
         assertTrue(Float.isNaN(state.instantFuelConsumption));
+        assertTrue(Float.isNaN(state.consumptionLitersPer100Km));
         assertTrue(state.dayKm > 0.0f);
         assertEquals(20_000L, state.instantFuelConsumptionUpdatedAtMs);
     }

@@ -53,6 +53,15 @@ public final class TripSessionNormalizer {
                 && speedValid;
         boolean hasFuelInterval =
                 candidate.hasFuelInterval && fuelReliable;
+        boolean averageFuelFinite =
+                Float.isFinite(candidate.lastAverageFuelConsumption)
+                        && candidate.lastAverageFuelConsumption > 0.0f;
+        boolean averageFuelValid =
+                candidate.lastAverageFuelConsumptionValid
+                        && averageFuelFinite;
+        float averageFuel = averageFuelFinite
+                ? candidate.lastAverageFuelConsumption
+                : Float.NaN;
 
         return new TripSession(
                 true,
@@ -67,7 +76,9 @@ public final class TripSessionNormalizer {
                 fuelSampleValid,
                 speedKph,
                 fuelReliable,
-                hasFuelInterval);
+                hasFuelInterval,
+                averageFuel,
+                averageFuelValid);
     }
 
     private static boolean isFiniteNonNegative(double value) {

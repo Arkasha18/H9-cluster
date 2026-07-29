@@ -154,7 +154,7 @@ public final class DemoClusterDataSourceTest {
     }
 
     @Test
-    public void stopRequestUsesRealTwoAndHalfSecondCoordinatorHold() {
+    public void stopRequestUsesRealOneAndHalfSecondCoordinatorHold() {
         FakeClock clock = new FakeClock(1_000L);
         FakeScheduler scheduler = new FakeScheduler();
         DemoClusterDataSource source = new DemoClusterDataSource(
@@ -175,11 +175,11 @@ public final class DemoClusterDataSourceTest {
 
         assertTrue(source.requestEngineStop());
         scheduler.runDelayed();
-        clock.nowMs = 4_499L;
+        clock.nowMs = 3_499L;
         scheduler.runDelayed();
         assertTrue(summaries.isEmpty());
 
-        clock.nowMs = 4_500L;
+        clock.nowMs = 3_500L;
         scheduler.runDelayed();
         assertEquals(1, summaries.size());
     }
@@ -198,6 +198,8 @@ public final class DemoClusterDataSourceTest {
         scheduler.runImmediate();
 
         assertTrue(Float.isNaN(received.get(0).instantFuelConsumption));
+        assertTrue(Float.isNaN(
+                received.get(0).consumptionLitersPer100Km));
         assertTrue(received.get(0).dayKm > 0.0f);
     }
 

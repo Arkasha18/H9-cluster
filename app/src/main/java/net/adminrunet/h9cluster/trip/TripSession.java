@@ -15,6 +15,8 @@ public final class TripSession {
     public final int lastSpeedKph;
     public final boolean fuelReliable;
     public final boolean hasFuelInterval;
+    public final float lastAverageFuelConsumption;
+    public final boolean lastAverageFuelConsumptionValid;
 
     public TripSession(
             boolean active,
@@ -30,6 +32,40 @@ public final class TripSession {
             int lastSpeedKph,
             boolean fuelReliable,
             boolean hasFuelInterval) {
+        this(
+                active,
+                startedAtMs,
+                lastUpdatedAtMs,
+                distanceKm,
+                lastJourneyOdometerKm,
+                lastJourneyOdometerValid,
+                distanceValid,
+                fuelLiters,
+                lastFuelConsumption,
+                lastFuelConsumptionValid,
+                lastSpeedKph,
+                fuelReliable,
+                hasFuelInterval,
+                Float.NaN,
+                false);
+    }
+
+    public TripSession(
+            boolean active,
+            long startedAtMs,
+            long lastUpdatedAtMs,
+            double distanceKm,
+            double lastJourneyOdometerKm,
+            boolean lastJourneyOdometerValid,
+            boolean distanceValid,
+            double fuelLiters,
+            float lastFuelConsumption,
+            boolean lastFuelConsumptionValid,
+            int lastSpeedKph,
+            boolean fuelReliable,
+            boolean hasFuelInterval,
+            float lastAverageFuelConsumption,
+            boolean lastAverageFuelConsumptionValid) {
         this.active = active;
         this.startedAtMs = startedAtMs;
         this.lastUpdatedAtMs = lastUpdatedAtMs;
@@ -43,5 +79,8 @@ public final class TripSession {
         this.lastSpeedKph = lastSpeedKph;
         this.fuelReliable = fuelReliable;
         this.hasFuelInterval = hasFuelInterval;
+        this.lastAverageFuelConsumption = lastAverageFuelConsumption;
+        this.lastAverageFuelConsumptionValid =
+                lastAverageFuelConsumptionValid;
     }
 }

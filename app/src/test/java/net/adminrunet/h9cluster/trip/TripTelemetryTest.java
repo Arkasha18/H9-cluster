@@ -23,13 +23,17 @@ public final class TripTelemetryTest {
     }
 
     @Test
-    public void rejectsStaleFutureAndNonFiniteValuesIndependently() {
-        TripTelemetry staleJourney = TripTelemetry.from(
-                state(0, 42.75f, 8_499L, 8.4f, 9_000L),
-                10_000L);
-        assertFalse(staleJourney.journeyOdometerValid);
-        assertTrue(staleJourney.instantFuelConsumptionValid);
+    public void keepsObservedJourneyOdometerValidWhileValueIsUnchanged() {
+        TripTelemetry telemetry = TripTelemetry.from(
+                state(0, 42.75f, 1_000L, 8.4f, 19_000L),
+                20_000L);
 
+        assertTrue(telemetry.journeyOdometerValid);
+        assertTrue(telemetry.instantFuelConsumptionValid);
+    }
+
+    @Test
+    public void rejectsFutureAndNonFiniteValuesIndependently() {
         TripTelemetry futureFuel = TripTelemetry.from(
                 state(0, 42.75f, 9_000L, 8.4f, 10_001L),
                 10_000L);

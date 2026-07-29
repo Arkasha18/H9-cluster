@@ -11,6 +11,12 @@ public final class TripSummaryCoordinator {
     }
 
     public interface Listener {
+        default void onEngineStartSignal() {
+        }
+
+        default void onEngineStarted() {
+        }
+
         void onTripSummary(TripSummary summary);
     }
 
@@ -20,6 +26,8 @@ public final class TripSummaryCoordinator {
     private final EngineRunDetector detector;
 
     private TripAccumulator accumulator;
+    private ClusterState lastState;
+    private TripSummary pendingSummary;
     private long lastPersistedAtMs;
 
     public TripSummaryCoordinator(
@@ -38,6 +46,22 @@ public final class TripSummaryCoordinator {
     }
 
     public void onClusterState(ClusterState state) {
+        lastState = state;
+        processState(state);
+    }
+
+    public void onClockTick() {
+        if (lastState != null) {
+            processState(lastState);
+        }
+    }
+
+    private void processState(ClusterState state) {
+        if (pendingSummary != null) {
+            completePendingSummary();
+            return;
+        }
+
         long nowMs = clock.nowMs();
         EngineRunDetector.Event event = detector.update(
                 state.rpm,
@@ -46,7 +70,13 @@ public final class TripSummaryCoordinator {
                 nowMs);
         TripTelemetry telemetry = TripTelemetry.from(state, nowMs);
 
+        if (event == EngineRunDetector.Event.STARTING) {
+            listener.onEngineStartSignal();
+            return;
+        }
+
         if (event == EngineRunDetector.Event.STARTED) {
+            listener.onEngineStarted();
             accumulator = TripAccumulator.start(nowMs);
             accumulator.update(telemetry);
             persistence.saveSync(accumulator.snapshot());
@@ -60,10 +90,8 @@ public final class TripSummaryCoordinator {
 
         accumulator.update(telemetry);
         if (event == EngineRunDetector.Event.STOPPED) {
-            TripSummary summary = accumulator.finish(nowMs);
-            persistence.clearSync();
-            accumulator = null;
-            listener.onTripSummary(summary);
+            pendingSummary = accumulator.finish(nowMs);
+            completePendingSummary();
             return;
         }
 
@@ -75,6 +103,10 @@ public final class TripSummaryCoordinator {
     }
 
     public void flush() {
+        if (pendingSummary != null) {
+            completePendingSummary();
+            return;
+        }
         if (accumulator != null) {
             persistence.saveSync(accumulator.snapshot());
             lastPersistedAtMs = clock.nowMs();
@@ -83,5 +115,15 @@ public final class TripSummaryCoordinator {
 
     public boolean isTripActive() {
         return accumulator != null;
+    }
+
+    private void completePendingSummary() {
+        if (pendingSummary == null || !persistence.clearSync()) {
+            return;
+        }
+        TripSummary summary = pendingSummary;
+        pendingSummary = null;
+        accumulator = null;
+        listener.onTripSummary(summary);
     }
 }

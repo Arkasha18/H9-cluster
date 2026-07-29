@@ -17,16 +17,24 @@ public final class TripTelemetryDiagnosticsTest {
                 42.3,
                 true,
                 9.1f,
+                true,
+                8.7f,
                 true);
 
         String line = TripTelemetryDiagnostics.format(
                 telemetry,
-                telemetry.journeyOdometerKm);
+                telemetry.journeyOdometerKm,
+                800,
+                12_000L);
         String normalized = line.toLowerCase(Locale.US);
 
         assertTrue(line.contains("journeyRaw=42.300"));
         assertTrue(line.contains("journeyKm=42.300"));
         assertTrue(line.contains("instantFuelRaw=9.100"));
+        assertTrue(line.contains("averageFuelRaw=8.700"));
+        assertTrue(line.contains("averageFuelValid=true"));
+        assertTrue(line.contains("rpmRaw=800"));
+        assertTrue(line.contains("rpmAgeMs=345"));
         assertTrue(line.contains("speedKph=60"));
         assertTrue(line.contains("elapsedMs=12345"));
         assertFalse(normalized.contains("vin"));

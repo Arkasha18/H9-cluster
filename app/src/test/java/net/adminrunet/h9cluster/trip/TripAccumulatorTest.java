@@ -63,18 +63,104 @@ public final class TripAccumulatorTest {
         idle.update(telemetry(3_600L, 0, 10.0, true, 1.0f, true));
 
         assertEquals(0.001, idle.snapshot().fuelLiters, 0.0001);
+        TripSummary idleSummary = idle.finish(3_600L);
+        assertFalse(idleSummary.consumptionValid);
+        assertTrue(idleSummary.fuelUsedValid);
+        assertEquals(0.001, idleSummary.fuelUsedLiters, 0.0001);
+    }
+
+    @Test
+    public void attributesIntervalToPreviousMovingSample() {
+        TripAccumulator accumulator = TripAccumulator.start(0L);
+        accumulator.update(telemetry(0L, 60, 10.0, true, 10.0f, true));
+        accumulator.update(telemetry(6_000L, 0, 10.1, true, 1.0f, true));
+
+        assertEquals(0.01, accumulator.snapshot().fuelLiters, 0.0001);
+    }
+
+    @Test
+    public void attributesIntervalToPreviousIdleSample() {
+        TripAccumulator accumulator = TripAccumulator.start(0L);
+        accumulator.update(telemetry(0L, 0, 10.0, true, 1.0f, true));
+        accumulator.update(telemetry(3_600L, 60, 10.0, true, 10.0f, true));
+
+        assertEquals(0.001, accumulator.snapshot().fuelLiters, 0.0001);
     }
 
     @Test
     public void staleConsumptionInvalidatesOnlyConsumptionMetric() {
         TripAccumulator accumulator = TripAccumulator.start(1_000L);
-        accumulator.update(telemetry(1_000L, 60, 10.0, true, 10.0f, true));
-        accumulator.update(telemetry(2_000L, 60, 10.2, true, 0.0f, false));
+        accumulator.update(telemetry(1_000L, 60, 10.0, true, 10.0f, false));
+        accumulator.update(telemetry(2_000L, 60, 10.2, true, 10.0f, true));
 
         TripSummary summary = accumulator.finish(3_000L);
         assertTrue(summary.distanceValid);
         assertFalse(summary.consumptionValid);
+        assertFalse(summary.fuelUsedValid);
         assertTrue(summary.durationValid);
+    }
+
+    @Test
+    public void fallsBackToTripAverageWhenInstantConsumptionIsUnavailable() {
+        TripAccumulator accumulator = TripAccumulator.start(1_000L);
+        accumulator.update(telemetry(
+                1_000L, 60, 10.0, true, Float.NaN, false, 8.0f, true));
+        accumulator.update(telemetry(
+                2_000L, 60, 10.5, true, Float.NaN, false, 8.0f, true));
+
+        TripSummary summary = accumulator.finish(3_000L);
+        assertTrue(summary.distanceValid);
+        assertTrue(summary.fuelUsedValid);
+        assertEquals(0.04, summary.fuelUsedLiters, 0.0001);
+        assertTrue(summary.consumptionValid);
+        assertEquals(
+                8.0,
+                summary.averageConsumptionLitersPer100Km,
+                0.0001);
+    }
+
+    @Test
+    public void doesNotUseInvalidTripAverageAsFuelFallback() {
+        TripAccumulator accumulator = TripAccumulator.start(1_000L);
+        accumulator.update(telemetry(
+                1_000L, 60, 10.0, true, Float.NaN, false, 0.0f, false));
+        accumulator.update(telemetry(
+                2_000L, 60, 10.5, true, Float.NaN, false, Float.NaN, false));
+
+        TripSummary summary = accumulator.finish(3_000L);
+        assertFalse(summary.fuelUsedValid);
+        assertFalse(summary.consumptionValid);
+    }
+
+    @Test
+    public void prefersReliableInstantConsumptionOverTripAverage() {
+        TripAccumulator accumulator = TripAccumulator.start(0L);
+        accumulator.update(telemetry(
+                0L, 60, 10.0, true, 10.0f, true, 8.0f, true));
+        accumulator.update(telemetry(
+                30_000L, 60, 10.5, true, 10.0f, true, 8.0f, true));
+
+        TripSummary summary = accumulator.finish(30_000L);
+        assertEquals(0.05, summary.fuelUsedLiters, 0.0001);
+        assertEquals(
+                10.0,
+                summary.averageConsumptionLitersPer100Km,
+                0.0001);
+    }
+
+    @Test
+    public void snapshotRestoreKeepsTripAverageFallback() {
+        TripAccumulator original = TripAccumulator.start(1_000L);
+        original.update(telemetry(
+                1_000L, 60, 10.0, true, Float.NaN, false, 8.0f, true));
+
+        TripAccumulator restored = TripAccumulator.restore(original.snapshot());
+        restored.update(telemetry(
+                2_000L, 60, 10.5, true, Float.NaN, false, Float.NaN, false));
+
+        TripSummary summary = restored.finish(3_000L);
+        assertTrue(summary.fuelUsedValid);
+        assertEquals(0.04, summary.fuelUsedLiters, 0.0001);
     }
 
     @Test
@@ -125,5 +211,25 @@ public final class TripAccumulatorTest {
                 journeyOdometerValid,
                 instantFuelConsumption,
                 instantFuelConsumptionValid);
+    }
+
+    private static TripTelemetry telemetry(
+            long capturedAtMs,
+            int speedKph,
+            double journeyOdometerKm,
+            boolean journeyOdometerValid,
+            float instantFuelConsumption,
+            boolean instantFuelConsumptionValid,
+            float averageFuelConsumption,
+            boolean averageFuelConsumptionValid) {
+        return new TripTelemetry(
+                capturedAtMs,
+                speedKph,
+                journeyOdometerKm,
+                journeyOdometerValid,
+                instantFuelConsumption,
+                instantFuelConsumptionValid,
+                averageFuelConsumption,
+                averageFuelConsumptionValid);
     }
 }

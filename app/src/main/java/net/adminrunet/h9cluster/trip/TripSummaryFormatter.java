@@ -28,14 +28,42 @@ public final class TripSummaryFormatter {
                 : INVALID;
     }
 
+    public static String fuelUsed(TripSummary summary) {
+        return summary.fuelUsedValid
+                        && Double.isFinite(summary.fuelUsedLiters)
+                ? String.format(Locale.US, "%.2f", summary.fuelUsedLiters)
+                : INVALID;
+    }
+
     public static String duration(TripSummary summary) {
-        if (!summary.durationValid || summary.durationMs < 0L) {
+        DurationParts parts = durationParts(summary);
+        if (!parts.valid) {
             return INVALID;
         }
-        long hours = summary.durationMs / HOUR_MS;
-        long minutes = summary.durationMs % HOUR_MS / MINUTE_MS;
-        return hours > 0L
-                ? hours + " ч " + minutes + " мин"
-                : minutes + " мин";
+        return parts.hours > 0L
+                ? parts.hours + " ч " + parts.minutes + " мин"
+                : parts.minutes + " мин";
+    }
+
+    public static DurationParts durationParts(TripSummary summary) {
+        if (!summary.durationValid || summary.durationMs < 0L) {
+            return new DurationParts(false, 0L, 0L);
+        }
+        return new DurationParts(
+                true,
+                summary.durationMs / HOUR_MS,
+                summary.durationMs % HOUR_MS / MINUTE_MS);
+    }
+
+    public static final class DurationParts {
+        public final boolean valid;
+        public final long hours;
+        public final long minutes;
+
+        private DurationParts(boolean valid, long hours, long minutes) {
+            this.valid = valid;
+            this.hours = hours;
+            this.minutes = minutes;
+        }
     }
 }
