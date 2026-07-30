@@ -32,8 +32,8 @@ final class SimpleRedBackground {
             Canvas canvas,
             Paint paint,
             boolean demoMode) {
-        float start = SimpleRedLayout.tachBackdropStartAngle();
-        float end = SimpleRedLayout.tachBackdropEndAngle();
+        float start = SimpleRedLayout.tachBackdropStartLength();
+        float end = SimpleRedLayout.tachBackdropEndLength();
         Path sector = new Path();
         appendSweep(
                 sector,
@@ -60,23 +60,23 @@ final class SimpleRedBackground {
     }
 
     /**
-     * Walks the gauge outline between two angles, sampling it because the
-     * stretch makes it something Canvas cannot draw as an arc. Starts a
-     * contour on an empty path and continues one otherwise, so a sector
-     * is two calls and a stroked arc is one.
+     * Walks the gauge outline between two distances along it, sampling
+     * it because the insert makes it something Canvas cannot draw as an
+     * arc. Starts a contour on an empty path and continues one
+     * otherwise, so a sector is two calls and a stroked arc is one.
      */
     private static void appendSweep(
             Path path,
             float radius,
-            float startAngle,
-            float endAngle,
+            float startLength,
+            float endLength,
             boolean rightGauge) {
-        int segments = SimpleRedLayout.pathSegments(startAngle, endAngle);
+        int segments = SimpleRedLayout.pathSegments(startLength, endLength);
         for (int index = 0; index <= segments; index++) {
-            float angle = startAngle
-                    + (endAngle - startAngle) * index / segments;
-            float x = SimpleRedLayout.pointXAt(angle, radius, rightGauge);
-            float y = SimpleRedLayout.pointYAt(angle, radius);
+            float along = startLength
+                    + (endLength - startLength) * index / segments;
+            float x = SimpleRedLayout.pointXAt(along, radius, rightGauge);
+            float y = SimpleRedLayout.pointYAt(along, radius);
             if (index == 0 && path.isEmpty()) {
                 path.moveTo(x, y);
             } else {
@@ -134,8 +134,8 @@ final class SimpleRedBackground {
         appendSweep(
                 arc,
                 radius,
-                SimpleRedLayout.SCALE_START_ANGLE_RADIANS,
-                SimpleRedLayout.SCALE_END_ANGLE_RADIANS,
+                0.0f,
+                SimpleRedLayout.SCALE_TOTAL_LENGTH,
                 rightGauge);
         canvas.drawPath(arc, paint);
     }

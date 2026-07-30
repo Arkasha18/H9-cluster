@@ -25,22 +25,35 @@ final class SimpleRedLayout {
     static final float SCALE_END_ANGLE_RADIANS =
             SCALE_START_ANGLE_RADIANS + SCALE_SWEEP_ANGLE_RADIANS;
     /**
-     * How far the inner half of a gauge is pulled towards the middle of
-     * the screen, in pixels at its widest. The speedometer stretches
-     * right and the tachometer left, so the pair reads as one shape and
-     * its mirror rather than as two arcs leaning the same way.
-     *
-     * <p>The offset follows {@code max(0, ±cos angle)²}. Squared rather
-     * than linear because a linear ramp turns the tangent by
-     * {@code atan(SCALE_STRETCH_X / GAUGE_RADIUS)} in a single step at
-     * the vertical, which shows up as a crease on a 3px stroke; squaring
-     * leaves the slope at zero on both sides of it.</p>
-     *
-     * <p>It does not scale with the radius, so every layer of a gauge
-     * moves by the same amount and the ring keeps its thickness.</p>
+     * The scale is a circle cut open at its top and pulled apart, so it
+     * runs arc, horizontal insert, arc. The cut sits at the top of the
+     * circle because that is the one place the tangent is already
+     * horizontal, and so the only place a horizontal insert meets both
+     * arcs without a corner. With the 20° tilt it lands at 78 km/h.
      */
-    static final float SCALE_STRETCH_X = 24.0f;
-    /** Segments per full sweep when sampling the scale into a Path. */
+    static final float SCALE_SPLIT_ANGLE_RADIANS =
+            (float) (Math.PI * 0.5);
+    /**
+     * Length of the insert, in pixels. The speedometer pulls its far
+     * half right and the tachometer pulls its near half left, so the
+     * pair reads as one shape and its mirror.
+     *
+     * <p>The insert is the same length at every radius, so each layer of
+     * a gauge is displaced equally and the ring keeps its thickness.</p>
+     */
+    static final float SCALE_STRETCH_X = 54.0f;
+    /** Outline before the cut, and the circular remainder after it. */
+    static final float SCALE_LEADING_LENGTH =
+            (SCALE_SPLIT_ANGLE_RADIANS - SCALE_START_ANGLE_RADIANS)
+                    * GAUGE_RADIUS;
+    static final float SCALE_TRAILING_LENGTH =
+            (SCALE_END_ANGLE_RADIANS - SCALE_SPLIT_ANGLE_RADIANS)
+                    * GAUGE_RADIUS;
+    static final float SCALE_TOTAL_LENGTH =
+            SCALE_LEADING_LENGTH
+                    + SCALE_STRETCH_X
+                    + SCALE_TRAILING_LENGTH;
+    /** Segments per full outline when sampling the scale into a Path. */
     static final int SCALE_PATH_SEGMENTS = 96;
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
     static final float SCALE_LABEL_TEXT_SIZE = 28.0f;
@@ -170,12 +183,13 @@ final class SimpleRedLayout {
     }
 
     /** Start of the backdrop sector, padded past the start of the scale. */
-    static float tachBackdropStartAngle() {
-        return SCALE_START_ANGLE_RADIANS - TACH_BACKDROP_PADDING_RADIANS;
+    static float tachBackdropStartLength() {
+        return -TACH_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
     }
 
-    static float tachBackdropEndAngle() {
-        return SCALE_END_ANGLE_RADIANS + TACH_BACKDROP_PADDING_RADIANS;
+    static float tachBackdropEndLength() {
+        return SCALE_TOTAL_LENGTH
+                + TACH_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
     }
 
     /** Labelled intervals on a gauge, which are also its major ticks. */
@@ -198,54 +212,77 @@ final class SimpleRedLayout {
     }
 
     /**
-     * Sideways offset the stretch adds at a scale angle. Zero across the
-     * half facing away from the middle of the screen, rising to
-     * SCALE_STRETCH_X at the horizontal. Positive moves right, so it
-     * comes back negative for the tachometer.
+     * Angle reached after travelling this far along the outline. The
+     * insert holds it at the cut, which is what flattens the top: the
+     * outline advances while the angle stands still.
      */
-    static float stretchOffsetAt(float angleRadians, boolean rightGauge) {
-        float cosine = (float) Math.cos(angleRadians);
-        float inward = rightGauge ? cosine : -cosine;
-        if (inward <= 0.0f) {
-            return 0.0f;
+    static float angleAtLength(float lengthAlong) {
+        if (lengthAlong <= SCALE_LEADING_LENGTH) {
+            return SCALE_START_ANGLE_RADIANS
+                    + lengthAlong / GAUGE_RADIUS;
         }
-        float offset = SCALE_STRETCH_X * inward * inward;
-        return rightGauge ? -offset : offset;
+        float past = lengthAlong
+                - SCALE_LEADING_LENGTH
+                - SCALE_STRETCH_X;
+        if (past <= 0.0f) {
+            return SCALE_SPLIT_ANGLE_RADIANS;
+        }
+        return SCALE_SPLIT_ANGLE_RADIANS + past / GAUGE_RADIUS;
     }
 
     /**
-     * A point on a gauge at a raw angle. Drawing code samples paths by
-     * angle rather than by scale fraction, because the tachometer
-     * backdrop runs past both ends of the scale.
+     * How far the outline has been pulled sideways by this point. It
+     * stands at zero along the first arc, walks across the insert, and
+     * holds at SCALE_STRETCH_X along the second. The tachometer runs the
+     * same walk shifted, so it arrives at zero rather than leaving it.
+     */
+    static float stretchOffsetAtLength(
+            float lengthAlong,
+            boolean rightGauge) {
+        float travelled = clamp(
+                lengthAlong - SCALE_LEADING_LENGTH,
+                0.0f,
+                SCALE_STRETCH_X);
+        return rightGauge ? travelled - SCALE_STRETCH_X : travelled;
+    }
+
+    /**
+     * A point on a gauge at a distance along its outline. Drawing code
+     * walks by length rather than by scale fraction, because the
+     * tachometer backdrop runs past both ends of the scale.
      */
     static float pointXAt(
-            float angleRadians,
+            float lengthAlong,
             float radius,
             boolean rightGauge) {
         return gaugeCenterX(rightGauge)
-                - radius * (float) Math.cos(angleRadians)
-                + stretchOffsetAt(angleRadians, rightGauge);
+                - radius * (float) Math.cos(angleAtLength(lengthAlong))
+                + stretchOffsetAtLength(lengthAlong, rightGauge);
     }
 
-    static float pointYAt(float angleRadians, float radius) {
+    static float pointYAt(float lengthAlong, float radius) {
         return GAUGE_CENTER_Y
-                - radius * (float) Math.sin(angleRadians);
+                - radius * (float) Math.sin(angleAtLength(lengthAlong));
+    }
+
+    /**
+     * Distance along the outline a scale fraction sits at. Reading the
+     * scale by length rather than by angle is what spaces the ticks
+     * evenly across the insert instead of leaving a bare gap on it.
+     */
+    static float scaleLength(float fraction) {
+        return clamp(fraction, 0.0f, 1.0f) * SCALE_TOTAL_LENGTH;
     }
 
     static float radialX(
             float fraction,
             float radius,
             boolean rightGauge) {
-        return pointXAt(
-                scaleAngle(clamp(fraction, 0.0f, 1.0f)),
-                radius,
-                rightGauge);
+        return pointXAt(scaleLength(fraction), radius, rightGauge);
     }
 
     static float radialY(float fraction, float radius) {
-        return pointYAt(
-                scaleAngle(clamp(fraction, 0.0f, 1.0f)),
-                radius);
+        return pointYAt(scaleLength(fraction), radius);
     }
 
     static float scaleX(float fraction, boolean rightGauge) {
@@ -257,35 +294,25 @@ final class SimpleRedLayout {
     }
 
     /**
-     * Rate of change of the scale x against the fraction. The stretch
-     * steepens it where it is active, its own derivative being
-     * {@code 2 · SCALE_STRETCH_X · |cos angle| · sin angle}. That term
-     * vanishes at the vertical, which is what keeps the curve smooth
-     * where the stretched half meets the untouched one.
+     * Rate of change of the scale x against the fraction. Walking the
+     * outline by length makes this {@code (sin angle, -cos angle)} times
+     * the total length, on the arcs and on the insert alike: there the
+     * angle holds at the cut, where the sine is one and the cosine zero,
+     * which is exactly a horizontal step. The tangent therefore runs
+     * continuously through both joints, and neither reads as a corner.
      *
      * <p>drawScaleText turns this into the inward normal it offsets the
-     * labels along, so a tangent that ignored the stretch would push
-     * them off the band.</p>
+     * labels along, so a tangent that ignored the insert would push them
+     * off the band.</p>
      */
-    static float scaleTangentX(float fraction, boolean rightGauge) {
-        float checked = clamp(fraction, 0.0f, 1.0f);
-        float angle = scaleAngle(checked);
-        float cosine = (float) Math.cos(angle);
-        float inward = rightGauge ? cosine : -cosine;
-        float stretched = inward > 0.0f
-                ? 2.0f * SCALE_STRETCH_X * inward
-                : 0.0f;
-        return (float) (SCALE_SWEEP_ANGLE_RADIANS
-                * (GAUGE_RADIUS + stretched)
-                * Math.sin(angle));
+    static float scaleTangentX(float fraction) {
+        float angle = angleAtLength(scaleLength(fraction));
+        return (float) (SCALE_TOTAL_LENGTH * Math.sin(angle));
     }
 
     static float scaleTangentY(float fraction) {
-        float checked = clamp(fraction, 0.0f, 1.0f);
-        float angle = scaleAngle(checked);
-        return (float) (-SCALE_SWEEP_ANGLE_RADIANS
-                * GAUGE_RADIUS
-                * Math.cos(angle));
+        float angle = angleAtLength(scaleLength(fraction));
+        return (float) (-SCALE_TOTAL_LENGTH * Math.cos(angle));
     }
 
     static float steeringRotation(float angleDeg) {
@@ -331,28 +358,15 @@ final class SimpleRedLayout {
     }
 
     /**
-     * Segments to sample an angular span with, kept at the density
-     * SCALE_PATH_SEGMENTS sets for a full sweep.
+     * Segments to sample a stretch of outline with, kept at the density
+     * SCALE_PATH_SEGMENTS sets for the whole of it.
      */
-    static int pathSegments(float startAngle, float endAngle) {
-        float span = Math.abs(endAngle - startAngle);
+    static int pathSegments(float startLength, float endLength) {
+        float span = Math.abs(endLength - startLength);
         return Math.max(
                 1,
                 Math.round(SCALE_PATH_SEGMENTS
-                        * span / SCALE_SWEEP_ANGLE_RADIANS));
-    }
-
-    /** Angle the band has reached, the scale start being empty. */
-    static float progressEndAngle(float fraction) {
-        return scaleAngle(clamp(fraction, 0.0f, 1.0f));
-    }
-
-    /** Segments to sample a band covering this much of the scale. */
-    static int progressSegments(float fraction) {
-        return Math.max(
-                1,
-                Math.round(SCALE_PATH_SEGMENTS
-                        * clamp(fraction, 0.0f, 1.0f)));
+                        * span / SCALE_TOTAL_LENGTH));
     }
 
     static String formatGear(int gear) {
@@ -442,11 +456,6 @@ final class SimpleRedLayout {
 
     private static boolean isPositiveFinite(float value) {
         return Float.isFinite(value) && value > 0.0f;
-    }
-
-    static float scaleAngle(float fraction) {
-        return SCALE_START_ANGLE_RADIANS
-                + SCALE_SWEEP_ANGLE_RADIANS * fraction;
     }
 
     private static float clamp(float value, float min, float max) {

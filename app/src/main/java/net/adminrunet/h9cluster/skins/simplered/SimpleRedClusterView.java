@@ -244,17 +244,16 @@ public final class SimpleRedClusterView extends View
     /** Samples the band from the start of the scale up to the fraction. */
     private void buildProgressPath(float fraction, boolean rightGauge) {
         progressPath.rewind();
-        float start = SimpleRedLayout.SCALE_START_ANGLE_RADIANS;
-        float end = SimpleRedLayout.progressEndAngle(fraction);
-        int segments = SimpleRedLayout.progressSegments(fraction);
+        float end = SimpleRedLayout.scaleLength(fraction);
+        int segments = SimpleRedLayout.pathSegments(0.0f, end);
         for (int index = 0; index <= segments; index++) {
-            float angle = start + (end - start) * index / segments;
+            float along = end * index / segments;
             float x = SimpleRedLayout.pointXAt(
-                    angle,
+                    along,
                     SimpleRedLayout.PROGRESS_BAND_RADIUS,
                     rightGauge);
             float y = SimpleRedLayout.pointYAt(
-                    angle,
+                    along,
                     SimpleRedLayout.PROGRESS_BAND_RADIUS);
             if (index == 0) {
                 progressPath.moveTo(x, y);
@@ -403,7 +402,7 @@ public final class SimpleRedClusterView extends View
             float inwardOffset) {
         float x = SimpleRedLayout.scaleX(fraction, rightGauge);
         float y = SimpleRedLayout.scaleY(fraction);
-        float tangentX = SimpleRedLayout.scaleTangentX(fraction, rightGauge);
+        float tangentX = SimpleRedLayout.scaleTangentX(fraction);
         float tangentY = SimpleRedLayout.scaleTangentY(fraction);
         float length = (float) Math.hypot(tangentX, tangentY);
         if (length < 0.001f) {
