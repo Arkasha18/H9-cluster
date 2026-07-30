@@ -451,12 +451,12 @@ public final class SimpleRedClusterView extends View
             configureText(
                     dataTypeface,
                     9.0f,
-                    Paint.Align.LEFT,
+                    Paint.Align.RIGHT,
                     transmissionColor,
                     true);
             canvas.drawText(
                     "АКПП",
-                    SimpleRedLayout.TRANSMISSION_X,
+                    SimpleRedLayout.TRANSMISSION_LABEL_X,
                     SimpleRedLayout.TRANSMISSION_LABEL_Y,
                     textPaint);
         }

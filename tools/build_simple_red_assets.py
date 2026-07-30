@@ -9,16 +9,17 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SIZE = (1920, 720)
 RENDER_SCALE = 2
-LEFT_GAUGE_CENTER_X = 360.0
-RIGHT_GAUGE_CENTER_X = 1560.0
-GAUGE_CENTER_Y = 535.0
-GAUGE_RADIUS = 280.0
+LEFT_GAUGE_CENTER_X = 290.0
+RIGHT_GAUGE_CENTER_X = 1610.0
+GAUGE_CENTER_Y = 455.0
+GAUGE_RADIUS = 235.0
 SPEED_LABELS = (0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200)
 TACH_LABELS = tuple(range(7))
 
 NOTIFICATION_RECT = (1410, 260, 1775, 620)
-NOTIFICATION_APERTURE_CENTER = (1590, 440)
-NOTIFICATION_APERTURE_RADIUS = 190
+NOTIFICATION_APERTURE_CENTER = (1640, 360)
+NOTIFICATION_APERTURE_RADIUS = 155
+NOTIFICATION_EDGE_BLUR = 18.0
 NOTIFICATION_MASK_CORNERS = (
     (1415, 265),
     (1770, 265),
@@ -141,6 +142,11 @@ def _draw_notification_corner_mask(background: Image.Image) -> None:
             (center_y + radius) * RENDER_SCALE,
         ),
         fill=0,
+    )
+    mask = mask.filter(
+        ImageFilter.GaussianBlur(
+            NOTIFICATION_EDGE_BLUR * RENDER_SCALE
+        )
     )
     black = Image.new("RGBA", background.size, (0, 0, 0, 255))
     background.alpha_composite(

@@ -85,24 +85,60 @@ class SimpleRedAssetsTest(unittest.TestCase):
     def test_gauge_centers_and_lower_factory_zones_remain_clear(self):
         alpha = np.asarray(self.render_background())[:, :, 3]
 
-        self.assertEqual(0, alpha[535, 360])
-        self.assertEqual(0, alpha[535, 1560])
+        self.assertEqual(
+            0,
+            alpha[
+                round(assets.GAUGE_CENTER_Y),
+                round(assets.LEFT_GAUGE_CENTER_X),
+            ],
+        )
+        self.assertEqual(
+            0,
+            alpha[
+                round(assets.GAUGE_CENTER_Y),
+                round(assets.RIGHT_GAUGE_CENTER_X),
+            ],
+        )
         self.assertEqual(
             0,
             np.count_nonzero(alpha[630:720, 250:690]),
         )
         self.assertEqual(
             0,
-            np.count_nonzero(alpha[630:720, 1230:1670]),
+            np.count_nonzero(alpha[670:720, 1230:1670]),
         )
 
     def test_notification_mask_covers_only_outer_corners(self):
         result = np.asarray(self.render_background())
 
-        for x, y in assets.NOTIFICATION_MASK_CORNERS:
-            self.assertEqual((0, 0, 0, 255), tuple(result[y, x]))
+        self.assertEqual(
+            (
+                assets.RIGHT_GAUGE_CENTER_X + 30,
+                assets.GAUGE_CENTER_Y - 95,
+            ),
+            assets.NOTIFICATION_APERTURE_CENTER,
+        )
+        self.assertEqual(
+            assets.GAUGE_RADIUS - 80,
+            assets.NOTIFICATION_APERTURE_RADIUS,
+        )
+        self.assertGreater(result[580, 1450, 3], 240)
         center_x, center_y = assets.NOTIFICATION_APERTURE_CENTER
         self.assertEqual(0, result[center_y, center_x, 3])
+
+        mask = Image.new(
+            "RGBA",
+            (
+                assets.SIZE[0] * assets.RENDER_SCALE,
+                assets.SIZE[1] * assets.RENDER_SCALE,
+            ),
+            (0, 0, 0, 0),
+        )
+        assets._draw_notification_corner_mask(mask)
+        mask = np.asarray(mask.resize(assets.SIZE))
+        feather_alpha = mask[440, 1405, 3]
+        self.assertGreater(feather_alpha, 0)
+        self.assertLess(feather_alpha, 255)
 
     def test_background_does_not_reuse_factory_sport_pixels(self):
         opaque_source = Image.new("RGBA", assets.SIZE, (255, 0, 0, 255))

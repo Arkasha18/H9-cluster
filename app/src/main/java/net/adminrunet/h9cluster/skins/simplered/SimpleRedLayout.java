@@ -10,13 +10,13 @@ final class SimpleRedLayout {
     static final float MAX_SPEED_KPH = 200.0f;
     static final float MAX_RPM = 6000.0f;
     static final boolean DRAW_SCALE_UNITS = false;
-    static final float LEFT_GAUGE_CENTER_X = 360.0f;
-    static final float RIGHT_GAUGE_CENTER_X = 1560.0f;
-    static final float GAUGE_CENTER_Y = 535.0f;
-    static final float GAUGE_RADIUS = 280.0f;
+    static final float LEFT_GAUGE_CENTER_X = 290.0f;
+    static final float RIGHT_GAUGE_CENTER_X = 1610.0f;
+    static final float GAUGE_CENTER_Y = 455.0f;
+    static final float GAUGE_RADIUS = 235.0f;
     static final int MAIN_SCALE_POINT_COUNT = 10;
-    static final float MAIN_SCALE_LABEL_OFFSET = 72.0f;
-    static final float PROGRESS_BAND_RADIUS = 253.0f;
+    static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
+    static final float PROGRESS_BAND_RADIUS = 208.0f;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
@@ -58,14 +58,13 @@ final class SimpleRedLayout {
     static final float CONSUMPTION_X = 24.0f;
     static final float CONSUMPTION_BASELINE = FACTORY_SCALE_BASELINE;
     static final float FUEL_LITERS_X = 170.0f;
-    static final float FUEL_LITERS_BASELINE = FACTORY_SCALE_BASELINE - 43.0f;
-    static final float COOLANT_X = 1570.0f;
-    static final float COOLANT_BASELINE = FACTORY_SCALE_BASELINE - 43.0f;
+    static final float FUEL_LITERS_BASELINE = 668.0f;
+    static final float COOLANT_X = 1645.0f;
+    static final float COOLANT_BASELINE = 665.0f;
     static final float TRANSMISSION_X = 1710.0f;
-    static final float TRANSMISSION_BASELINE =
-            FACTORY_SCALE_BASELINE - 43.0f;
-    static final float TRANSMISSION_LABEL_Y =
-            TRANSMISSION_BASELINE + 15.0f;
+    static final float TRANSMISSION_BASELINE = 655.0f;
+    static final float TRANSMISSION_LABEL_X = 1702.0f;
+    static final float TRANSMISSION_LABEL_Y = TRANSMISSION_BASELINE;
     static final float VOLTAGE_X = 1896.0f;
     static final float VOLTAGE_BASELINE = FACTORY_SCALE_BASELINE;
 

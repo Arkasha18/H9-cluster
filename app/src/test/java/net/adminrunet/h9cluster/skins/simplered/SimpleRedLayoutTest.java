@@ -27,16 +27,71 @@ public final class SimpleRedLayoutTest {
         for (int index = 0; index <= 8; index++) {
             float fraction = index / 8.0f;
             assertEquals(
-                    1920.0f
-                            - SimpleRedLayout.scaleX(
+                    SimpleRedLayout.RIGHT_GAUGE_CENTER_X
+                            - (SimpleRedLayout.scaleX(
                                     1.0f - fraction,
-                                    false),
+                                    false)
+                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X),
                     SimpleRedLayout.scaleX(fraction, true),
                     0.001f);
             assertEquals(
                     SimpleRedLayout.scaleY(fraction),
                     SimpleRedLayout.scaleY(1.0f - fraction),
                     0.001f);
+        }
+    }
+
+    @Test
+    public void gaugesFrameFactoryReadoutsAndBottomValues() {
+        assertEquals(
+                290.0f,
+                SimpleRedLayout.LEFT_GAUGE_CENTER_X,
+                0.001f);
+        assertEquals(
+                1610.0f,
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
+                0.001f);
+        assertEquals(
+                455.0f,
+                SimpleRedLayout.GAUGE_CENTER_Y,
+                0.001f);
+        assertEquals(
+                235.0f,
+                SimpleRedLayout.GAUGE_RADIUS,
+                0.001f);
+        assertEquals(
+                668.0f,
+                SimpleRedLayout.FUEL_LITERS_BASELINE,
+                0.001f);
+        assertEquals(
+                665.0f,
+                SimpleRedLayout.COOLANT_BASELINE,
+                0.001f);
+        assertEquals(
+                655.0f,
+                SimpleRedLayout.TRANSMISSION_BASELINE,
+                0.001f);
+        assertEquals(
+                1645.0f,
+                SimpleRedLayout.COOLANT_X,
+                0.001f);
+        assertEquals(
+                208.0f,
+                SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.TRANSMISSION_BASELINE,
+                SimpleRedLayout.TRANSMISSION_LABEL_Y,
+                0.001f);
+        try {
+            float labelX = SimpleRedLayout.class
+                    .getDeclaredField("TRANSMISSION_LABEL_X")
+                    .getFloat(null);
+            org.junit.Assert.assertTrue(
+                    labelX < SimpleRedLayout.TRANSMISSION_X);
+        } catch (ReflectiveOperationException error) {
+            org.junit.Assert.fail(
+                    "TRANSMISSION_LABEL_X must place АКПП left of value");
         }
     }
 
@@ -165,8 +220,6 @@ public final class SimpleRedLayoutTest {
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.PROGRESS_GLOW_WIDTH
                         > SimpleRedLayout.PROGRESS_CORE_WIDTH);
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.PROGRESS_BAND_RADIUS > 250.0f);
         assertEquals(
                 0x08FF2020,
                 SimpleRedLayout.PROGRESS_START_COLOR);
