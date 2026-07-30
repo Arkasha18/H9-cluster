@@ -43,7 +43,13 @@ public final class SimpleRedClusterView extends View
     private final Matrix progressGradientMatrix = new Matrix();
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
-    private final Shader tipBloomShader = createTipBloomShader();
+    /**
+     * Chosen in the skin settings. Held per instance because the shaders and
+     * the cached background are built from it, so a new colour arrives as a
+     * new view rather than as a repaint.
+     */
+    private final SimpleRedScaleColor scaleColor;
+    private final Shader tipBloomShader;
 
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
@@ -67,8 +73,14 @@ public final class SimpleRedClusterView extends View
     private float displayedSteering = targetState.steeringAngleDeg;
     private long lastFrameAtMs;
 
-    public SimpleRedClusterView(Context context) {
+    public SimpleRedClusterView(
+            Context context,
+            SimpleRedScaleColor scaleColor) {
         super(context);
+        this.scaleColor = scaleColor == null
+                ? SimpleRedScaleColor.defaultColor()
+                : scaleColor;
+        tipBloomShader = createTipBloomShader(this.scaleColor);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
@@ -108,7 +120,7 @@ public final class SimpleRedClusterView extends View
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         staticBackground = w > 0 && h > 0
-                ? renderStaticLayer(w, h, BuildConfig.DEMO_MODE)
+                ? renderStaticLayer(w, h, BuildConfig.DEMO_MODE, scaleColor)
                 : null;
     }
 
@@ -149,14 +161,15 @@ public final class SimpleRedClusterView extends View
     private static Bitmap renderStaticLayer(
             int width,
             int height,
-            boolean demoMode) {
+            boolean demoMode,
+            SimpleRedScaleColor scaleColor) {
         Bitmap bitmap = Bitmap.createBitmap(
                 width,
                 height,
                 Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         applyLogicalTransform(canvas, width, height);
-        SimpleRedBackground.draw(canvas, demoMode);
+        SimpleRedBackground.draw(canvas, demoMode, scaleColor);
         return bitmap;
     }
 
@@ -299,9 +312,13 @@ public final class SimpleRedClusterView extends View
         canvas.restoreToCount(save);
     }
 
-    private static Shader createTipBloomShader() {
+    private static int withAlpha(int color, int alpha) {
+        return alpha << 24 | color & 0x00FFFFFF;
+    }
+
+    private static Shader createTipBloomShader(SimpleRedScaleColor color) {
         int center = (SimpleRedLayout.PROGRESS_TIP_BLOOM_ALPHA << 24)
-                | (SimpleRedLayout.PROGRESS_TIP_BLOOM_COLOR & 0x00FFFFFF);
+                | (color.bloom() & 0x00FFFFFF);
         return new RadialGradient(
                 0.0f,
                 0.0f,
@@ -337,13 +354,18 @@ public final class SimpleRedClusterView extends View
                 end - Math.min(0.08f, fraction * 0.25f),
                 0.001f,
                 Math.max(0.002f, end - 0.001f));
+        // The halo pass runs the same colours at a fraction of their
+        // opacity, so it reads as a glow around the band rather than as a
+        // second band.
         int redStart = glow
-                ? 0x00FF2020
-                : SimpleRedLayout.PROGRESS_START_COLOR;
-        int red = glow ? 0x44FF2020 : 0xAAFF2020;
+                ? scaleColor.accent & 0x00FFFFFF
+                : scaleColor.bandStart();
+        int red = glow
+                ? withAlpha(scaleColor.accent, 0x44)
+                : scaleColor.bandBody();
         int leading = glow
-                ? 0xCCFFD54F
-                : SimpleRedLayout.PROGRESS_LEADING_COLOR;
+                ? withAlpha(scaleColor.leading, 0xCC)
+                : scaleColor.leading;
         SweepGradient gradient = new SweepGradient(
                 centerX,
                 centerY,

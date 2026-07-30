@@ -5,6 +5,7 @@ import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
 import net.adminrunet.h9cluster.skins.simplered.SimpleRedClusterView;
+import net.adminrunet.h9cluster.skins.simplered.SimpleRedSettingsProvider;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
 
 import android.content.Context;
@@ -125,16 +126,19 @@ public final class SkinRegistry {
         new Definition(
                 SIMPLE_RED,
                 "Simple Red — простая красная тема",
-                "Компактные красные шкалы со свободными зонами штатных индикаторов",
+                "Компактные шкалы восьми цветов со свободными зонами штатных индикаторов",
                 new RendererFactory() {
                     @Override
                     public View create(
                             Context context,
                             SkinSettings settings) {
-                        return new SimpleRedClusterView(context);
+                        return new SimpleRedClusterView(
+                                context,
+                                SimpleRedSettingsProvider.scaleColor(
+                                        settings));
                     }
                 },
-                null),
+                new SimpleRedSettingsProvider()),
         new Definition(
                 HORIZON,
                 "Horizon — базовый скин",

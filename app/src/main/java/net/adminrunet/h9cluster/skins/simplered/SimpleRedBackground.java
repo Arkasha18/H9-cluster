@@ -17,11 +17,14 @@ final class SimpleRedBackground {
     private SimpleRedBackground() {
     }
 
-    static void draw(Canvas canvas, boolean demoMode) {
+    static void draw(
+            Canvas canvas,
+            boolean demoMode,
+            SimpleRedScaleColor scaleColor) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         drawTachBackdrop(canvas, paint, demoMode);
-        drawGauge(canvas, paint, false);
-        drawGauge(canvas, paint, true);
+        drawGauge(canvas, paint, false, scaleColor);
+        drawGauge(canvas, paint, true, scaleColor);
     }
 
     /**
@@ -88,13 +91,14 @@ final class SimpleRedBackground {
     private static void drawGauge(
             Canvas canvas,
             Paint paint,
-            boolean rightGauge) {
+            boolean rightGauge,
+            SimpleRedScaleColor scaleColor) {
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.BUTT);
 
-        paint.setColor(SimpleRedLayout.REDLINE_GLOW_COLOR);
+        paint.setColor(scaleColor.glow());
         paint.setStrokeWidth(SimpleRedLayout.REDLINE_GLOW_WIDTH);
         paint.setMaskFilter(new BlurMaskFilter(
                 SimpleRedLayout.REDLINE_GLOW_BLUR_RADIUS,
@@ -116,7 +120,7 @@ final class SimpleRedBackground {
 
         drawTicks(canvas, paint, rightGauge);
 
-        paint.setColor(SimpleRedLayout.REDLINE_ARC_COLOR);
+        paint.setColor(scaleColor.accent);
         paint.setStrokeWidth(SimpleRedLayout.REDLINE_ARC_WIDTH);
         drawFullArc(
                 canvas,
