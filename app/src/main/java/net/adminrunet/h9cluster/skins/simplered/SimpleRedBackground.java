@@ -4,7 +4,6 @@ import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 
 /**
  * Draws the Simple Red static layer straight from {@link SimpleRedLayout}.
@@ -33,19 +32,21 @@ final class SimpleRedBackground {
             Canvas canvas,
             Paint paint,
             boolean demoMode) {
-        float start = SimpleRedLayout.tachBackdropStartDegrees();
-        float sweep = SimpleRedLayout.tachBackdropSweepDegrees();
+        float start = SimpleRedLayout.tachBackdropStartAngle();
+        float end = SimpleRedLayout.tachBackdropEndAngle();
         Path sector = new Path();
-        sector.arcTo(
-                gaugeBounds(SimpleRedLayout.TACH_BACKDROP_RADIUS),
+        appendSweep(
+                sector,
+                SimpleRedLayout.TACH_BACKDROP_RADIUS,
                 start,
-                sweep,
+                end,
                 true);
-        sector.arcTo(
-                gaugeBounds(SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS),
-                start + sweep,
-                -sweep,
-                false);
+        appendSweep(
+                sector,
+                SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS,
+                end,
+                start,
+                true);
         sector.close();
 
         paint.reset();
@@ -58,14 +59,30 @@ final class SimpleRedBackground {
         canvas.drawPath(sector, paint);
     }
 
-    private static RectF gaugeBounds(float radius) {
-        float centerX = SimpleRedLayout.gaugeCenterX(true);
-        float centerY = SimpleRedLayout.GAUGE_CENTER_Y;
-        return new RectF(
-                centerX - radius,
-                centerY - radius,
-                centerX + radius,
-                centerY + radius);
+    /**
+     * Walks the gauge outline between two angles, sampling it because the
+     * stretch makes it something Canvas cannot draw as an arc. Starts a
+     * contour on an empty path and continues one otherwise, so a sector
+     * is two calls and a stroked arc is one.
+     */
+    private static void appendSweep(
+            Path path,
+            float radius,
+            float startAngle,
+            float endAngle,
+            boolean rightGauge) {
+        int segments = SimpleRedLayout.pathSegments(startAngle, endAngle);
+        for (int index = 0; index <= segments; index++) {
+            float angle = startAngle
+                    + (endAngle - startAngle) * index / segments;
+            float x = SimpleRedLayout.pointXAt(angle, radius, rightGauge);
+            float y = SimpleRedLayout.pointYAt(angle, radius);
+            if (index == 0 && path.isEmpty()) {
+                path.moveTo(x, y);
+            } else {
+                path.lineTo(x, y);
+            }
+        }
     }
 
     private static void drawGauge(
@@ -113,18 +130,14 @@ final class SimpleRedBackground {
             Paint paint,
             float radius,
             boolean rightGauge) {
-        float centerX = SimpleRedLayout.gaugeCenterX(rightGauge);
-        float centerY = SimpleRedLayout.GAUGE_CENTER_Y;
-        canvas.drawArc(
-                new RectF(
-                        centerX - radius,
-                        centerY - radius,
-                        centerX + radius,
-                        centerY + radius),
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                SimpleRedLayout.SCALE_SWEEP_DEGREES,
-                false,
-                paint);
+        Path arc = new Path();
+        appendSweep(
+                arc,
+                radius,
+                SimpleRedLayout.SCALE_START_ANGLE_RADIANS,
+                SimpleRedLayout.SCALE_END_ANGLE_RADIANS,
+                rightGauge);
+        canvas.drawPath(arc, paint);
     }
 
     private static void drawTicks(

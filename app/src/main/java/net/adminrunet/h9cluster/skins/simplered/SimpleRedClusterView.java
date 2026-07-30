@@ -11,9 +11,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.RadialGradient;
-import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
 import android.graphics.Typeface;
@@ -33,6 +33,12 @@ public final class SimpleRedClusterView extends View
             Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /**
+     * The stretched band is no longer an arc Canvas can draw, so it is
+     * sampled into a path. Reused and rewound every frame to keep this
+     * off the per-frame allocation path, like the bloom shader below.
+     */
+    private final Path progressPath = new Path();
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
     private final Shader tipBloomShader = createTipBloomShader();
@@ -203,14 +209,7 @@ public final class SimpleRedClusterView extends View
                 ? SimpleRedLayout.RIGHT_GAUGE_CENTER_X
                 : SimpleRedLayout.LEFT_GAUGE_CENTER_X;
         float centerY = SimpleRedLayout.GAUGE_CENTER_Y;
-        float radius = SimpleRedLayout.PROGRESS_BAND_RADIUS;
-        RectF arcBounds = new RectF(
-                centerX - radius,
-                centerY - radius,
-                centerX + radius,
-                centerY + radius);
-        float sweep = SimpleRedLayout.progressSweepDegrees(
-                clampedFraction);
+        buildProgressPath(clampedFraction, rightGauge);
 
         progressPaint.setShader(progressGradient(
                 centerX,
@@ -224,12 +223,7 @@ public final class SimpleRedClusterView extends View
                     SimpleRedLayout.progressSoftLayerAlpha(layer));
             progressPaint.setStrokeWidth(
                     SimpleRedLayout.progressSoftLayerWidth(layer));
-            canvas.drawArc(
-                    arcBounds,
-                    SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                    sweep,
-                    false,
-                    progressPaint);
+            canvas.drawPath(progressPath, progressPaint);
         }
 
         progressPaint.setStrokeWidth(
@@ -240,16 +234,34 @@ public final class SimpleRedClusterView extends View
                 centerY,
                 clampedFraction,
                 false));
-        canvas.drawArc(
-                arcBounds,
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                sweep,
-                false,
-                progressPaint);
+        canvas.drawPath(progressPath, progressPaint);
 
         progressPaint.setShader(null);
         progressPaint.setAlpha(255);
         drawProgressTipBloom(canvas, clampedFraction, rightGauge);
+    }
+
+    /** Samples the band from the start of the scale up to the fraction. */
+    private void buildProgressPath(float fraction, boolean rightGauge) {
+        progressPath.rewind();
+        float start = SimpleRedLayout.SCALE_START_ANGLE_RADIANS;
+        float end = SimpleRedLayout.progressEndAngle(fraction);
+        int segments = SimpleRedLayout.progressSegments(fraction);
+        for (int index = 0; index <= segments; index++) {
+            float angle = start + (end - start) * index / segments;
+            float x = SimpleRedLayout.pointXAt(
+                    angle,
+                    SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                    rightGauge);
+            float y = SimpleRedLayout.pointYAt(
+                    angle,
+                    SimpleRedLayout.PROGRESS_BAND_RADIUS);
+            if (index == 0) {
+                progressPath.moveTo(x, y);
+            } else {
+                progressPath.lineTo(x, y);
+            }
+        }
     }
 
     /**
@@ -391,7 +403,7 @@ public final class SimpleRedClusterView extends View
             float inwardOffset) {
         float x = SimpleRedLayout.scaleX(fraction, rightGauge);
         float y = SimpleRedLayout.scaleY(fraction);
-        float tangentX = SimpleRedLayout.scaleTangentX(fraction);
+        float tangentX = SimpleRedLayout.scaleTangentX(fraction, rightGauge);
         float tangentY = SimpleRedLayout.scaleTangentY(fraction);
         float length = (float) Math.hypot(tangentX, tangentY);
         if (length < 0.001f) {

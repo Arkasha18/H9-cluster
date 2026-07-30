@@ -22,6 +22,26 @@ final class SimpleRedLayout {
             (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_SWEEP_DEGREES);
+    static final float SCALE_END_ANGLE_RADIANS =
+            SCALE_START_ANGLE_RADIANS + SCALE_SWEEP_ANGLE_RADIANS;
+    /**
+     * How far the inner half of a gauge is pulled towards the middle of
+     * the screen, in pixels at its widest. The speedometer stretches
+     * right and the tachometer left, so the pair reads as one shape and
+     * its mirror rather than as two arcs leaning the same way.
+     *
+     * <p>The offset follows {@code max(0, ±cos angle)²}. Squared rather
+     * than linear because a linear ramp turns the tangent by
+     * {@code atan(SCALE_STRETCH_X / GAUGE_RADIUS)} in a single step at
+     * the vertical, which shows up as a crease on a 3px stroke; squaring
+     * leaves the slope at zero on both sides of it.</p>
+     *
+     * <p>It does not scale with the radius, so every layer of a gauge
+     * moves by the same amount and the ring keeps its thickness.</p>
+     */
+    static final float SCALE_STRETCH_X = 24.0f;
+    /** Segments per full sweep when sampling the scale into a Path. */
+    static final int SCALE_PATH_SEGMENTS = 96;
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
     static final float SCALE_LABEL_TEXT_SIZE = 28.0f;
     static final int SCALE_LABEL_COLOR = 0xFFF4F5F5;
@@ -61,6 +81,8 @@ final class SimpleRedLayout {
             GAUGE_RADIUS - MAIN_SCALE_LABEL_OFFSET
                     - TACH_BACKDROP_INNER_CLEARANCE;
     static final float TACH_BACKDROP_PADDING_DEGREES = 6.0f;
+    static final float TACH_BACKDROP_PADDING_RADIANS =
+            (float) Math.toRadians(TACH_BACKDROP_PADDING_DEGREES);
     static final float TACH_BACKDROP_EDGE_BLUR_RADIUS = 20.0f;
     static final int TACH_BACKDROP_COLOR_VEHICLE = 0xFF000000;
     /** Demo builds tint it so its bounds are visible while tuning. */
@@ -71,9 +93,6 @@ final class SimpleRedLayout {
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
-    /** Canvas angles run from +X clockwise, the scale runs from -X. */
-    static final float SCALE_START_ANGLE_DEGREES =
-            SCALE_START_DEGREES + 180.0f;
     static final int PROGRESS_HALO_ALPHA = 140;
     /**
      * The band is softened by stacking translucent strokes from
@@ -150,13 +169,13 @@ final class SimpleRedLayout {
                 : TACH_BACKDROP_COLOR_VEHICLE;
     }
 
-    /** Canvas start angle of the backdrop sector, padded past the scale. */
-    static float tachBackdropStartDegrees() {
-        return SCALE_START_ANGLE_DEGREES - TACH_BACKDROP_PADDING_DEGREES;
+    /** Start of the backdrop sector, padded past the start of the scale. */
+    static float tachBackdropStartAngle() {
+        return SCALE_START_ANGLE_RADIANS - TACH_BACKDROP_PADDING_RADIANS;
     }
 
-    static float tachBackdropSweepDegrees() {
-        return SCALE_SWEEP_DEGREES + TACH_BACKDROP_PADDING_DEGREES * 2.0f;
+    static float tachBackdropEndAngle() {
+        return SCALE_END_ANGLE_RADIANS + TACH_BACKDROP_PADDING_RADIANS;
     }
 
     /** Labelled intervals on a gauge, which are also its major ticks. */
@@ -178,21 +197,55 @@ final class SimpleRedLayout {
                 : LEFT_GAUGE_CENTER_X;
     }
 
+    /**
+     * Sideways offset the stretch adds at a scale angle. Zero across the
+     * half facing away from the middle of the screen, rising to
+     * SCALE_STRETCH_X at the horizontal. Positive moves right, so it
+     * comes back negative for the tachometer.
+     */
+    static float stretchOffsetAt(float angleRadians, boolean rightGauge) {
+        float cosine = (float) Math.cos(angleRadians);
+        float inward = rightGauge ? cosine : -cosine;
+        if (inward <= 0.0f) {
+            return 0.0f;
+        }
+        float offset = SCALE_STRETCH_X * inward * inward;
+        return rightGauge ? -offset : offset;
+    }
+
+    /**
+     * A point on a gauge at a raw angle. Drawing code samples paths by
+     * angle rather than by scale fraction, because the tachometer
+     * backdrop runs past both ends of the scale.
+     */
+    static float pointXAt(
+            float angleRadians,
+            float radius,
+            boolean rightGauge) {
+        return gaugeCenterX(rightGauge)
+                - radius * (float) Math.cos(angleRadians)
+                + stretchOffsetAt(angleRadians, rightGauge);
+    }
+
+    static float pointYAt(float angleRadians, float radius) {
+        return GAUGE_CENTER_Y
+                - radius * (float) Math.sin(angleRadians);
+    }
+
     static float radialX(
             float fraction,
             float radius,
             boolean rightGauge) {
-        float angle = scaleAngle(clamp(fraction, 0.0f, 1.0f));
-        return gaugeCenterX(rightGauge)
-                - radius
-                * (float) Math.cos(angle);
+        return pointXAt(
+                scaleAngle(clamp(fraction, 0.0f, 1.0f)),
+                radius,
+                rightGauge);
     }
 
     static float radialY(float fraction, float radius) {
-        float angle = scaleAngle(clamp(fraction, 0.0f, 1.0f));
-        return GAUGE_CENTER_Y
-                - radius
-                * (float) Math.sin(angle);
+        return pointYAt(
+                scaleAngle(clamp(fraction, 0.0f, 1.0f)),
+                radius);
     }
 
     static float scaleX(float fraction, boolean rightGauge) {
@@ -203,11 +256,27 @@ final class SimpleRedLayout {
         return radialY(fraction, GAUGE_RADIUS);
     }
 
-    static float scaleTangentX(float fraction) {
+    /**
+     * Rate of change of the scale x against the fraction. The stretch
+     * steepens it where it is active, its own derivative being
+     * {@code 2 · SCALE_STRETCH_X · |cos angle| · sin angle}. That term
+     * vanishes at the vertical, which is what keeps the curve smooth
+     * where the stretched half meets the untouched one.
+     *
+     * <p>drawScaleText turns this into the inward normal it offsets the
+     * labels along, so a tangent that ignored the stretch would push
+     * them off the band.</p>
+     */
+    static float scaleTangentX(float fraction, boolean rightGauge) {
         float checked = clamp(fraction, 0.0f, 1.0f);
         float angle = scaleAngle(checked);
+        float cosine = (float) Math.cos(angle);
+        float inward = rightGauge ? cosine : -cosine;
+        float stretched = inward > 0.0f
+                ? 2.0f * SCALE_STRETCH_X * inward
+                : 0.0f;
         return (float) (SCALE_SWEEP_ANGLE_RADIANS
-                * GAUGE_RADIUS
+                * (GAUGE_RADIUS + stretched)
                 * Math.sin(angle));
     }
 
@@ -261,8 +330,29 @@ final class SimpleRedLayout {
                 - PROGRESS_SOFT_LAYER_MIN_ALPHA) * step);
     }
 
-    static float progressSweepDegrees(float fraction) {
-        return SCALE_SWEEP_DEGREES * clamp(fraction, 0.0f, 1.0f);
+    /**
+     * Segments to sample an angular span with, kept at the density
+     * SCALE_PATH_SEGMENTS sets for a full sweep.
+     */
+    static int pathSegments(float startAngle, float endAngle) {
+        float span = Math.abs(endAngle - startAngle);
+        return Math.max(
+                1,
+                Math.round(SCALE_PATH_SEGMENTS
+                        * span / SCALE_SWEEP_ANGLE_RADIANS));
+    }
+
+    /** Angle the band has reached, the scale start being empty. */
+    static float progressEndAngle(float fraction) {
+        return scaleAngle(clamp(fraction, 0.0f, 1.0f));
+    }
+
+    /** Segments to sample a band covering this much of the scale. */
+    static int progressSegments(float fraction) {
+        return Math.max(
+                1,
+                Math.round(SCALE_PATH_SEGMENTS
+                        * clamp(fraction, 0.0f, 1.0f)));
     }
 
     static String formatGear(int gear) {
@@ -354,7 +444,7 @@ final class SimpleRedLayout {
         return Float.isFinite(value) && value > 0.0f;
     }
 
-    private static float scaleAngle(float fraction) {
+    static float scaleAngle(float fraction) {
         return SCALE_START_ANGLE_RADIANS
                 + SCALE_SWEEP_ANGLE_RADIANS * fraction;
     }

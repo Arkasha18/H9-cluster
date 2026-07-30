@@ -20,23 +20,12 @@ public final class SimpleRedLayoutTest {
                 190.680f,
                 SimpleRedLayout.scaleY(0.5f),
                 0.01f);
+        // The far end sits on the stretched side, so it carries the
+        // offset the stretch adds at that angle.
         assertEquals(
-                534.320f,
+                534.320f + SimpleRedLayout.SCALE_STRETCH_X * 0.883022f,
                 SimpleRedLayout.scaleX(1.0f, false),
                 0.01f);
-
-        // Both gauges run the same arc, tilted the same way, so every
-        // point sits at the same offset from its own centre. They are
-        // translated copies rather than mirror images.
-        for (int index = 0; index <= 8; index++) {
-            float fraction = index / 8.0f;
-            assertEquals(
-                    SimpleRedLayout.scaleX(fraction, false)
-                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X,
-                    SimpleRedLayout.scaleX(fraction, true)
-                            - SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
-                    0.001f);
-        }
 
         // The tilt carries the full-scale end below the zero end, and
         // the apex stays above the centre on both gauges.
@@ -46,6 +35,143 @@ public final class SimpleRedLayoutTest {
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.scaleY(0.5f)
                         < SimpleRedLayout.GAUGE_CENTER_Y);
+    }
+
+    private static final float VERTICAL = (float) (Math.PI * 0.5);
+    private static final float HORIZONTAL = (float) Math.PI;
+
+    @Test
+    public void speedometerKeepsItsLeftHalfExactlyWhereItWas() {
+        // Everything from the start of the scale up to the screen
+        // vertical must be untouched, which is the whole point of the
+        // shape: only the right half is pulled out.
+        for (int index = 0; index <= 16; index++) {
+            float angle = SimpleRedLayout.SCALE_START_ANGLE_RADIANS
+                    + (VERTICAL - SimpleRedLayout.SCALE_START_ANGLE_RADIANS)
+                    * index / 16.0f;
+            assertEquals(
+                    "no stretch left of the vertical",
+                    0.0f,
+                    SimpleRedLayout.stretchOffsetAt(angle, false),
+                    0.0001f);
+        }
+    }
+
+    @Test
+    public void stretchPeaksAtTheHorizontalAndNeverExceedsTheConstant() {
+        assertEquals(
+                SimpleRedLayout.SCALE_STRETCH_X,
+                SimpleRedLayout.stretchOffsetAt(HORIZONTAL, false),
+                0.001f);
+        for (int index = 0; index <= 180; index++) {
+            float angle = SimpleRedLayout.SCALE_START_ANGLE_RADIANS
+                    + SimpleRedLayout.SCALE_SWEEP_ANGLE_RADIANS
+                    * index / 180.0f;
+            float offset = SimpleRedLayout.stretchOffsetAt(angle, false);
+            org.junit.Assert.assertTrue(
+                    "the speedometer only ever moves outwards",
+                    offset >= 0.0f);
+            org.junit.Assert.assertTrue(
+                    "no point moves further than the constant",
+                    offset <= SimpleRedLayout.SCALE_STRETCH_X + 0.001f);
+        }
+    }
+
+    @Test
+    public void stretchIsPurelyAnOffsetFromTheCircle() {
+        // Subtracting the offset must give back the plain circle, so the
+        // shape collapses to a circle the moment the constant is zeroed.
+        for (int index = 0; index <= 16; index++) {
+            float angle = SimpleRedLayout.SCALE_START_ANGLE_RADIANS
+                    + SimpleRedLayout.SCALE_SWEEP_ANGLE_RADIANS
+                    * index / 16.0f;
+            for (boolean rightGauge : new boolean[] {false, true}) {
+                float circleX = SimpleRedLayout.gaugeCenterX(rightGauge)
+                        - SimpleRedLayout.GAUGE_RADIUS
+                        * (float) Math.cos(angle);
+                assertEquals(
+                        circleX,
+                        SimpleRedLayout.pointXAt(
+                                angle,
+                                SimpleRedLayout.GAUGE_RADIUS,
+                                rightGauge)
+                                - SimpleRedLayout.stretchOffsetAt(
+                                        angle,
+                                        rightGauge),
+                        0.001f);
+            }
+        }
+    }
+
+    @Test
+    public void theTwoGaugesAreMirrorImages() {
+        // Reflecting a speedometer point about the vertical lands on the
+        // tachometer point at the mirrored angle. This is what keeps the
+        // pair symmetric while the tachometer stretches the other way.
+        for (int index = 0; index <= 16; index++) {
+            float angle = SimpleRedLayout.SCALE_START_ANGLE_RADIANS
+                    + SimpleRedLayout.SCALE_SWEEP_ANGLE_RADIANS
+                    * index / 16.0f;
+            float mirrored = HORIZONTAL - angle;
+            assertEquals(
+                    -(SimpleRedLayout.pointXAt(
+                            angle,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            false)
+                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X),
+                    SimpleRedLayout.pointXAt(
+                            mirrored,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            true)
+                            - SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
+                    0.001f);
+            assertEquals(
+                    SimpleRedLayout.pointYAt(
+                            angle,
+                            SimpleRedLayout.GAUGE_RADIUS),
+                    SimpleRedLayout.pointYAt(
+                            mirrored,
+                            SimpleRedLayout.GAUGE_RADIUS),
+                    0.001f);
+        }
+    }
+
+    @Test
+    public void tachometerStretchesTowardsTheScreenCentre() {
+        // Its low end faces the middle of the screen, so that is the
+        // half that moves, and it moves left.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.stretchOffsetAt(
+                        SimpleRedLayout.SCALE_START_ANGLE_RADIANS,
+                        true) < 0.0f);
+        assertEquals(
+                0.0f,
+                SimpleRedLayout.stretchOffsetAt(HORIZONTAL, true),
+                0.0001f);
+    }
+
+    @Test
+    public void tangentsFollowTheStretchedCurve() {
+        // drawScaleText builds the inward normal from these, so a
+        // tangent that ignores the stretch would push labels off course.
+        // Comparing against a central difference also proves the curve
+        // has no kink: a linear ramp would break at the vertical.
+        float step = 0.001f;
+        for (int index = 1; index < 32; index++) {
+            float fraction = index / 32.0f;
+            for (boolean rightGauge : new boolean[] {false, true}) {
+                float numeric = (SimpleRedLayout.scaleX(
+                        fraction + step,
+                        rightGauge)
+                        - SimpleRedLayout.scaleX(fraction - step, rightGauge))
+                        / (2.0f * step);
+                assertEquals(
+                        "tangent at fraction " + fraction,
+                        numeric,
+                        SimpleRedLayout.scaleTangentX(fraction, rightGauge),
+                        0.5f);
+            }
+        }
     }
 
     @Test
@@ -124,10 +250,6 @@ public final class SimpleRedLayoutTest {
     @Test
     public void progressBandStaysInsideTicksAndOutsideLabels() {
         assertEquals(
-                SimpleRedLayout.SCALE_START_DEGREES + 180.0f,
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                0.001f);
-        assertEquals(
                 SimpleRedLayout.TICK_MAJOR_INNER_RADIUS,
                 SimpleRedLayout.PROGRESS_BAND_RADIUS,
                 0.001f);
@@ -140,14 +262,26 @@ public final class SimpleRedLayoutTest {
                         - SimpleRedLayout.PROGRESS_HALO_WIDTH * 0.5f
                         > SimpleRedLayout.GAUGE_RADIUS
                         - SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
+        // An empty band sits at the start of the scale and a full one
+        // reaches its end, so the band and the ticks agree everywhere.
         assertEquals(
-                SimpleRedLayout.SCALE_SWEEP_DEGREES * 0.5f,
-                SimpleRedLayout.progressSweepDegrees(0.5f),
+                SimpleRedLayout.SCALE_START_ANGLE_RADIANS,
+                SimpleRedLayout.progressEndAngle(0.0f),
                 0.001f);
         assertEquals(
-                SimpleRedLayout.SCALE_SWEEP_DEGREES,
-                SimpleRedLayout.progressSweepDegrees(1.0f),
+                SimpleRedLayout.scaleAngle(0.5f),
+                SimpleRedLayout.progressEndAngle(0.5f),
                 0.001f);
+        assertEquals(
+                SimpleRedLayout.SCALE_END_ANGLE_RADIANS,
+                SimpleRedLayout.progressEndAngle(1.0f),
+                0.001f);
+        org.junit.Assert.assertTrue(
+                "a sliver of band still needs a segment to draw",
+                SimpleRedLayout.progressSegments(0.001f) >= 1);
+        assertEquals(
+                SimpleRedLayout.SCALE_PATH_SEGMENTS,
+                SimpleRedLayout.progressSegments(1.0f));
     }
 
     @Test
@@ -228,11 +362,15 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void tachBackdropClearsTheLeftGauge() {
+        // Both gauges stretch towards the middle of the screen, so the
+        // clearance has to account for them closing in on each other.
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X
                         - SimpleRedLayout.TACH_BACKDROP_RADIUS
+                        - SimpleRedLayout.SCALE_STRETCH_X
                         > SimpleRedLayout.LEFT_GAUGE_CENTER_X
-                        + SimpleRedLayout.GAUGE_RADIUS);
+                        + SimpleRedLayout.GAUGE_RADIUS
+                        + SimpleRedLayout.SCALE_STRETCH_X);
     }
 
     @Test
@@ -331,21 +469,28 @@ public final class SimpleRedLayoutTest {
     @Test
     public void tachBackdropOverhangsBothScaleEnds() {
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES > 0.0f);
+                SimpleRedLayout.TACH_BACKDROP_PADDING_RADIANS > 0.0f);
         assertEquals(
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES
-                        - SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES,
-                SimpleRedLayout.tachBackdropStartDegrees(),
+                SimpleRedLayout.SCALE_START_ANGLE_RADIANS
+                        - SimpleRedLayout.TACH_BACKDROP_PADDING_RADIANS,
+                SimpleRedLayout.tachBackdropStartAngle(),
                 0.001f);
         assertEquals(
-                SimpleRedLayout.SCALE_SWEEP_DEGREES
-                        + SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES
-                        * 2.0f,
-                SimpleRedLayout.tachBackdropSweepDegrees(),
+                SimpleRedLayout.SCALE_END_ANGLE_RADIANS
+                        + SimpleRedLayout.TACH_BACKDROP_PADDING_RADIANS,
+                SimpleRedLayout.tachBackdropEndAngle(),
                 0.001f);
         org.junit.Assert.assertTrue(
                 "the sector must not wrap onto itself",
-                SimpleRedLayout.tachBackdropSweepDegrees() < 360.0f);
+                SimpleRedLayout.tachBackdropEndAngle()
+                        - SimpleRedLayout.tachBackdropStartAngle()
+                        < (float) (Math.PI * 2.0));
+        org.junit.Assert.assertTrue(
+                "the padded ends still get sampled",
+                SimpleRedLayout.pathSegments(
+                        SimpleRedLayout.tachBackdropStartAngle(),
+                        SimpleRedLayout.tachBackdropEndAngle())
+                        > SimpleRedLayout.SCALE_PATH_SEGMENTS);
     }
 
     @Test
@@ -370,8 +515,19 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.GAUGE_CENTER_Y,
                 SimpleRedLayout.radialY(0.0f, 0.0f),
                 0.001f);
+        // The stretch is deliberately independent of the radius, so it
+        // survives all the way down to a zero radius. Off the stretched
+        // half that leaves the centre itself; on it, the centre shifts
+        // by exactly the offset and nothing more.
         assertEquals(
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
+                SimpleRedLayout.radialX(0.5f, 0.0f, true),
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X
+                        + SimpleRedLayout.stretchOffsetAt(
+                                SimpleRedLayout.scaleAngle(0.35f),
+                                true),
                 SimpleRedLayout.radialX(0.35f, 0.0f, true),
                 0.001f);
     }
