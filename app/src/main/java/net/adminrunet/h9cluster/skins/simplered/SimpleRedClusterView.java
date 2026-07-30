@@ -7,12 +7,10 @@ import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
@@ -20,8 +18,6 @@ import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.view.View;
 
-import java.io.IOException;
-import java.io.InputStream;
 /** Simple Red renderer that preserves the factory indicator zones. */
 public final class SimpleRedClusterView extends View
         implements ClusterRenderer {
@@ -35,12 +31,9 @@ public final class SimpleRedClusterView extends View
             Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final RectF logicalBounds =
-            new RectF(0.0f, 0.0f, LOGICAL_WIDTH, LOGICAL_HEIGHT);
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
 
-    private final Bitmap staticBackground;
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
     private final Typeface scaleTypeface;
@@ -56,6 +49,7 @@ public final class SimpleRedClusterView extends View
                     12.0f,
                     0.1f,
                     0.15f);
+    private Bitmap staticBackground;
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
     private float displayedRpm = targetState.rpm;
@@ -67,9 +61,6 @@ public final class SimpleRedClusterView extends View
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
-        staticBackground = loadBitmap(
-                context,
-                "dashboard/skins/simplered/background.png");
         dataTypeface = Typeface.createFromAsset(
                 context.getAssets(),
                 "fonts/Inter-Regular.ttf");
@@ -103,23 +94,31 @@ public final class SimpleRedClusterView extends View
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        staticBackground = w > 0 && h > 0
+                ? renderStaticLayer(w, h)
+                : null;
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        staticBackground = null;
+        super.onDetachedFromWindow();
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         long frameAtMs = SystemClock.elapsedRealtime();
         updateSmoothedValues(frameAtMs);
         updateTransmissionTemperatureAlert(targetState, frameAtMs);
 
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        float scale = Math.min(
-                getWidth() / LOGICAL_WIDTH,
-                getHeight() / LOGICAL_HEIGHT);
-        float offsetX = (getWidth() - LOGICAL_WIDTH * scale) * 0.5f;
-        float offsetY = (getHeight() - LOGICAL_HEIGHT * scale) * 0.5f;
+        drawStaticLayer(canvas);
 
         int rootSave = canvas.save();
-        canvas.translate(offsetX, offsetY);
-        canvas.scale(scale, scale);
+        applyLogicalTransform(canvas, getWidth(), getHeight());
 
-        drawStaticLayer(canvas);
         drawProgressLayer(canvas);
         drawTextLayer(canvas, frameAtMs);
 
@@ -131,12 +130,40 @@ public final class SimpleRedClusterView extends View
         }
     }
 
+    /**
+     * Renders the static layer once per size change. The blur filters it
+     * uses are only reliable on a software canvas, which is what drawing
+     * into an offscreen bitmap gives us.
+     */
+    private static Bitmap renderStaticLayer(int width, int height) {
+        Bitmap bitmap = Bitmap.createBitmap(
+                width,
+                height,
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        applyLogicalTransform(canvas, width, height);
+        SimpleRedBackground.draw(canvas);
+        return bitmap;
+    }
+
     private void drawStaticLayer(Canvas canvas) {
-        canvas.drawBitmap(
-                staticBackground,
-                (Rect) null,
-                logicalBounds,
-                bitmapPaint);
+        if (staticBackground == null) {
+            return;
+        }
+        canvas.drawBitmap(staticBackground, 0.0f, 0.0f, bitmapPaint);
+    }
+
+    private static void applyLogicalTransform(
+            Canvas canvas,
+            int width,
+            int height) {
+        float scale = Math.min(
+                width / LOGICAL_WIDTH,
+                height / LOGICAL_HEIGHT);
+        canvas.translate(
+                (width - LOGICAL_WIDTH * scale) * 0.5f,
+                (height - LOGICAL_HEIGHT * scale) * 0.5f);
+        canvas.scale(scale, scale);
     }
 
     private void drawProgressLayer(Canvas canvas) {
@@ -191,7 +218,7 @@ public final class SimpleRedClusterView extends View
         progressPaint.setShader(glowGradient);
         canvas.drawArc(
                 arcBounds,
-                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
                 sweep,
                 false,
                 progressPaint);
@@ -201,7 +228,7 @@ public final class SimpleRedClusterView extends View
         progressPaint.setAlpha(255);
         canvas.drawArc(
                 arcBounds,
-                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
                 sweep,
                 false,
                 progressPaint);
@@ -215,7 +242,7 @@ public final class SimpleRedClusterView extends View
                 false));
         canvas.drawArc(
                 arcBounds,
-                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
                 sweep,
                 false,
                 progressPaint);
@@ -280,7 +307,9 @@ public final class SimpleRedClusterView extends View
                 0xFFF4F5F5,
                 true);
         textPaint.setTextSkewX(SimpleRedLayout.SCALE_LABEL_SKEW_X);
-        for (int speed = 0; speed <= 200; speed += 20) {
+        int speedSteps = SimpleRedLayout.majorTickIntervals(false);
+        for (int index = 0; index <= speedSteps; index++) {
+            int speed = index * SimpleRedLayout.SPEED_LABEL_STEP_KPH;
             drawScaleText(
                     canvas,
                     Integer.toString(speed),
@@ -288,11 +317,12 @@ public final class SimpleRedClusterView extends View
                     false,
                     SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
         }
-        for (int rpm = 0; rpm <= 6; rpm++) {
+        int rpmSteps = SimpleRedLayout.majorTickIntervals(true);
+        for (int index = 0; index <= rpmSteps; index++) {
             drawScaleText(
                     canvas,
-                    Integer.toString(rpm),
-                    rpm / 6.0f,
+                    Integer.toString(index),
+                    (float) index / rpmSteps,
                     true,
                     SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
         }
@@ -566,31 +596,6 @@ public final class SimpleRedClusterView extends View
         textPaint.setTextSkewX(SimpleRedLayout.TEXT_SKEW_X);
         textPaint.setTextScaleX(1.0f);
         textPaint.setStyle(Paint.Style.FILL);
-    }
-
-    private static Bitmap loadBitmap(Context context, String assetPath) {
-        InputStream input = null;
-        try {
-            input = context.getAssets().open(assetPath);
-            Bitmap bitmap = BitmapFactory.decodeStream(input);
-            if (bitmap == null) {
-                throw new IllegalStateException(
-                        "Cannot decode asset: " + assetPath);
-            }
-            return bitmap;
-        } catch (IOException error) {
-            throw new IllegalStateException(
-                    "Cannot load asset: " + assetPath,
-                    error);
-        } finally {
-            if (input != null) {
-                try {
-                    input.close();
-                } catch (IOException ignored) {
-                    // Nothing else to release.
-                }
-            }
-        }
     }
 
     private TransmissionTemperatureAlert.Level

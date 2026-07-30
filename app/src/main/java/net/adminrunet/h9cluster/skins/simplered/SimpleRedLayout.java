@@ -9,22 +9,60 @@ final class SimpleRedLayout {
     static final int COLOR_CRITICAL = 0xFFFF4D4D;
     static final float MAX_SPEED_KPH = 200.0f;
     static final float MAX_RPM = 6000.0f;
+    static final int SPEED_LABEL_STEP_KPH = 20;
+    static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
     static final float RIGHT_GAUGE_CENTER_X = 1610.0f;
     static final float GAUGE_CENTER_Y = 435.0f;
     static final float GAUGE_RADIUS = 235.0f;
+    static final float SCALE_START_DEGREES = -10.0f;
+    static final float SCALE_SWEEP_DEGREES = 200.0f;
     static final float SCALE_START_ANGLE_RADIANS =
-            (float) Math.toRadians(-10.0);
+            (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
-            (float) Math.toRadians(200.0);
+            (float) Math.toRadians(SCALE_SWEEP_DEGREES);
     static final int MAIN_SCALE_POINT_COUNT = 10;
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
+
+    static final float SCALE_ARC_RADIUS = GAUGE_RADIUS;
+    static final float SCALE_ARC_WIDTH = 3.0f;
+    static final int SCALE_ARC_COLOR = 0xFFEFF1F1;
+    static final float TICK_OUTER_RADIUS = GAUGE_RADIUS - 2.0f;
+    static final float TICK_MAJOR_INNER_RADIUS = GAUGE_RADIUS - 27.0f;
+    static final float TICK_MINOR_INNER_RADIUS = GAUGE_RADIUS - 16.0f;
+    static final float TICK_MAJOR_WIDTH = 3.0f;
+    static final float TICK_MINOR_WIDTH = 1.5f;
+    static final int TICK_COLOR = 0xFFF1F2F2;
+    static final int SPEED_MINOR_TICKS_PER_MAJOR = 4;
+    static final int RPM_MINOR_TICKS_PER_MAJOR = 10;
+
+    static final float REDLINE_ARC_RADIUS = GAUGE_RADIUS - 34.0f;
+    static final float REDLINE_ARC_WIDTH = 4.0f;
+    static final int REDLINE_ARC_COLOR = 0xFFFF1C1C;
+    static final float REDLINE_GLOW_WIDTH = 17.0f;
+    static final int REDLINE_GLOW_COLOR = 0xDCFF1212;
+    /** Skia blur radius approximating the PIL sigma the asset used. */
+    static final float REDLINE_GLOW_BLUR_RADIUS = 18.0f;
+
+    static final float NOTIFICATION_LEFT = 1320.0f;
+    static final float NOTIFICATION_TOP = 200.0f;
+    static final float NOTIFICATION_RIGHT = 1890.0f;
+    static final float NOTIFICATION_BOTTOM = 620.0f;
+    static final float NOTIFICATION_APERTURE_CENTER_X = 1640.0f;
+    static final float NOTIFICATION_APERTURE_CENTER_Y = 445.0f;
+    static final float NOTIFICATION_APERTURE_RADIUS_X = 145.0f;
+    static final float NOTIFICATION_APERTURE_RADIUS_Y = 115.0f;
+    /** Skia blur radius approximating the PIL sigma the asset used. */
+    static final float NOTIFICATION_EDGE_BLUR_RADIUS = 30.0f;
+    static final int NOTIFICATION_COLOR = 0xFF000000;
     static final float PROGRESS_BAND_RADIUS = 208.0f;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
-    static final float PROGRESS_START_ANGLE_DEGREES = 170.0f;
+    /** Canvas angles run from +X clockwise, the scale runs from -X. */
+    static final float SCALE_START_ANGLE_DEGREES =
+            SCALE_START_DEGREES + 180.0f;
     static final int PROGRESS_HALO_ALPHA = 140;
     static final int PROGRESS_START_COLOR = 0x08FF2020;
     static final int PROGRESS_LEADING_COLOR = 0xFFFFD54F;
@@ -76,23 +114,48 @@ final class SimpleRedLayout {
     private SimpleRedLayout() {
     }
 
-    static float scaleX(float fraction, boolean rightGauge) {
-        float checked = clamp(fraction, 0.0f, 1.0f);
-        float angle = scaleAngle(checked);
-        float centerX = rightGauge
+    /** Labelled intervals on a gauge, which are also its major ticks. */
+    static int majorTickIntervals(boolean rightGauge) {
+        return rightGauge
+                ? Math.round(MAX_RPM / RPM_LABEL_STEP)
+                : Math.round(MAX_SPEED_KPH / SPEED_LABEL_STEP_KPH);
+    }
+
+    static int minorTicksPerMajor(boolean rightGauge) {
+        return rightGauge
+                ? RPM_MINOR_TICKS_PER_MAJOR
+                : SPEED_MINOR_TICKS_PER_MAJOR;
+    }
+
+    static float gaugeCenterX(boolean rightGauge) {
+        return rightGauge
                 ? RIGHT_GAUGE_CENTER_X
                 : LEFT_GAUGE_CENTER_X;
-        return centerX
-                - GAUGE_RADIUS
+    }
+
+    static float radialX(
+            float fraction,
+            float radius,
+            boolean rightGauge) {
+        float angle = scaleAngle(clamp(fraction, 0.0f, 1.0f));
+        return gaugeCenterX(rightGauge)
+                - radius
                 * (float) Math.cos(angle);
     }
 
-    static float scaleY(float fraction) {
-        float checked = clamp(fraction, 0.0f, 1.0f);
-        float angle = scaleAngle(checked);
+    static float radialY(float fraction, float radius) {
+        float angle = scaleAngle(clamp(fraction, 0.0f, 1.0f));
         return GAUGE_CENTER_Y
-                - GAUGE_RADIUS
+                - radius
                 * (float) Math.sin(angle);
+    }
+
+    static float scaleX(float fraction, boolean rightGauge) {
+        return radialX(fraction, GAUGE_RADIUS, rightGauge);
+    }
+
+    static float scaleY(float fraction) {
+        return radialY(fraction, GAUGE_RADIUS);
     }
 
     static float scaleTangentX(float fraction) {
@@ -127,7 +190,7 @@ final class SimpleRedLayout {
     }
 
     static float progressSweepDegrees(float fraction) {
-        return 200.0f * clamp(fraction, 0.0f, 1.0f);
+        return SCALE_SWEEP_DEGREES * clamp(fraction, 0.0f, 1.0f);
     }
 
     static String formatGear(int gear) {

@@ -117,15 +117,10 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void progressBandStaysInsideTicksAndOutsideLabels() {
-        try {
-            float startAngle = SimpleRedLayout.class
-                    .getDeclaredField("PROGRESS_START_ANGLE_DEGREES")
-                    .getFloat(null);
-            assertEquals(170.0f, startAngle, 0.001f);
-        } catch (ReflectiveOperationException error) {
-            org.junit.Assert.fail(
-                    "progress band must start 10 degrees below the left");
-        }
+        assertEquals(
+                170.0f,
+                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
+                0.001f);
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.PROGRESS_BAND_RADIUS
                         + SimpleRedLayout.PROGRESS_HALO_WIDTH * 0.5f
@@ -177,6 +172,112 @@ public final class SimpleRedLayoutTest {
         assertEquals(
                 "fonts/Rajdhani-Medium.ttf",
                 SimpleRedLayout.SCALE_LABEL_FONT_ASSET);
+    }
+
+    @Test
+    public void backgroundRingsAreOrderedFromLabelsOutwards() {
+        float labelRadius = SimpleRedLayout.GAUGE_RADIUS
+                - SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET;
+        float redlineInnerEdge = SimpleRedLayout.REDLINE_ARC_RADIUS
+                - SimpleRedLayout.REDLINE_GLOW_WIDTH * 0.5f;
+        org.junit.Assert.assertTrue(
+                "labels must clear the red arc and its glow",
+                labelRadius < redlineInnerEdge);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.REDLINE_ARC_RADIUS
+                        + SimpleRedLayout.REDLINE_ARC_WIDTH * 0.5f
+                        < SimpleRedLayout.TICK_MAJOR_INNER_RADIUS);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.TICK_MAJOR_INNER_RADIUS
+                        < SimpleRedLayout.TICK_MINOR_INNER_RADIUS);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.TICK_MINOR_INNER_RADIUS
+                        < SimpleRedLayout.TICK_OUTER_RADIUS);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.TICK_OUTER_RADIUS
+                        <= SimpleRedLayout.SCALE_ARC_RADIUS);
+        assertEquals(
+                SimpleRedLayout.GAUGE_RADIUS,
+                SimpleRedLayout.SCALE_ARC_RADIUS,
+                0.001f);
+    }
+
+    @Test
+    public void minorTicksDivideEveryLabelledInterval() {
+        assertEquals(10, SimpleRedLayout.majorTickIntervals(false));
+        assertEquals(6, SimpleRedLayout.majorTickIntervals(true));
+        assertEquals(
+                40,
+                SimpleRedLayout.majorTickIntervals(false)
+                        * SimpleRedLayout.minorTicksPerMajor(false));
+        assertEquals(
+                60,
+                SimpleRedLayout.majorTickIntervals(true)
+                        * SimpleRedLayout.minorTicksPerMajor(true));
+    }
+
+    @Test
+    public void notificationPanelClearsTheLeftGauge() {
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.NOTIFICATION_LEFT
+                        > SimpleRedLayout.LEFT_GAUGE_CENTER_X
+                        + SimpleRedLayout.GAUGE_RADIUS);
+    }
+
+    @Test
+    public void notificationApertureStaysInsideItsPanel() {
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
+                        - SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_X
+                        > SimpleRedLayout.NOTIFICATION_LEFT);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
+                        + SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_X
+                        < SimpleRedLayout.NOTIFICATION_RIGHT);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
+                        - SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_Y
+                        > SimpleRedLayout.NOTIFICATION_TOP);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
+                        + SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_Y
+                        < SimpleRedLayout.NOTIFICATION_BOTTOM);
+        assertEquals(
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X + 30.0f,
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X,
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.GAUGE_CENTER_Y + 10.0f,
+                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y,
+                0.001f);
+    }
+
+    @Test
+    public void radialHelpersMatchTheScaleHelpersAtGaugeRadius() {
+        for (int index = 0; index <= 8; index++) {
+            float fraction = index / 8.0f;
+            assertEquals(
+                    SimpleRedLayout.scaleX(fraction, false),
+                    SimpleRedLayout.radialX(
+                            fraction,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            false),
+                    0.001f);
+            assertEquals(
+                    SimpleRedLayout.scaleY(fraction),
+                    SimpleRedLayout.radialY(
+                            fraction,
+                            SimpleRedLayout.GAUGE_RADIUS),
+                    0.001f);
+        }
+        assertEquals(
+                SimpleRedLayout.GAUGE_CENTER_Y,
+                SimpleRedLayout.radialY(0.0f, 0.0f),
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
+                SimpleRedLayout.radialX(0.35f, 0.0f, true),
+                0.001f);
     }
 
     @Test
