@@ -5,6 +5,7 @@ H9 Cluster запускает отдельную приборную панель
 [spoiler="Возможности"]
 [list]
 [*]темы Classic, Horizon и Sport;
+[*]отдельно откалиброванные по напечатанным делениям стрелки спидометра и тахометра в темах Classic и Sport;
 [*]скорость и обороты двигателя;
 [*]текущая ступень автоматической коробки передач;
 [*]пробег ODO, Day и Trip;
@@ -39,7 +40,7 @@ H9 Cluster запускает отдельную приборную панель
 2. Установите APK с сохранением настроек:
 
 [code]
-adb install -r H9_Cluster_v9.3.1_adminrunet_release.apk
+adb install -r H9_Cluster_v9.3.2_adminrunet_release.apk
 [/code]
 
 3. Откройте настройки приложения:
@@ -80,7 +81,7 @@ adb shell am start --display 2 -W -n net.adminrunet.h9cluster/.PreviewActivity
 [spoiler="Контрольная сумма APK"]
 SHA-256:
 [code]
-f0b872e822feb6a8c3aee9ef31ae701623cf15b38303a243cf3a6caa921d1d14
+9f541017694b537ffaa872e1981370c3435a5f30486fa296e1ea2ca072f6435d
 [/code]
 [/spoiler]
 
