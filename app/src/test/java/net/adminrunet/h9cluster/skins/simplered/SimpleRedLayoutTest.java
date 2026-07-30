@@ -9,22 +9,22 @@ public final class SimpleRedLayoutTest {
     @Test
     public void mainScalesAreMatchingTiltedArcs() {
         assertEquals(
-                45.680f,
+                17.269f,
                 SimpleRedLayout.scaleX(0.0f, false),
                 0.01f);
         assertEquals(
-                346.075f,
+                341.824f,
                 SimpleRedLayout.scaleY(0.0f),
                 0.01f);
         // Halfway along the outline is past the insert, so it lands
         // further round than halfway through the sweep would.
         assertEquals(
-                182.778f,
+                183.918f,
                 SimpleRedLayout.scaleY(0.5f),
                 0.01f);
         // The far end sits beyond the insert and so carries all of it.
         assertEquals(
-                534.320f + SimpleRedLayout.SCALE_STRETCH_X,
+                502.731f + SimpleRedLayout.SCALE_STRETCH_X,
                 SimpleRedLayout.scaleX(1.0f, false),
                 0.01f);
 
@@ -248,7 +248,7 @@ public final class SimpleRedLayoutTest {
     @Test
     public void gaugesFrameFactoryReadoutsAndBottomValues() {
         assertEquals(
-                290.0f,
+                260.0f,
                 SimpleRedLayout.LEFT_GAUGE_CENTER_X,
                 0.001f);
         assertEquals(

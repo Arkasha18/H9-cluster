@@ -12,11 +12,11 @@ final class SimpleRedLayout {
     static final int SPEED_LABEL_STEP_KPH = 20;
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
-    static final float LEFT_GAUGE_CENTER_X = 290.0f;
+    static final float LEFT_GAUGE_CENTER_X = 280.0f;
     static final float RIGHT_GAUGE_CENTER_X = 1620.0f;
     static final float GAUGE_CENTER_Y = 435.0f;
     static final float GAUGE_RADIUS = 260.0f;
-    static final float SCALE_START_DEGREES = 20.0f;
+    static final float SCALE_START_DEGREES = 21.0f;
     static final float SCALE_SWEEP_DEGREES = 180.0f;
     static final float SCALE_START_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_START_DEGREES);
@@ -55,8 +55,8 @@ final class SimpleRedLayout {
                     + SCALE_TRAILING_LENGTH;
     /** Segments per full outline when sampling the scale into a Path. */
     static final int SCALE_PATH_SEGMENTS = 96;
-    static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
-    static final float SCALE_LABEL_TEXT_SIZE = 28.0f;
+    static final float MAIN_SCALE_LABEL_OFFSET = 65.0f;
+    static final float SCALE_LABEL_TEXT_SIZE = 30.0f;
     static final int SCALE_LABEL_COLOR = 0xFFF4F5F5;
     static final float SCALE_UNIT_TEXT_SIZE = 15.0f;
     static final int SCALE_UNIT_COLOR = 0xFFCBD0D3;
@@ -137,8 +137,8 @@ final class SimpleRedLayout {
     static final float TYRE_ICON_HEIGHT = 28.0f;
     static final float TYRE_RIGHT_X = 1852.0f;
     static final float TYRE_TEXT_SIZE = 22.0f;
-    static final float TYRE_TOP_Y = 35.0f;
-    static final float TYRE_BOTTOM_Y = 60.0f;
+    static final float TYRE_TOP_Y = 40.0f;
+    static final float TYRE_BOTTOM_Y = 65.0f;
     static final float STEERING_ICON_X = TYRE_ICON_X;
     static final float STEERING_ICON_VERTICAL_OFFSET = -3.0f;
     static final float STEERING_ICON_Y =
