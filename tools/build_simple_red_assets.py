@@ -11,21 +11,18 @@ SIZE = (1920, 720)
 RENDER_SCALE = 2
 LEFT_GAUGE_CENTER_X = 290.0
 RIGHT_GAUGE_CENTER_X = 1610.0
-GAUGE_CENTER_Y = 455.0
+GAUGE_CENTER_Y = 435.0
 GAUGE_RADIUS = 235.0
+SCALE_START_ANGLE = math.radians(-10.0)
+SCALE_SWEEP_ANGLE = math.radians(200.0)
 SPEED_LABELS = (0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200)
 TACH_LABELS = tuple(range(7))
 
-NOTIFICATION_RECT = (1410, 260, 1775, 620)
-NOTIFICATION_APERTURE_CENTER = (1640, 360)
-NOTIFICATION_APERTURE_RADIUS = 155
+NOTIFICATION_RECT = (1320, 200, 1890, 620)
+NOTIFICATION_APERTURE_CENTER = (1640, 445)
+NOTIFICATION_APERTURE_RADIUS_X = 145
+NOTIFICATION_APERTURE_RADIUS_Y = 115
 NOTIFICATION_EDGE_BLUR = 18.0
-NOTIFICATION_MASK_CORNERS = (
-    (1415, 265),
-    (1770, 265),
-    (1415, 615),
-    (1770, 615),
-)
 
 
 def scale_point(
@@ -33,7 +30,7 @@ def scale_point(
     right_gauge: bool,
 ) -> tuple[float, float, float, float]:
     checked = max(0.0, min(1.0, fraction))
-    angle = math.pi * checked
+    angle = SCALE_START_ANGLE + SCALE_SWEEP_ANGLE * checked
     center_x = (
         RIGHT_GAUGE_CENTER_X
         if right_gauge
@@ -41,8 +38,12 @@ def scale_point(
     )
     x = center_x - GAUGE_RADIUS * math.cos(angle)
     y = GAUGE_CENTER_Y - GAUGE_RADIUS * math.sin(angle)
-    tangent_x = math.pi * GAUGE_RADIUS * math.sin(angle)
-    tangent_y = -math.pi * GAUGE_RADIUS * math.cos(angle)
+    tangent_x = (
+        SCALE_SWEEP_ANGLE * GAUGE_RADIUS * math.sin(angle)
+    )
+    tangent_y = (
+        -SCALE_SWEEP_ANGLE * GAUGE_RADIUS * math.cos(angle)
+    )
     return x, y, tangent_x, tangent_y
 
 
@@ -133,13 +134,20 @@ def _draw_notification_corner_mask(background: Image.Image) -> None:
         fill=255,
     )
     center_x, center_y = NOTIFICATION_APERTURE_CENTER
-    radius = NOTIFICATION_APERTURE_RADIUS
     draw.ellipse(
         (
-            (center_x - radius) * RENDER_SCALE,
-            (center_y - radius) * RENDER_SCALE,
-            (center_x + radius) * RENDER_SCALE,
-            (center_y + radius) * RENDER_SCALE,
+            (
+                center_x - NOTIFICATION_APERTURE_RADIUS_X
+            ) * RENDER_SCALE,
+            (
+                center_y - NOTIFICATION_APERTURE_RADIUS_Y
+            ) * RENDER_SCALE,
+            (
+                center_x + NOTIFICATION_APERTURE_RADIUS_X
+            ) * RENDER_SCALE,
+            (
+                center_y + NOTIFICATION_APERTURE_RADIUS_Y
+            ) * RENDER_SCALE,
         ),
         fill=0,
     )

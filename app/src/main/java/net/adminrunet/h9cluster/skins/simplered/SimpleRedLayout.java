@@ -12,14 +12,19 @@ final class SimpleRedLayout {
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
     static final float RIGHT_GAUGE_CENTER_X = 1610.0f;
-    static final float GAUGE_CENTER_Y = 455.0f;
+    static final float GAUGE_CENTER_Y = 435.0f;
     static final float GAUGE_RADIUS = 235.0f;
+    static final float SCALE_START_ANGLE_RADIANS =
+            (float) Math.toRadians(-10.0);
+    static final float SCALE_SWEEP_ANGLE_RADIANS =
+            (float) Math.toRadians(200.0);
     static final int MAIN_SCALE_POINT_COUNT = 10;
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
     static final float PROGRESS_BAND_RADIUS = 208.0f;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
+    static final float PROGRESS_START_ANGLE_DEGREES = 170.0f;
     static final int PROGRESS_HALO_ALPHA = 140;
     static final int PROGRESS_START_COLOR = 0x08FF2020;
     static final int PROGRESS_LEADING_COLOR = 0xFFFFD54F;
@@ -28,8 +33,8 @@ final class SimpleRedLayout {
     static final String SCALE_LABEL_FONT_ASSET =
             "fonts/Rajdhani-Medium.ttf";
 
-    static final float GEAR_NUMBER_X = 1035.0f;
-    static final float GEAR_NUMBER_BASELINE = 69.0f;
+    static final float GEAR_NUMBER_X = 1000.0f;
+    static final float GEAR_NUMBER_BASELINE = 63.0f;
 
     static final float TYRE_LEFT_X = 1748.0f;
     static final float TYRE_ICON_X = 1800.0f;
@@ -57,13 +62,13 @@ final class SimpleRedLayout {
     static final float FACTORY_SCALE_BASELINE = 690.0f;
     static final float CONSUMPTION_X = 24.0f;
     static final float CONSUMPTION_BASELINE = FACTORY_SCALE_BASELINE;
-    static final float FUEL_LITERS_X = 170.0f;
+    static final float FUEL_LITERS_X = 168.0f;
     static final float FUEL_LITERS_BASELINE = 668.0f;
     static final float COOLANT_X = 1645.0f;
     static final float COOLANT_BASELINE = 665.0f;
-    static final float TRANSMISSION_X = 1710.0f;
-    static final float TRANSMISSION_BASELINE = 655.0f;
-    static final float TRANSMISSION_LABEL_X = 1702.0f;
+    static final float TRANSMISSION_X = 1735.0f;
+    static final float TRANSMISSION_BASELINE = 665.0f;
+    static final float TRANSMISSION_LABEL_X = 1730.0f;
     static final float TRANSMISSION_LABEL_Y = TRANSMISSION_BASELINE;
     static final float VOLTAGE_X = 1896.0f;
     static final float VOLTAGE_BASELINE = FACTORY_SCALE_BASELINE;
@@ -73,40 +78,44 @@ final class SimpleRedLayout {
 
     static float scaleX(float fraction, boolean rightGauge) {
         float checked = clamp(fraction, 0.0f, 1.0f);
+        float angle = scaleAngle(checked);
         float centerX = rightGauge
                 ? RIGHT_GAUGE_CENTER_X
                 : LEFT_GAUGE_CENTER_X;
         return centerX
                 - GAUGE_RADIUS
-                * (float) Math.cos(Math.PI * checked);
+                * (float) Math.cos(angle);
     }
 
     static float scaleY(float fraction) {
         float checked = clamp(fraction, 0.0f, 1.0f);
+        float angle = scaleAngle(checked);
         return GAUGE_CENTER_Y
                 - GAUGE_RADIUS
-                * (float) Math.sin(Math.PI * checked);
+                * (float) Math.sin(angle);
     }
 
     static float scaleTangentX(float fraction) {
         float checked = clamp(fraction, 0.0f, 1.0f);
-        return (float) (Math.PI
+        float angle = scaleAngle(checked);
+        return (float) (SCALE_SWEEP_ANGLE_RADIANS
                 * GAUGE_RADIUS
-                * Math.sin(Math.PI * checked));
+                * Math.sin(angle));
     }
 
     static float scaleTangentY(float fraction) {
         float checked = clamp(fraction, 0.0f, 1.0f);
-        return (float) (-Math.PI
+        float angle = scaleAngle(checked);
+        return (float) (-SCALE_SWEEP_ANGLE_RADIANS
                 * GAUGE_RADIUS
-                * Math.cos(Math.PI * checked));
+                * Math.cos(angle));
     }
 
     static float steeringRotation(float angleDeg) {
         if (!Float.isFinite(angleDeg)) {
             return 0.0f;
         }
-        return clamp(angleDeg, -1080.0f, 1080.0f);
+        return -clamp(angleDeg, -1080.0f, 1080.0f);
     }
 
     static float speedFraction(float speedKph) {
@@ -118,7 +127,7 @@ final class SimpleRedLayout {
     }
 
     static float progressSweepDegrees(float fraction) {
-        return 180.0f * clamp(fraction, 0.0f, 1.0f);
+        return 200.0f * clamp(fraction, 0.0f, 1.0f);
     }
 
     static String formatGear(int gear) {
@@ -208,6 +217,11 @@ final class SimpleRedLayout {
 
     private static boolean isPositiveFinite(float value) {
         return Float.isFinite(value) && value > 0.0f;
+    }
+
+    private static float scaleAngle(float fraction) {
+        return SCALE_START_ANGLE_RADIANS
+                + SCALE_SWEEP_ANGLE_RADIANS * fraction;
     }
 
     private static float clamp(float value, float min, float max) {

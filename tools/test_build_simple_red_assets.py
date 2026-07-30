@@ -37,26 +37,17 @@ class SimpleRedAssetsTest(unittest.TestCase):
         right_start = assets.scale_point(0.0, True)
         right_end = assets.scale_point(1.0, True)
 
-        self.assertAlmostEqual(
-            assets.LEFT_GAUGE_CENTER_X - assets.GAUGE_RADIUS,
-            left_start[0],
-        )
+        self.assertAlmostEqual(58.570, left_start[0], places=3)
+        self.assertAlmostEqual(475.807, left_start[1], places=3)
         self.assertAlmostEqual(
             assets.GAUGE_CENTER_Y - assets.GAUGE_RADIUS,
             left_top[1],
         )
-        self.assertAlmostEqual(
-            assets.LEFT_GAUGE_CENTER_X + assets.GAUGE_RADIUS,
-            left_end[0],
-        )
-        self.assertAlmostEqual(
-            assets.RIGHT_GAUGE_CENTER_X - assets.GAUGE_RADIUS,
-            right_start[0],
-        )
-        self.assertAlmostEqual(
-            assets.RIGHT_GAUGE_CENTER_X + assets.GAUGE_RADIUS,
-            right_end[0],
-        )
+        self.assertAlmostEqual(521.430, left_end[0], places=3)
+        self.assertAlmostEqual(1378.570, right_start[0], places=3)
+        self.assertAlmostEqual(1841.430, right_end[0], places=3)
+        self.assertAlmostEqual(left_start[1], left_end[1])
+        self.assertAlmostEqual(right_start[1], right_end[1])
 
     def test_labels_are_monotonic_and_complete(self):
         self.assertEqual(
@@ -114,14 +105,16 @@ class SimpleRedAssetsTest(unittest.TestCase):
         self.assertEqual(
             (
                 assets.RIGHT_GAUGE_CENTER_X + 30,
-                assets.GAUGE_CENTER_Y - 95,
+                assets.GAUGE_CENTER_Y + 10,
             ),
             assets.NOTIFICATION_APERTURE_CENTER,
         )
-        self.assertEqual(
-            assets.GAUGE_RADIUS - 80,
-            assets.NOTIFICATION_APERTURE_RADIUS,
-        )
+        self.assertEqual(145, assets.NOTIFICATION_APERTURE_RADIUS_X)
+        self.assertEqual(115, assets.NOTIFICATION_APERTURE_RADIUS_Y)
+        self.assertEqual((1320, 200, 1890, 620), assets.NOTIFICATION_RECT)
+        self.assertGreater(result[270, 1640, 3], 240)
+        self.assertGreater(result[320, 1360, 3], 240)
+        self.assertGreater(result[320, 1850, 3], 240)
         self.assertGreater(result[580, 1450, 3], 240)
         center_x, center_y = assets.NOTIFICATION_APERTURE_CENTER
         self.assertEqual(0, result[center_y, center_x, 3])
@@ -136,7 +129,7 @@ class SimpleRedAssetsTest(unittest.TestCase):
         )
         assets._draw_notification_corner_mask(mask)
         mask = np.asarray(mask.resize(assets.SIZE))
-        feather_alpha = mask[440, 1405, 3]
+        feather_alpha = mask[440, 1315, 3]
         self.assertGreater(feather_alpha, 0)
         self.assertLess(feather_alpha, 255)
 

@@ -189,12 +189,22 @@ public final class SimpleRedClusterView extends View
         progressPaint.setAlpha(
                 SimpleRedLayout.PROGRESS_HALO_ALPHA);
         progressPaint.setShader(glowGradient);
-        canvas.drawArc(arcBounds, 180.0f, sweep, false, progressPaint);
+        canvas.drawArc(
+                arcBounds,
+                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                sweep,
+                false,
+                progressPaint);
 
         progressPaint.setStrokeWidth(
                 SimpleRedLayout.PROGRESS_GLOW_WIDTH);
         progressPaint.setAlpha(255);
-        canvas.drawArc(arcBounds, 180.0f, sweep, false, progressPaint);
+        canvas.drawArc(
+                arcBounds,
+                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                sweep,
+                false,
+                progressPaint);
 
         progressPaint.setStrokeWidth(
                 SimpleRedLayout.PROGRESS_CORE_WIDTH);
@@ -203,7 +213,12 @@ public final class SimpleRedClusterView extends View
                 centerY,
                 clampedFraction,
                 false));
-        canvas.drawArc(arcBounds, 180.0f, sweep, false, progressPaint);
+        canvas.drawArc(
+                arcBounds,
+                SimpleRedLayout.PROGRESS_START_ANGLE_DEGREES,
+                sweep,
+                false,
+                progressPaint);
         progressPaint.setAlpha(255);
         progressPaint.setShader(null);
     }
@@ -333,7 +348,7 @@ public final class SimpleRedClusterView extends View
     private void drawCurrentGear(Canvas canvas, ClusterState state) {
         configureText(
                 gaugeTypeface,
-                54.0f,
+                44.0f,
                 Paint.Align.CENTER,
                 0xFFF7F7F5,
                 true);

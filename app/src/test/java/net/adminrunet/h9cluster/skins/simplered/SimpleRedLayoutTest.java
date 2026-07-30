@@ -9,20 +9,21 @@ public final class SimpleRedLayoutTest {
     @Test
     public void mainScalesAreMatchingUpperSemicircles() {
         assertEquals(
-                SimpleRedLayout.LEFT_GAUGE_CENTER_X
-                        - SimpleRedLayout.GAUGE_RADIUS,
+                58.570f,
                 SimpleRedLayout.scaleX(0.0f, false),
-                0.001f);
+                0.01f);
         assertEquals(
-                SimpleRedLayout.GAUGE_CENTER_Y
-                        - SimpleRedLayout.GAUGE_RADIUS,
+                475.807f,
+                SimpleRedLayout.scaleY(0.0f),
+                0.01f);
+        assertEquals(
+                200.0f,
                 SimpleRedLayout.scaleY(0.5f),
                 0.001f);
         assertEquals(
-                SimpleRedLayout.LEFT_GAUGE_CENTER_X
-                        + SimpleRedLayout.GAUGE_RADIUS,
+                521.430f,
                 SimpleRedLayout.scaleX(1.0f, false),
-                0.001f);
+                0.01f);
 
         for (int index = 0; index <= 8; index++) {
             float fraction = index / 8.0f;
@@ -52,7 +53,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
                 0.001f);
         assertEquals(
-                455.0f,
+                435.0f,
                 SimpleRedLayout.GAUGE_CENTER_Y,
                 0.001f);
         assertEquals(
@@ -68,7 +69,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.COOLANT_BASELINE,
                 0.001f);
         assertEquals(
-                655.0f,
+                665.0f,
                 SimpleRedLayout.TRANSMISSION_BASELINE,
                 0.001f);
         assertEquals(
@@ -116,6 +117,15 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void progressBandStaysInsideTicksAndOutsideLabels() {
+        try {
+            float startAngle = SimpleRedLayout.class
+                    .getDeclaredField("PROGRESS_START_ANGLE_DEGREES")
+                    .getFloat(null);
+            assertEquals(170.0f, startAngle, 0.001f);
+        } catch (ReflectiveOperationException error) {
+            org.junit.Assert.fail(
+                    "progress band must start 10 degrees below the left");
+        }
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.PROGRESS_BAND_RADIUS
                         + SimpleRedLayout.PROGRESS_HALO_WIDTH * 0.5f
@@ -126,11 +136,11 @@ public final class SimpleRedLayoutTest {
                         > SimpleRedLayout.GAUGE_RADIUS
                         - SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
         assertEquals(
-                90.0f,
+                100.0f,
                 SimpleRedLayout.progressSweepDegrees(0.5f),
                 0.001f);
         assertEquals(
-                180.0f,
+                200.0f,
                 SimpleRedLayout.progressSweepDegrees(1.0f),
                 0.001f);
     }
@@ -146,7 +156,7 @@ public final class SimpleRedLayoutTest {
     @Test
     public void steeringAngleRotatesOnlyTheWheelIcon() {
         assertEquals(
-                -141.0f,
+                141.0f,
                 SimpleRedLayout.steeringRotation(-141.0f),
                 0.001f);
         assertEquals(
@@ -154,7 +164,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.steeringRotation(Float.NaN),
                 0.001f);
         assertEquals(
-                1080.0f,
+                -1080.0f,
                 SimpleRedLayout.steeringRotation(1200.0f),
                 0.001f);
     }
