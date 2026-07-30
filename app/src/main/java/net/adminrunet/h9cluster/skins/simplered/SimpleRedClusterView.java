@@ -1,5 +1,6 @@
 package net.adminrunet.h9cluster.skins.simplered;
 
+import net.adminrunet.h9cluster.BuildConfig;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
@@ -97,7 +98,7 @@ public final class SimpleRedClusterView extends View
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         staticBackground = w > 0 && h > 0
-                ? renderStaticLayer(w, h)
+                ? renderStaticLayer(w, h, BuildConfig.DEMO_MODE)
                 : null;
     }
 
@@ -135,14 +136,17 @@ public final class SimpleRedClusterView extends View
      * uses are only reliable on a software canvas, which is what drawing
      * into an offscreen bitmap gives us.
      */
-    private static Bitmap renderStaticLayer(int width, int height) {
+    private static Bitmap renderStaticLayer(
+            int width,
+            int height,
+            boolean demoMode) {
         Bitmap bitmap = Bitmap.createBitmap(
                 width,
                 height,
                 Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         applyLogicalTransform(canvas, width, height);
-        SimpleRedBackground.draw(canvas);
+        SimpleRedBackground.draw(canvas, demoMode);
         return bitmap;
     }
 

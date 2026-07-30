@@ -18,9 +18,9 @@ final class SimpleRedBackground {
     private SimpleRedBackground() {
     }
 
-    static void draw(Canvas canvas) {
+    static void draw(Canvas canvas, boolean demoMode) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        drawNotificationPanel(canvas, paint);
+        drawNotificationPanel(canvas, paint, demoMode);
         drawGauge(canvas, paint, false);
         drawGauge(canvas, paint, true);
     }
@@ -28,7 +28,8 @@ final class SimpleRedBackground {
     /** Blanks the factory notification zone, keeping its aperture clear. */
     private static void drawNotificationPanel(
             Canvas canvas,
-            Paint paint) {
+            Paint paint,
+            boolean demoMode) {
         Path panel = new Path();
         panel.addRect(
                 SimpleRedLayout.NOTIFICATION_LEFT,
@@ -57,7 +58,7 @@ final class SimpleRedBackground {
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(SimpleRedLayout.NOTIFICATION_COLOR);
+        paint.setColor(SimpleRedLayout.notificationColor(demoMode));
         paint.setMaskFilter(new BlurMaskFilter(
                 SimpleRedLayout.NOTIFICATION_EDGE_BLUR_RADIUS,
                 BlurMaskFilter.Blur.NORMAL));

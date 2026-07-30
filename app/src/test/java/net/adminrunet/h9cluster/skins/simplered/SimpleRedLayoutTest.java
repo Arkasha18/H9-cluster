@@ -225,6 +225,21 @@ public final class SimpleRedLayoutTest {
     }
 
     @Test
+    public void notificationPanelIsOpaqueBlackOutsideDemoBuilds() {
+        assertEquals(
+                0xFF000000,
+                SimpleRedLayout.notificationColor(false));
+        org.junit.Assert.assertNotEquals(
+                "demo builds must tint the panel to make it visible",
+                SimpleRedLayout.notificationColor(false),
+                SimpleRedLayout.notificationColor(true));
+        assertEquals(
+                "the demo tint must stay fully opaque",
+                0xFF,
+                SimpleRedLayout.notificationColor(true) >>> 24);
+    }
+
+    @Test
     public void notificationApertureStaysInsideItsPanel() {
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X

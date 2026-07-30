@@ -22,7 +22,6 @@ final class SimpleRedLayout {
             (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_SWEEP_DEGREES);
-    static final int MAIN_SCALE_POINT_COUNT = 10;
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
 
     static final float SCALE_ARC_RADIUS = GAUGE_RADIUS;
@@ -55,7 +54,10 @@ final class SimpleRedLayout {
     static final float NOTIFICATION_APERTURE_RADIUS_Y = 115.0f;
     /** Skia blur radius approximating the PIL sigma the asset used. */
     static final float NOTIFICATION_EDGE_BLUR_RADIUS = 30.0f;
-    static final int NOTIFICATION_COLOR = 0xFF000000;
+    /** Opaque black so the factory notification zone stays hidden. */
+    static final int NOTIFICATION_COLOR_VEHICLE = 0xFF000000;
+    /** Demo builds tint the panel so its bounds are visible while tuning. */
+    static final int NOTIFICATION_COLOR_DEMO = 0xFF0044FF;
     static final float PROGRESS_BAND_RADIUS = 208.0f;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
@@ -112,6 +114,17 @@ final class SimpleRedLayout {
     static final float VOLTAGE_BASELINE = FACTORY_SCALE_BASELINE;
 
     private SimpleRedLayout() {
+    }
+
+    /**
+     * The panel must be opaque black in the vehicle so it hides the factory
+     * notification zone. Demo builds tint it instead, because on a demo
+     * background black-on-black gives no clue where the panel sits.
+     */
+    static int notificationColor(boolean demoMode) {
+        return demoMode
+                ? NOTIFICATION_COLOR_DEMO
+                : NOTIFICATION_COLOR_VEHICLE;
     }
 
     /** Labelled intervals on a gauge, which are also its major ticks. */
