@@ -28,8 +28,6 @@ import java.util.Locale;
 public final class SportClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
-    private static final float MAX_SPEED_KPH = 220.0f;
-    private static final float MAX_RPM = 8000.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float SPORT_TYRE_CAR_X = 1538.0f;
     private static final float SPORT_TYRE_CAR_Y = 285.0f;
@@ -38,30 +36,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private static final float ATF_CARD_LEFT = 1330.0f + TOP_PANEL_SHIFT_4_MM;
     private static final float ATF_CARD_RIGHT = 1478.0f + TOP_PANEL_SHIFT_4_MM;
     private static final float ATF_CENTER_X = 1404.0f + TOP_PANEL_SHIFT_4_MM;
-    // Normalized positions and red-track coordinates for the asymmetric main scales.
-    // The shape starts on the short lower inner arm, wraps around the outer edge,
-    // and finishes on the long upper inner arm. The RPM scale mirrors these points.
     private static final float SPORT_MAIN_NEEDLE_GAP = 16.0f;
-    private static final float[] SPORT_SCALE_FRACTIONS = {
-            0.0f,
-            20.0f / 220.0f,
-            40.0f / 220.0f,
-            60.0f / 220.0f,
-            80.0f / 220.0f,
-            100.0f / 220.0f,
-            120.0f / 220.0f,
-            140.0f / 220.0f,
-            180.0f / 220.0f,
-            1.0f
-    };
-    private static final float[] SPORT_SCALE_X = {
-            556.0f, 322.0f, 245.0f, 184.0f, 130.0f,
-            96.0f, 118.0f, 202.0f, 360.0f, 526.0f
-    };
-    private static final float[] SPORT_SCALE_Y = {
-            660.0f, 660.0f, 631.0f, 577.0f, 498.0f,
-            405.0f, 313.0f, 231.0f, 156.0f, 154.0f
-    };
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
     private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
@@ -198,15 +173,13 @@ public final class SportClusterView extends View implements ClusterRenderer {
     }
 
     private void drawNeedleLayer(Canvas canvas) {
-        float speedFraction = clamp(displayedSpeed / MAX_SPEED_KPH, 0.0f, 1.0f);
-        float rpmFraction = clamp(displayedRpm / MAX_RPM, 0.0f, 1.0f);
         float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
         float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
 
         drawSportScaleNeedle(
                 canvas,
                 mainNeedle,
-                speedFraction,
+                SportDialCalibration.speed(displayedSpeed),
                 false,
                 SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
@@ -214,7 +187,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         drawSportScaleNeedle(
                 canvas,
                 mainNeedle,
-                rpmFraction,
+                SportDialCalibration.rpm(displayedRpm),
                 true,
                 SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
@@ -247,68 +220,15 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private void drawSportScaleNeedle(
             Canvas canvas,
             Bitmap needle,
-            float fraction,
-            boolean mirrored,
+            SportDialCalibration.Sample sample,
+            boolean rpmScale,
             float scaleGap,
             float length,
             float thickness) {
-        float clampedFraction = clamp(fraction, 0.0f, 1.0f);
-        int lastPoint = SPORT_SCALE_FRACTIONS.length - 1;
-        int segment = lastPoint - 1;
-        for (int index = 0; index < lastPoint; index++) {
-            if (clampedFraction <= SPORT_SCALE_FRACTIONS[index + 1]) {
-                segment = index;
-                break;
-            }
-        }
-
-        float fractionStart = SPORT_SCALE_FRACTIONS[segment];
-        float fractionEnd = SPORT_SCALE_FRACTIONS[segment + 1];
-        float fractionSpan = fractionEnd - fractionStart;
-        float t = fractionSpan > 0.0f
-                ? (clampedFraction - fractionStart) / fractionSpan
-                : 0.0f;
-
-        float startSlopeX = sportScaleSlope(SPORT_SCALE_X, segment);
-        float startSlopeY = sportScaleSlope(SPORT_SCALE_Y, segment);
-        float endSlopeX = sportScaleSlope(SPORT_SCALE_X, segment + 1);
-        float endSlopeY = sportScaleSlope(SPORT_SCALE_Y, segment + 1);
-
-        float x = hermitePosition(
-                SPORT_SCALE_X[segment],
-                SPORT_SCALE_X[segment + 1],
-                startSlopeX,
-                endSlopeX,
-                fractionSpan,
-                t);
-        float y = hermitePosition(
-                SPORT_SCALE_Y[segment],
-                SPORT_SCALE_Y[segment + 1],
-                startSlopeY,
-                endSlopeY,
-                fractionSpan,
-                t);
-        float tangentX = hermiteTangent(
-                SPORT_SCALE_X[segment],
-                SPORT_SCALE_X[segment + 1],
-                startSlopeX,
-                endSlopeX,
-                fractionSpan,
-                t);
-        float tangentY = hermiteTangent(
-                SPORT_SCALE_Y[segment],
-                SPORT_SCALE_Y[segment + 1],
-                startSlopeY,
-                endSlopeY,
-                fractionSpan,
-                t);
-
-        if (mirrored) {
-            x = LOGICAL_WIDTH - x;
-            tangentX = -tangentX;
-        }
-        float inwardX = mirrored ? tangentY : -tangentY;
-        float inwardY = mirrored ? -tangentX : tangentX;
+        float x = sample.x;
+        float y = sample.y;
+        float inwardX = rpmScale ? sample.tangentY : -sample.tangentY;
+        float inwardY = rpmScale ? -sample.tangentX : sample.tangentX;
         float inwardLength = (float) Math.hypot(inwardX, inwardY);
         if (inwardLength < 0.001f) {
             return;
@@ -325,51 +245,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
         needleDestination.set(-length, -thickness * 0.5f, 0.0f, thickness * 0.5f);
         canvas.drawBitmap(needle, (Rect) null, needleDestination, bitmapPaint);
         canvas.restoreToCount(save);
-    }
-
-    private static float sportScaleSlope(float[] coordinates, int index) {
-        int lastPoint = SPORT_SCALE_FRACTIONS.length - 1;
-        if (index <= 0) {
-            return (coordinates[1] - coordinates[0])
-                    / (SPORT_SCALE_FRACTIONS[1] - SPORT_SCALE_FRACTIONS[0]);
-        }
-        if (index >= lastPoint) {
-            return (coordinates[lastPoint] - coordinates[lastPoint - 1])
-                    / (SPORT_SCALE_FRACTIONS[lastPoint]
-                    - SPORT_SCALE_FRACTIONS[lastPoint - 1]);
-        }
-        return (coordinates[index + 1] - coordinates[index - 1])
-                / (SPORT_SCALE_FRACTIONS[index + 1]
-                - SPORT_SCALE_FRACTIONS[index - 1]);
-    }
-
-    private static float hermitePosition(
-            float start,
-            float end,
-            float startSlope,
-            float endSlope,
-            float fractionSpan,
-            float t) {
-        float t2 = t * t;
-        float t3 = t2 * t;
-        return (2.0f * t3 - 3.0f * t2 + 1.0f) * start
-                + (t3 - 2.0f * t2 + t) * fractionSpan * startSlope
-                + (-2.0f * t3 + 3.0f * t2) * end
-                + (t3 - t2) * fractionSpan * endSlope;
-    }
-
-    private static float hermiteTangent(
-            float start,
-            float end,
-            float startSlope,
-            float endSlope,
-            float fractionSpan,
-            float t) {
-        float t2 = t * t;
-        return (6.0f * t2 - 6.0f * t) * start
-                + (3.0f * t2 - 4.0f * t + 1.0f) * fractionSpan * startSlope
-                + (-6.0f * t2 + 6.0f * t) * end
-                + (3.0f * t2 - 2.0f * t) * fractionSpan * endSlope;
     }
 
     private void drawScaleNeedle(
