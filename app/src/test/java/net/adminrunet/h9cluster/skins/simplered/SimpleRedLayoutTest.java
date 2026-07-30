@@ -291,6 +291,45 @@ public final class SimpleRedLayoutTest {
     }
 
     @Test
+    public void bandAnglesClimbWithTheFractionOnBothGauges() {
+        // The band is painted by a sweep gradient placed from the
+        // difference between two of these. Wrapping the angle into a
+        // turn would make that difference negative on the mirrored
+        // tachometer and leave the start of its band uncoloured.
+        for (boolean rightGauge : new boolean[] {false, true}) {
+            float previous = SimpleRedLayout.bandAngleDegrees(
+                    0.0f,
+                    rightGauge);
+            for (int index = 1; index <= 32; index++) {
+                float angle = SimpleRedLayout.bandAngleDegrees(
+                        index / 32.0f,
+                        rightGauge);
+                org.junit.Assert.assertTrue(
+                        "band angle must climb at " + index,
+                        angle > previous);
+                previous = angle;
+            }
+            assertEquals(
+                    "a full band spans the whole sweep",
+                    SimpleRedLayout.SCALE_SWEEP_DEGREES,
+                    SimpleRedLayout.bandAngleDegrees(1.0f, rightGauge)
+                            - SimpleRedLayout.bandAngleDegrees(
+                                    0.0f,
+                                    rightGauge),
+                    0.01f);
+        }
+        // The lead-in has to be real, or the band starts fully
+        // transparent and appears to begin above zero.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.PROGRESS_GRADIENT_LEAD_IN_DEGREES > 0.0f);
+        org.junit.Assert.assertTrue(
+                "a full band plus its lead-in must stay inside a turn",
+                SimpleRedLayout.SCALE_SWEEP_DEGREES
+                        + SimpleRedLayout.PROGRESS_GRADIENT_LEAD_IN_DEGREES
+                        <= 360.0f);
+    }
+
+    @Test
     public void ticksStayEvenlySpacedAcrossTheInsert() {
         // Reading the scale by length rather than by angle is what earns
         // this: spaced by angle, the pair of ticks straddling the cut

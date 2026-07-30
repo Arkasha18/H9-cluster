@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -39,6 +40,7 @@ public final class SimpleRedClusterView extends View
      * off the per-frame allocation path, like the bloom shader below.
      */
     private final Path progressPath = new Path();
+    private final Matrix progressGradientMatrix = new Matrix();
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
     private final Shader tipBloomShader = createTipBloomShader();
@@ -215,6 +217,7 @@ public final class SimpleRedClusterView extends View
                 centerX,
                 centerY,
                 clampedFraction,
+                rightGauge,
                 true));
         for (int layer = 0;
                 layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
@@ -233,6 +236,7 @@ public final class SimpleRedClusterView extends View
                 centerX,
                 centerY,
                 clampedFraction,
+                rightGauge,
                 false));
         canvas.drawPath(progressPath, progressPaint);
 
@@ -307,15 +311,32 @@ public final class SimpleRedClusterView extends View
                 Shader.TileMode.CLAMP);
     }
 
+    /**
+     * Sweep gradient keyed to the band of the gauge being drawn rather
+     * than to a fixed angle. The tachometer is the speedometer mirrored,
+     * so its band occupies entirely different angles; a shared set of
+     * stops left the first stretch of it outside the coloured range and
+     * therefore invisible.
+     *
+     * <p>The shader is built at the origin and turned onto the band by a
+     * reused matrix, which keeps the rotation off the allocation path.</p>
+     */
     private Shader progressGradient(
             float centerX,
             float centerY,
             float fraction,
+            boolean rightGauge,
             boolean glow) {
-        float end = 0.5f + fraction * 0.5f;
-        float warmStart = Math.max(
-                0.5f,
-                end - Math.min(0.08f, fraction * 0.25f));
+        float leadIn = SimpleRedLayout.PROGRESS_GRADIENT_LEAD_IN_DEGREES;
+        float bandStart = SimpleRedLayout.bandAngleDegrees(0.0f, rightGauge);
+        float travelled = SimpleRedLayout.bandAngleDegrees(
+                fraction,
+                rightGauge) - bandStart;
+        float end = (travelled + leadIn) / 360.0f;
+        float warmStart = clamp(
+                end - Math.min(0.08f, fraction * 0.25f),
+                0.001f,
+                Math.max(0.002f, end - 0.001f));
         int redStart = glow
                 ? 0x00FF2020
                 : SimpleRedLayout.PROGRESS_START_COLOR;
@@ -323,23 +344,17 @@ public final class SimpleRedClusterView extends View
         int leading = glow
                 ? 0xCCFFD54F
                 : SimpleRedLayout.PROGRESS_LEADING_COLOR;
-        return new SweepGradient(
+        SweepGradient gradient = new SweepGradient(
                 centerX,
                 centerY,
-                new int[] {
-                        Color.TRANSPARENT,
-                        Color.TRANSPARENT,
-                        redStart,
-                        red,
-                        leading
-                },
-                new float[] {
-                        0.0f,
-                        0.499f,
-                        0.5f,
-                        warmStart,
-                        end
-                });
+                new int[] {redStart, red, leading},
+                new float[] {0.0f, warmStart, end});
+        progressGradientMatrix.setRotate(
+                bandStart - leadIn,
+                centerX,
+                centerY);
+        gradient.setLocalMatrix(progressGradientMatrix);
+        return gradient;
     }
 
     private void drawTextLayer(

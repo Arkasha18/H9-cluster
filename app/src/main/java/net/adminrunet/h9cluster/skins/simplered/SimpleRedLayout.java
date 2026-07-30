@@ -13,7 +13,7 @@ final class SimpleRedLayout {
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
-    static final float RIGHT_GAUGE_CENTER_X = 1611.0f;
+    static final float RIGHT_GAUGE_CENTER_X = 1620.0f;
     static final float GAUGE_CENTER_Y = 442.0f;
     static final float GAUGE_RADIUS = 256.0f;
     static final float SCALE_START_DEGREES = 21.0f;
@@ -41,7 +41,7 @@ final class SimpleRedLayout {
      * <p>The insert is the same length at every radius, so each layer of
      * a gauge is displaced equally and the ring keeps its thickness.</p>
      */
-    static final float SCALE_STRETCH_X = 10.0f;
+    static final float SCALE_STRETCH_X = 30.0f;
     /** Outline before the cut, and the circular remainder after it. */
     static final float SCALE_LEADING_LENGTH =
             (SCALE_SPLIT_ANGLE_RADIANS - SCALE_START_ANGLE_RADIANS)
@@ -121,6 +121,14 @@ final class SimpleRedLayout {
     static final int PROGRESS_TIP_BLOOM_ALPHA = 200;
     static final int PROGRESS_START_COLOR = 0x08FF2020;
     static final int PROGRESS_LEADING_COLOR = 0xFFFFD54F;
+    /**
+     * How far before the band the colour ramp opens, in degrees. The
+     * band is painted by a sweep gradient keyed to its own start, so
+     * without a lead-in its first pixels would carry PROGRESS_START_COLOR
+     * at full transparency and the band would appear to begin above zero.
+     * Starting the ramp early lets it reach zero already tinted.
+     */
+    static final float PROGRESS_GRADIENT_LEAD_IN_DEGREES = 20.0f;
     static final float TEXT_SKEW_X = 0.0f;
     static final float SCALE_LABEL_SKEW_X = -0.12f;
     static final String SCALE_LABEL_FONT_ASSET =
@@ -334,6 +342,20 @@ final class SimpleRedLayout {
         double cosine = Math.cos(tangentAngle(fraction, rightGauge));
         return (float) (SCALE_TOTAL_LENGTH
                 * (rightGauge ? cosine : -cosine));
+    }
+
+    /**
+     * Canvas sweep angle of a scale fraction, in degrees from three
+     * o'clock. Left unwrapped, so it climbs with the fraction on both
+     * gauges even where that carries it past a full turn or below zero:
+     * a sweep gradient is positioned by the difference between two of
+     * these, which a wrapped angle would get backwards on the mirrored
+     * tachometer.
+     */
+    static float bandAngleDegrees(float fraction, boolean rightGauge) {
+        double angle = Math.toDegrees(angleAtLength(
+                canonicalLength(scaleLength(fraction), rightGauge)));
+        return (float) (rightGauge ? -angle : angle + 180.0);
     }
 
     private static float tangentAngle(float fraction, boolean rightGauge) {
