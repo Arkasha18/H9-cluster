@@ -346,9 +346,9 @@ public final class SimpleRedClusterView extends View
     private void drawScaleLabels(Canvas canvas) {
         configureText(
                 scaleTypeface,
-                27.0f,
+                SimpleRedLayout.SCALE_LABEL_TEXT_SIZE,
                 Paint.Align.CENTER,
-                0xFFF4F5F5,
+                SimpleRedLayout.SCALE_LABEL_COLOR,
                 true);
         textPaint.setTextSkewX(SimpleRedLayout.SCALE_LABEL_SKEW_X);
         int speedSteps = SimpleRedLayout.majorTickIntervals(false);
@@ -374,9 +374,9 @@ public final class SimpleRedClusterView extends View
         if (SimpleRedLayout.DRAW_SCALE_UNITS) {
             configureText(
                     dataTypeface,
-                    15.0f,
+                    SimpleRedLayout.SCALE_UNIT_TEXT_SIZE,
                     Paint.Align.CENTER,
-                    0xFFCBD0D3,
+                    SimpleRedLayout.SCALE_UNIT_COLOR,
                     true);
             drawScaleText(canvas, "km/h", 0.90f, false, 98.0f);
             drawScaleText(canvas, "×1000 rpm", 0.90f, true, 98.0f);

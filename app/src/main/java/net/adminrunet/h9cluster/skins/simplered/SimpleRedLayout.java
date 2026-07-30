@@ -13,16 +13,20 @@ final class SimpleRedLayout {
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
-    static final float RIGHT_GAUGE_CENTER_X = 1610.0f;
+    static final float RIGHT_GAUGE_CENTER_X = 1620.0f;
     static final float GAUGE_CENTER_Y = 435.0f;
-    static final float GAUGE_RADIUS = 235.0f;
-    static final float SCALE_START_DEGREES = -10.0f;
-    static final float SCALE_SWEEP_DEGREES = 200.0f;
+    static final float GAUGE_RADIUS = 260.0f;
+    static final float SCALE_START_DEGREES = 20.0f;
+    static final float SCALE_SWEEP_DEGREES = 180.0f;
     static final float SCALE_START_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_SWEEP_DEGREES);
     static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
+    static final float SCALE_LABEL_TEXT_SIZE = 28.0f;
+    static final int SCALE_LABEL_COLOR = 0xFFF4F5F5;
+    static final float SCALE_UNIT_TEXT_SIZE = 15.0f;
+    static final int SCALE_UNIT_COLOR = 0xFFCBD0D3;
 
     static final float SCALE_ARC_RADIUS = GAUGE_RADIUS;
     static final float SCALE_ARC_WIDTH = 3.0f;
@@ -44,21 +48,26 @@ final class SimpleRedLayout {
     /** Skia blur radius approximating the PIL sigma the asset used. */
     static final float REDLINE_GLOW_BLUR_RADIUS = 18.0f;
 
-    static final float NOTIFICATION_LEFT = 1320.0f;
-    static final float NOTIFICATION_TOP = 200.0f;
-    static final float NOTIFICATION_RIGHT = 1890.0f;
-    static final float NOTIFICATION_BOTTOM = 620.0f;
-    static final float NOTIFICATION_APERTURE_CENTER_X = 1640.0f;
-    static final float NOTIFICATION_APERTURE_CENTER_Y = 445.0f;
-    static final float NOTIFICATION_APERTURE_RADIUS_X = 145.0f;
-    static final float NOTIFICATION_APERTURE_RADIUS_Y = 115.0f;
-    /** Skia blur radius approximating the PIL sigma the asset used. */
-    static final float NOTIFICATION_EDGE_BLUR_RADIUS = 30.0f;
-    /** Opaque black so the factory notification zone stays hidden. */
-    static final int NOTIFICATION_COLOR_VEHICLE = 0xFF000000;
-    /** Demo builds tint the panel so its bounds are visible while tuning. */
-    static final int NOTIFICATION_COLOR_DEMO = 0xFF0044FF;
-    static final float PROGRESS_BAND_RADIUS = 208.0f;
+    /**
+     * Opaque annular sector sitting under the tachometer scale only. It
+     * hides the factory content behind the scale band while leaving the
+     * middle of the gauge transparent. Bounded outside by the scale arc
+     * plus a margin, inside by the labels plus a clearance, and extended
+     * past both scale ends by the padding below.
+     */
+    static final float TACH_BACKDROP_RADIUS = GAUGE_RADIUS + 14.0f;
+    static final float TACH_BACKDROP_INNER_CLEARANCE = 30.0f;
+    static final float TACH_BACKDROP_INNER_RADIUS =
+            GAUGE_RADIUS - MAIN_SCALE_LABEL_OFFSET
+                    - TACH_BACKDROP_INNER_CLEARANCE;
+    static final float TACH_BACKDROP_PADDING_DEGREES = 6.0f;
+    static final float TACH_BACKDROP_EDGE_BLUR_RADIUS = 20.0f;
+    static final int TACH_BACKDROP_COLOR_VEHICLE = 0xFF000000;
+    /** Demo builds tint it so its bounds are visible while tuning. */
+    static final int TACH_BACKDROP_COLOR_DEMO = 0xFF0044FF;
+    /** The band sits at the inner end of the major ticks, so it tracks
+     * GAUGE_RADIUS instead of drifting when the gauge is resized. */
+    static final float PROGRESS_BAND_RADIUS = TICK_MAJOR_INNER_RADIUS;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
     static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
@@ -131,14 +140,23 @@ final class SimpleRedLayout {
     }
 
     /**
-     * The panel must be opaque black in the vehicle so it hides the factory
-     * notification zone. Demo builds tint it instead, because on a demo
-     * background black-on-black gives no clue where the panel sits.
+     * The backdrop must be opaque black in the vehicle so it hides the
+     * factory content. Demo builds tint it instead, because on a demo
+     * background black-on-black gives no clue where it sits.
      */
-    static int notificationColor(boolean demoMode) {
+    static int tachBackdropColor(boolean demoMode) {
         return demoMode
-                ? NOTIFICATION_COLOR_DEMO
-                : NOTIFICATION_COLOR_VEHICLE;
+                ? TACH_BACKDROP_COLOR_DEMO
+                : TACH_BACKDROP_COLOR_VEHICLE;
+    }
+
+    /** Canvas start angle of the backdrop sector, padded past the scale. */
+    static float tachBackdropStartDegrees() {
+        return SCALE_START_ANGLE_DEGREES - TACH_BACKDROP_PADDING_DEGREES;
+    }
+
+    static float tachBackdropSweepDegrees() {
+        return SCALE_SWEEP_DEGREES + TACH_BACKDROP_PADDING_DEGREES * 2.0f;
     }
 
     /** Labelled intervals on a gauge, which are also its major ticks. */

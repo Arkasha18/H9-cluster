@@ -20,49 +20,52 @@ final class SimpleRedBackground {
 
     static void draw(Canvas canvas, boolean demoMode) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        drawNotificationPanel(canvas, paint, demoMode);
+        drawTachBackdrop(canvas, paint, demoMode);
         drawGauge(canvas, paint, false);
         drawGauge(canvas, paint, true);
     }
 
-    /** Blanks the factory notification zone, keeping its aperture clear. */
-    private static void drawNotificationPanel(
+    /**
+     * Opaque annular sector under the tachometer scale, hiding the factory
+     * content behind the band while leaving the gauge centre transparent.
+     */
+    private static void drawTachBackdrop(
             Canvas canvas,
             Paint paint,
             boolean demoMode) {
-        Path panel = new Path();
-        panel.addRect(
-                SimpleRedLayout.NOTIFICATION_LEFT,
-                SimpleRedLayout.NOTIFICATION_TOP,
-                SimpleRedLayout.NOTIFICATION_RIGHT,
-                SimpleRedLayout.NOTIFICATION_BOTTOM,
-                Path.Direction.CW);
-        Path aperture = new Path();
-        aperture.addOval(
-                new RectF(
-                        SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
-                                - SimpleRedLayout
-                                .NOTIFICATION_APERTURE_RADIUS_X,
-                        SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
-                                - SimpleRedLayout
-                                .NOTIFICATION_APERTURE_RADIUS_Y,
-                        SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
-                                + SimpleRedLayout
-                                .NOTIFICATION_APERTURE_RADIUS_X,
-                        SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
-                                + SimpleRedLayout
-                                .NOTIFICATION_APERTURE_RADIUS_Y),
-                Path.Direction.CW);
-        panel.op(aperture, Path.Op.DIFFERENCE);
+        float start = SimpleRedLayout.tachBackdropStartDegrees();
+        float sweep = SimpleRedLayout.tachBackdropSweepDegrees();
+        Path sector = new Path();
+        sector.arcTo(
+                gaugeBounds(SimpleRedLayout.TACH_BACKDROP_RADIUS),
+                start,
+                sweep,
+                true);
+        sector.arcTo(
+                gaugeBounds(SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS),
+                start + sweep,
+                -sweep,
+                false);
+        sector.close();
 
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(SimpleRedLayout.notificationColor(demoMode));
+        paint.setColor(SimpleRedLayout.tachBackdropColor(demoMode));
         paint.setMaskFilter(new BlurMaskFilter(
-                SimpleRedLayout.NOTIFICATION_EDGE_BLUR_RADIUS,
+                SimpleRedLayout.TACH_BACKDROP_EDGE_BLUR_RADIUS,
                 BlurMaskFilter.Blur.NORMAL));
-        canvas.drawPath(panel, paint);
+        canvas.drawPath(sector, paint);
+    }
+
+    private static RectF gaugeBounds(float radius) {
+        float centerX = SimpleRedLayout.gaugeCenterX(true);
+        float centerY = SimpleRedLayout.GAUGE_CENTER_Y;
+        return new RectF(
+                centerX - radius,
+                centerY - radius,
+                centerX + radius,
+                centerY + radius);
     }
 
     private static void drawGauge(

@@ -7,39 +7,45 @@ import org.junit.Test;
 
 public final class SimpleRedLayoutTest {
     @Test
-    public void mainScalesAreMatchingUpperSemicircles() {
+    public void mainScalesAreMatchingTiltedArcs() {
         assertEquals(
-                58.570f,
+                45.680f,
                 SimpleRedLayout.scaleX(0.0f, false),
                 0.01f);
         assertEquals(
-                475.807f,
+                346.075f,
                 SimpleRedLayout.scaleY(0.0f),
                 0.01f);
         assertEquals(
-                200.0f,
+                190.680f,
                 SimpleRedLayout.scaleY(0.5f),
-                0.001f);
+                0.01f);
         assertEquals(
-                521.430f,
+                534.320f,
                 SimpleRedLayout.scaleX(1.0f, false),
                 0.01f);
 
+        // Both gauges run the same arc, tilted the same way, so every
+        // point sits at the same offset from its own centre. They are
+        // translated copies rather than mirror images.
         for (int index = 0; index <= 8; index++) {
             float fraction = index / 8.0f;
             assertEquals(
-                    SimpleRedLayout.RIGHT_GAUGE_CENTER_X
-                            - (SimpleRedLayout.scaleX(
-                                    1.0f - fraction,
-                                    false)
-                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X),
-                    SimpleRedLayout.scaleX(fraction, true),
-                    0.001f);
-            assertEquals(
-                    SimpleRedLayout.scaleY(fraction),
-                    SimpleRedLayout.scaleY(1.0f - fraction),
+                    SimpleRedLayout.scaleX(fraction, false)
+                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X,
+                    SimpleRedLayout.scaleX(fraction, true)
+                            - SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
                     0.001f);
         }
+
+        // The tilt carries the full-scale end below the zero end, and
+        // the apex stays above the centre on both gauges.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(1.0f)
+                        > SimpleRedLayout.scaleY(0.0f));
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(0.5f)
+                        < SimpleRedLayout.GAUGE_CENTER_Y);
     }
 
     @Test
@@ -49,7 +55,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.LEFT_GAUGE_CENTER_X,
                 0.001f);
         assertEquals(
-                1610.0f,
+                1620.0f,
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
                 0.001f);
         assertEquals(
@@ -57,7 +63,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.GAUGE_CENTER_Y,
                 0.001f);
         assertEquals(
-                235.0f,
+                260.0f,
                 SimpleRedLayout.GAUGE_RADIUS,
                 0.001f);
         assertEquals(
@@ -77,7 +83,7 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.COOLANT_X,
                 0.001f);
         assertEquals(
-                208.0f,
+                SimpleRedLayout.GAUGE_RADIUS - 27.0f,
                 SimpleRedLayout.PROGRESS_BAND_RADIUS,
                 0.001f);
         assertEquals(
@@ -118,8 +124,12 @@ public final class SimpleRedLayoutTest {
     @Test
     public void progressBandStaysInsideTicksAndOutsideLabels() {
         assertEquals(
-                170.0f,
+                SimpleRedLayout.SCALE_START_DEGREES + 180.0f,
                 SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.TICK_MAJOR_INNER_RADIUS,
+                SimpleRedLayout.PROGRESS_BAND_RADIUS,
                 0.001f);
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.PROGRESS_BAND_RADIUS
@@ -131,11 +141,11 @@ public final class SimpleRedLayoutTest {
                         > SimpleRedLayout.GAUGE_RADIUS
                         - SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
         assertEquals(
-                100.0f,
+                SimpleRedLayout.SCALE_SWEEP_DEGREES * 0.5f,
                 SimpleRedLayout.progressSweepDegrees(0.5f),
                 0.001f);
         assertEquals(
-                200.0f,
+                SimpleRedLayout.SCALE_SWEEP_DEGREES,
                 SimpleRedLayout.progressSweepDegrees(1.0f),
                 0.001f);
     }
@@ -217,9 +227,10 @@ public final class SimpleRedLayoutTest {
     }
 
     @Test
-    public void notificationPanelClearsTheLeftGauge() {
+    public void tachBackdropClearsTheLeftGauge() {
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.NOTIFICATION_LEFT
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X
+                        - SimpleRedLayout.TACH_BACKDROP_RADIUS
                         > SimpleRedLayout.LEFT_GAUGE_CENTER_X
                         + SimpleRedLayout.GAUGE_RADIUS);
     }
@@ -284,46 +295,57 @@ public final class SimpleRedLayoutTest {
     }
 
     @Test
-    public void notificationPanelIsOpaqueBlackOutsideDemoBuilds() {
+    public void tachBackdropIsOpaqueBlackOutsideDemoBuilds() {
         assertEquals(
                 0xFF000000,
-                SimpleRedLayout.notificationColor(false));
+                SimpleRedLayout.tachBackdropColor(false));
         org.junit.Assert.assertNotEquals(
-                "demo builds must tint the panel to make it visible",
-                SimpleRedLayout.notificationColor(false),
-                SimpleRedLayout.notificationColor(true));
+                "demo builds must tint the backdrop to make it visible",
+                SimpleRedLayout.tachBackdropColor(false),
+                SimpleRedLayout.tachBackdropColor(true));
         assertEquals(
                 "the demo tint must stay fully opaque",
                 0xFF,
-                SimpleRedLayout.notificationColor(true) >>> 24);
+                SimpleRedLayout.tachBackdropColor(true) >>> 24);
     }
 
     @Test
-    public void notificationApertureStaysInsideItsPanel() {
+    public void tachBackdropCoversTheScaleBandButNotTheCentre() {
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
-                        - SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_X
-                        > SimpleRedLayout.NOTIFICATION_LEFT);
+                "the backdrop must reach past the scale arc",
+                SimpleRedLayout.TACH_BACKDROP_RADIUS
+                        > SimpleRedLayout.SCALE_ARC_RADIUS);
+        float labelRadius = SimpleRedLayout.GAUGE_RADIUS
+                - SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET;
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X
-                        + SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_X
-                        < SimpleRedLayout.NOTIFICATION_RIGHT);
+                "the backdrop must reach under the scale labels",
+                SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS < labelRadius);
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
-                        - SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_Y
-                        > SimpleRedLayout.NOTIFICATION_TOP);
+                "the gauge centre must stay uncovered",
+                SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS > 0.0f);
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y
-                        + SimpleRedLayout.NOTIFICATION_APERTURE_RADIUS_Y
-                        < SimpleRedLayout.NOTIFICATION_BOTTOM);
+                SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS
+                        < SimpleRedLayout.TACH_BACKDROP_RADIUS);
+    }
+
+    @Test
+    public void tachBackdropOverhangsBothScaleEnds() {
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES > 0.0f);
         assertEquals(
-                SimpleRedLayout.RIGHT_GAUGE_CENTER_X + 30.0f,
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_X,
+                SimpleRedLayout.SCALE_START_ANGLE_DEGREES
+                        - SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES,
+                SimpleRedLayout.tachBackdropStartDegrees(),
                 0.001f);
         assertEquals(
-                SimpleRedLayout.GAUGE_CENTER_Y + 10.0f,
-                SimpleRedLayout.NOTIFICATION_APERTURE_CENTER_Y,
+                SimpleRedLayout.SCALE_SWEEP_DEGREES
+                        + SimpleRedLayout.TACH_BACKDROP_PADDING_DEGREES
+                        * 2.0f,
+                SimpleRedLayout.tachBackdropSweepDegrees(),
                 0.001f);
+        org.junit.Assert.assertTrue(
+                "the sector must not wrap onto itself",
+                SimpleRedLayout.tachBackdropSweepDegrees() < 360.0f);
     }
 
     @Test
