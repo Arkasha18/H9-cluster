@@ -6,28 +6,33 @@ import static org.junit.Assert.assertFalse;
 import org.junit.Test;
 
 public final class SimpleRedLayoutTest {
+    /** Logical panel the skin draws into, fixed by the head unit. */
+    private static final float PANEL_WIDTH = 1920.0f;
+    private static final float PANEL_HEIGHT = 720.0f;
+
+    private static float outlineExtreme(
+            boolean rightGauge,
+            float radius,
+            boolean horizontal,
+            boolean maximum) {
+        float best = horizontal
+                ? SimpleRedLayout.pointXAt(0.0f, radius, rightGauge)
+                : SimpleRedLayout.pointYAt(0.0f, radius);
+        for (int index = 0; index <= 128; index++) {
+            float along = SimpleRedLayout.SCALE_TOTAL_LENGTH
+                    * index / 128.0f;
+            float value = horizontal
+                    ? SimpleRedLayout.pointXAt(along, radius, rightGauge)
+                    : SimpleRedLayout.pointYAt(along, radius);
+            best = maximum
+                    ? Math.max(best, value)
+                    : Math.min(best, value);
+        }
+        return best;
+    }
+
     @Test
     public void mainScalesAreMatchingTiltedArcs() {
-        assertEquals(
-                17.269f,
-                SimpleRedLayout.scaleX(0.0f, false),
-                0.01f);
-        assertEquals(
-                341.824f,
-                SimpleRedLayout.scaleY(0.0f),
-                0.01f);
-        // Halfway along the outline is past the insert, so it lands
-        // further round than halfway through the sweep would.
-        assertEquals(
-                183.918f,
-                SimpleRedLayout.scaleY(0.5f),
-                0.01f);
-        // The far end sits beyond the insert and so carries all of it.
-        assertEquals(
-                502.731f + SimpleRedLayout.SCALE_STRETCH_X,
-                SimpleRedLayout.scaleX(1.0f, false),
-                0.01f);
-
         // The tilt carries the full-scale end below the zero end, and
         // the apex stays above the centre on both gauges.
         org.junit.Assert.assertTrue(
@@ -36,6 +41,61 @@ public final class SimpleRedLayoutTest {
         org.junit.Assert.assertTrue(
                 SimpleRedLayout.scaleY(0.5f)
                         < SimpleRedLayout.GAUGE_CENTER_Y);
+        // The ends straddle the centre line rather than both hanging
+        // below it: the tilt lifts the zero end and drops the far one.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(0.0f)
+                        < SimpleRedLayout.GAUGE_CENTER_Y);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(1.0f)
+                        > SimpleRedLayout.GAUGE_CENTER_Y);
+        // The apex is the top of the circle and nothing rises past it.
+        assertEquals(
+                SimpleRedLayout.GAUGE_CENTER_Y
+                        - SimpleRedLayout.GAUGE_RADIUS,
+                outlineExtreme(
+                        false,
+                        SimpleRedLayout.GAUGE_RADIUS,
+                        false,
+                        false),
+                0.001f);
+    }
+
+    @Test
+    public void bothGaugesFitThePanelWithoutTouching() {
+        // These used to be a row of coordinate literals, which broke on
+        // every retune while protecting nothing. What actually has to
+        // hold is that the pair fits the panel and stays apart, insert
+        // and backdrop included.
+        float speedoLeft = outlineExtreme(
+                false, SimpleRedLayout.GAUGE_RADIUS, true, false);
+        float speedoRight = outlineExtreme(
+                false, SimpleRedLayout.GAUGE_RADIUS, true, true);
+        float tachLeft = outlineExtreme(
+                true, SimpleRedLayout.TACH_BACKDROP_RADIUS, true, false);
+        float tachRight = outlineExtreme(
+                true, SimpleRedLayout.TACH_BACKDROP_RADIUS, true, true);
+        org.junit.Assert.assertTrue(
+                "the speedometer runs off the left edge",
+                speedoLeft >= 0.0f);
+        org.junit.Assert.assertTrue(
+                "the tachometer runs off the right edge",
+                tachRight <= PANEL_WIDTH);
+        org.junit.Assert.assertTrue(
+                "the gauges must not close on each other",
+                speedoRight < tachLeft);
+
+        float top = outlineExtreme(
+                true, SimpleRedLayout.TACH_BACKDROP_RADIUS, false, false);
+        float bottom = outlineExtreme(
+                true, SimpleRedLayout.TACH_BACKDROP_RADIUS, false, true);
+        org.junit.Assert.assertTrue("the gauges overflow the top", top >= 0.0f);
+        org.junit.Assert.assertTrue(
+                "the gauges overflow the bottom",
+                bottom <= PANEL_HEIGHT);
+        org.junit.Assert.assertTrue(
+                "the gauges must clear the bottom readouts",
+                bottom < SimpleRedLayout.FUEL_LITERS_BASELINE);
     }
 
     private static final float CUT = (float) (Math.PI * 0.5);
@@ -247,22 +307,17 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void gaugesFrameFactoryReadoutsAndBottomValues() {
-        assertEquals(
-                260.0f,
-                SimpleRedLayout.LEFT_GAUGE_CENTER_X,
-                0.001f);
-        assertEquals(
-                1620.0f,
-                SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
-                0.001f);
-        assertEquals(
-                435.0f,
-                SimpleRedLayout.GAUGE_CENTER_Y,
-                0.001f);
-        assertEquals(
-                260.0f,
-                SimpleRedLayout.GAUGE_RADIUS,
-                0.001f);
+        // The gauges sit one on each side of the panel, level with one
+        // another. Where exactly is a matter of taste and gets retuned;
+        // bothGaugesFitThePanelWithoutTouching covers what must hold.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.LEFT_GAUGE_CENTER_X
+                        < PANEL_WIDTH * 0.5f);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.RIGHT_GAUGE_CENTER_X
+                        > PANEL_WIDTH * 0.5f);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.GAUGE_RADIUS > 0.0f);
         assertEquals(
                 668.0f,
                 SimpleRedLayout.FUEL_LITERS_BASELINE,
@@ -635,8 +690,11 @@ public final class SimpleRedLayoutTest {
                 SimpleRedLayout.TYRE_RIGHT_X
                         - SimpleRedLayout.TYRE_LEFT_X,
                 0.001f);
+        // The wheel stands between the four pressures rather than beside
+        // them, so it has to sit on their midline.
         assertEquals(
-                SimpleRedLayout.TYRE_ICON_X,
+                (SimpleRedLayout.TYRE_LEFT_X
+                        + SimpleRedLayout.TYRE_RIGHT_X) * 0.5f,
                 SimpleRedLayout.STEERING_ICON_X,
                 0.001f);
         assertEquals(
@@ -660,20 +718,38 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void progressBandHasTransparentRedStartAndYellowGlow() {
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.PROGRESS_HALO_WIDTH
-                        > SimpleRedLayout.PROGRESS_GLOW_WIDTH);
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.PROGRESS_GLOW_WIDTH
-                        > SimpleRedLayout.PROGRESS_CORE_WIDTH);
         assertEquals(
                 0x08FF2020,
                 SimpleRedLayout.PROGRESS_START_COLOR);
         assertEquals(
                 0xFFFFD54F,
                 SimpleRedLayout.PROGRESS_LEADING_COLOR);
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.PROGRESS_HALO_ALPHA >= 128);
+        // The blur is faked by stacking strokes, so it only reads as one
+        // if each layer is both narrower and less transparent than the
+        // last, from the halo down to the core.
+        assertEquals(
+                SimpleRedLayout.PROGRESS_HALO_WIDTH,
+                SimpleRedLayout.progressSoftLayerWidth(0),
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.PROGRESS_CORE_WIDTH,
+                SimpleRedLayout.progressSoftLayerWidth(
+                        SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT - 1),
+                0.001f);
+        for (int layer = 1;
+                layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
+                layer++) {
+            org.junit.Assert.assertTrue(
+                    "layer " + layer + " must narrow",
+                    SimpleRedLayout.progressSoftLayerWidth(layer)
+                            < SimpleRedLayout.progressSoftLayerWidth(
+                                    layer - 1));
+            org.junit.Assert.assertTrue(
+                    "layer " + layer + " must gain alpha",
+                    SimpleRedLayout.progressSoftLayerAlpha(layer)
+                            > SimpleRedLayout.progressSoftLayerAlpha(
+                                    layer - 1));
+        }
     }
 
     @Test

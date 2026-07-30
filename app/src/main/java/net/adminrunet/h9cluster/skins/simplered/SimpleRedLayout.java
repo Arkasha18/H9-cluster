@@ -12,12 +12,12 @@ final class SimpleRedLayout {
     static final int SPEED_LABEL_STEP_KPH = 20;
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
-    static final float LEFT_GAUGE_CENTER_X = 280.0f;
-    static final float RIGHT_GAUGE_CENTER_X = 1620.0f;
-    static final float GAUGE_CENTER_Y = 435.0f;
-    static final float GAUGE_RADIUS = 260.0f;
+    static final float LEFT_GAUGE_CENTER_X = 290.0f;
+    static final float RIGHT_GAUGE_CENTER_X = 1611.0f;
+    static final float GAUGE_CENTER_Y = 442.0f;
+    static final float GAUGE_RADIUS = 256.0f;
     static final float SCALE_START_DEGREES = 21.0f;
-    static final float SCALE_SWEEP_DEGREES = 180.0f;
+    static final float SCALE_SWEEP_DEGREES = 190.0f;
     static final float SCALE_START_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
@@ -41,7 +41,7 @@ final class SimpleRedLayout {
      * <p>The insert is the same length at every radius, so each layer of
      * a gauge is displaced equally and the ring keeps its thickness.</p>
      */
-    static final float SCALE_STRETCH_X = 54.0f;
+    static final float SCALE_STRETCH_X = 10.0f;
     /** Outline before the cut, and the circular remainder after it. */
     static final float SCALE_LEADING_LENGTH =
             (SCALE_SPLIT_ANGLE_RADIANS - SCALE_START_ANGLE_RADIANS)
@@ -55,7 +55,7 @@ final class SimpleRedLayout {
                     + SCALE_TRAILING_LENGTH;
     /** Segments per full outline when sampling the scale into a Path. */
     static final int SCALE_PATH_SEGMENTS = 96;
-    static final float MAIN_SCALE_LABEL_OFFSET = 65.0f;
+    static final float MAIN_SCALE_LABEL_OFFSET = 60.0f;
     static final float SCALE_LABEL_TEXT_SIZE = 30.0f;
     static final int SCALE_LABEL_COLOR = 0xFFF4F5F5;
     static final float SCALE_UNIT_TEXT_SIZE = 15.0f;
@@ -104,9 +104,7 @@ final class SimpleRedLayout {
      * GAUGE_RADIUS instead of drifting when the gauge is resized. */
     static final float PROGRESS_BAND_RADIUS = TICK_MAJOR_INNER_RADIUS;
     static final float PROGRESS_HALO_WIDTH = 46.0f;
-    static final float PROGRESS_GLOW_WIDTH = 32.0f;
     static final float PROGRESS_CORE_WIDTH = 18.0f;
-    static final int PROGRESS_HALO_ALPHA = 140;
     /**
      * The band is softened by stacking translucent strokes from
      * PROGRESS_HALO_WIDTH down to PROGRESS_CORE_WIDTH. Overlapping alpha
@@ -132,14 +130,12 @@ final class SimpleRedLayout {
     static final float GEAR_NUMBER_BASELINE = 63.0f;
 
     static final float TYRE_LEFT_X = 1748.0f;
-    static final float TYRE_ICON_X = 1800.0f;
-    static final float TYRE_ICON_WIDTH = 20.0f;
-    static final float TYRE_ICON_HEIGHT = 28.0f;
     static final float TYRE_RIGHT_X = 1852.0f;
     static final float TYRE_TEXT_SIZE = 22.0f;
     static final float TYRE_TOP_Y = 40.0f;
     static final float TYRE_BOTTOM_Y = 65.0f;
-    static final float STEERING_ICON_X = TYRE_ICON_X;
+    /** The wheel sits between the four pressures, so it centres them. */
+    static final float STEERING_ICON_X = 1800.0f;
     static final float STEERING_ICON_VERTICAL_OFFSET = -3.0f;
     static final float STEERING_ICON_Y =
             (TYRE_TOP_Y + TYRE_BOTTOM_Y) * 0.5f
