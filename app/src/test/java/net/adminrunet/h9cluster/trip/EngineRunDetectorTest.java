@@ -64,22 +64,48 @@ public final class EngineRunDetectorTest {
     }
 
     @Test
-    public void staleObservedRpmAtZeroSpeedConfirmsShutdown() {
+    public void idlingAtZeroSpeedWithStaleRpmKeepsTripRunning() {
         EngineRunDetector detector = new EngineRunDetector(true);
 
         assertEquals(NONE, detector.update(800, 0, 1_000L, 2_001L));
-        assertEquals(NONE, detector.update(800, 0, 1_000L, 3_500L));
-        assertEquals(STOPPED, detector.update(800, 0, 1_000L, 3_501L));
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 5_000L));
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 15_999L));
     }
 
     @Test
-    public void movementCancelsStaleRpmShutdownCandidate() {
+    public void recoveredRpmCancelsProlongedSilenceShutdownCandidate() {
         EngineRunDetector detector = new EngineRunDetector(true);
 
-        assertEquals(NONE, detector.update(800, 0, 1_000L, 2_001L));
-        assertEquals(NONE, detector.update(800, 1, 1_000L, 3_000L));
-        assertEquals(NONE, detector.update(800, 0, 1_000L, 4_000L));
-        assertEquals(STOPPED, detector.update(800, 0, 1_000L, 5_500L));
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 16_000L));
+        assertEquals(NONE, detector.update(800, 0, 16_500L, 16_500L));
+        assertEquals(NONE, detector.update(800, 0, 17_500L, 17_500L));
+    }
+
+    @Test
+    public void prolongedRpmSilenceAtZeroSpeedConfirmsShutdown() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 16_000L));
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 17_499L));
+        assertEquals(STOPPED, detector.update(800, 0, 1_000L, 17_500L));
+    }
+
+    @Test
+    public void staleRpmBelowStopThresholdStillConfirmsShutdown() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(0, 0, 1_000L, 2_001L));
+        assertEquals(STOPPED, detector.update(0, 0, 1_000L, 3_501L));
+    }
+
+    @Test
+    public void movementCancelsProlongedSilenceShutdownCandidate() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 16_000L));
+        assertEquals(NONE, detector.update(800, 1, 1_000L, 16_500L));
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 17_000L));
+        assertEquals(STOPPED, detector.update(800, 0, 1_000L, 18_500L));
     }
 
     @Test

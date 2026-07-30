@@ -28,6 +28,7 @@ public final class TripTelemetryDiagnosticsTest {
 
         assertTrue(line.contains("journeyRaw=42.300"));
         assertTrue(line.contains("journeyKm=42.300"));
+        assertTrue(line.contains("journeyValid=true"));
         assertFalse(line.contains("instantFuelRaw"));
         assertTrue(line.contains("averageFuelRaw=8.700"));
         assertTrue(line.contains("averageFuelValid=true"));
@@ -45,9 +46,18 @@ public final class TripTelemetryDiagnosticsTest {
 
     @Test
     public void logsAtMostOncePerSecondAndRecoversAfterClockReset() {
-        assertTrue(TripTelemetryDiagnostics.shouldLog(-1L, 500L));
-        assertFalse(TripTelemetryDiagnostics.shouldLog(1_000L, 1_999L));
-        assertTrue(TripTelemetryDiagnostics.shouldLog(1_000L, 2_000L));
-        assertTrue(TripTelemetryDiagnostics.shouldLog(2_000L, 1_000L));
+        assertTrue(TripTelemetryDiagnostics.shouldLog(true, -1L, 500L));
+        assertFalse(TripTelemetryDiagnostics.shouldLog(true, 1_000L, 1_999L));
+        assertTrue(TripTelemetryDiagnostics.shouldLog(true, 1_000L, 2_000L));
+        assertTrue(TripTelemetryDiagnostics.shouldLog(true, 2_000L, 1_000L));
+    }
+
+    @Test
+    public void neverLogsPeriodicallyWhenDiagnosticsAreNotOptedIn() {
+        assertFalse(TripTelemetryDiagnostics.shouldLog(false, -1L, 500L));
+        assertFalse(TripTelemetryDiagnostics.shouldLog(false, 1_000L, 2_000L));
+        assertFalse(TripTelemetryDiagnostics.shouldLog(false, 2_000L, 1_000L));
+        assertFalse(
+                TripTelemetryDiagnostics.shouldLog(false, 0L, 3_600_000L));
     }
 }

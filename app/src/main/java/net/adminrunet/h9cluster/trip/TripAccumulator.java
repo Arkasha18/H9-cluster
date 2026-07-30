@@ -2,6 +2,8 @@ package net.adminrunet.h9cluster.trip;
 
 /** Accumulates a confirmed engine run using monotonic telemetry samples. */
 public final class TripAccumulator {
+    private static final double KILOMETRES_PER_CONSUMPTION_UNIT = 100.0;
+
     private final long startedAtMs;
     private long lastUpdatedAtMs;
     private double distanceKm;
@@ -46,6 +48,7 @@ public final class TripAccumulator {
         }
 
         updateDistance(telemetry);
+
         lastUpdatedAtMs = telemetry.capturedAtMs;
         if (telemetry.averageFuelConsumptionValid) {
             lastAverageFuelConsumption = telemetry.averageFuelConsumption;
@@ -70,16 +73,20 @@ public final class TripAccumulator {
         boolean durationValid =
                 stoppedAtMs >= startedAtMs && startedAtMs >= 0L;
         long durationMs = durationValid ? stoppedAtMs - startedAtMs : 0L;
+        // The head unit reports no usable instant consumption, so the journey
+        // average is the only fuel source: without it the summary shows "—".
         boolean consumptionValid = distanceValid
                 && distanceKm > 0.0
                 && lastAverageFuelConsumptionValid
                 && Float.isFinite(lastAverageFuelConsumption)
                 && lastAverageFuelConsumption > 0.0f;
-        double summaryFuelLiters = consumptionValid
-                ? distanceKm * lastAverageFuelConsumption / 100.0
-                : Double.NaN;
         double averageConsumption = consumptionValid
                 ? lastAverageFuelConsumption
+                : Double.NaN;
+        double fuelLiters = consumptionValid
+                ? distanceKm
+                        * lastAverageFuelConsumption
+                        / KILOMETRES_PER_CONSUMPTION_UNIT
                 : Double.NaN;
         return new TripSummary(
                 distanceKm,
@@ -88,13 +95,15 @@ public final class TripAccumulator {
                 consumptionValid,
                 durationMs,
                 durationValid,
-                summaryFuelLiters,
+                fuelLiters,
                 consumptionValid);
     }
 
     private void updateDistance(TripTelemetry telemetry) {
         if (!telemetry.journeyOdometerValid) {
-            lastJourneyOdometerValid = false;
+            // The journey odometer is cumulative, so the existing base stays
+            // correct across a gap. Skip this interval but keep the base, or
+            // the distance driven during the gap is silently dropped.
             return;
         }
 

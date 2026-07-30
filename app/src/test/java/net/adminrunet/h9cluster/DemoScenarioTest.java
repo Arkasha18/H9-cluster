@@ -19,17 +19,17 @@ public final class DemoScenarioTest {
             assertTrue(state.speedKph >= 0 && state.speedKph <= 120);
             assertTrue(state.rpm >= 700 && state.rpm <= 4_500);
             assertTrue(state.currentGear >= 0 && state.currentGear <= 6);
-            assertTrue(state.coolantC >= 70 && state.coolantC <= 105);
+            assertTrue(state.coolantC >= 70 && state.coolantC <= 125);
             assertTrue(state.transmissionTemperatureC >= 55.0f);
-            assertTrue(state.transmissionTemperatureC <= 100.0f);
+            assertTrue(state.transmissionTemperatureC <= 125.0f);
             assertTrue(state.fuelLiters >= 0.0f && state.fuelLiters <= 80.0f);
             assertTrue(state.rangeKm >= 0);
-            assertTrue(state.tyreFrontLeftBar >= 2.0f);
+            assertTrue(state.tyreFrontLeftBar >= 1.8f);
             assertTrue(state.tyreFrontRightBar >= 2.0f);
             assertTrue(state.tyreRearLeftBar >= 2.0f);
             assertTrue(state.tyreRearRightBar >= 2.0f);
             assertTrue(state.consumptionLitersPer100Km >= 0.0f);
-            assertTrue(state.voltage >= 12.0f && state.voltage <= 15.0f);
+            assertTrue(state.voltage >= 11.5f && state.voltage <= 15.0f);
             assertTrue(state.outsideTemperatureC >= -50.0f);
             assertTrue(state.outsideTemperatureC <= 60.0f);
             assertTrue(state.steeringAngleDeg >= -360.0f);
@@ -76,6 +76,34 @@ public final class DemoScenarioTest {
     }
 
     @Test
+    public void cycleExercisesNormalWarningAndCriticalTelemetry() {
+        DemoScenario scenario = new DemoScenario();
+        ClusterState normal = scenario.snapshot(5_000L, 6_000L);
+        ClusterState warning = scenario.snapshot(15_000L, 16_000L);
+        ClusterState critical = scenario.snapshot(25_000L, 26_000L);
+
+        assertTrue(normal.consumptionLitersPer100Km <= 20.0f);
+        assertTrue(normal.coolantC <= 110);
+        assertTrue(normal.transmissionTemperatureC <= 110.0f);
+        assertTrue(normal.voltage >= 12.0f);
+        assertTrue(normal.tyreFrontLeftBar >= 2.0f);
+        assertTrue(normal.fuelLiters >= 8.0f);
+
+        assertTrue(warning.consumptionLitersPer100Km > 20.0f);
+        assertTrue(warning.coolantC > 110 && warning.coolantC <= 120);
+        assertTrue(warning.transmissionTemperatureC > 110.0f);
+        assertTrue(warning.transmissionTemperatureC <= 120.0f);
+        assertTrue(warning.voltage < 12.0f);
+        assertTrue(warning.tyreFrontLeftBar < 2.0f);
+        assertTrue(warning.fuelLiters < 8.0f);
+        assertTrue(warning.fuelLiters >= 2.0f);
+
+        assertTrue(critical.coolantC > 120);
+        assertTrue(critical.transmissionTemperatureC > 120.0f);
+        assertTrue(critical.fuelLiters < 2.0f);
+    }
+
+    @Test
     public void snapshotPopulatesEveryLiveLookingDashboardValue() {
         DemoScenario scenario = new DemoScenario();
         ClusterState state = scenario.snapshot(12_000L, 91_000L);
@@ -95,7 +123,7 @@ public final class DemoScenarioTest {
         assertTrue(state.tyreRearLeftBar > 0.0f);
         assertTrue(state.tyreRearRightBar > 0.0f);
         assertTrue(state.consumptionLitersPer100Km > 0.0f);
-        assertTrue(state.instantFuelConsumption > 0.0f);
+        assertTrue(state.journeyAverageFuelConsumption > 0.0f);
         assertTrue(state.voltage > 0.0f);
         assertTrue(state.outsideTemperatureC != 0.0f);
         assertTrue(state.steeringAngleDeg != 0.0f);
@@ -105,7 +133,9 @@ public final class DemoScenarioTest {
         assertTrue(state.wheelRearRightKph > 0.0f);
         assertTrue(state.engineFlywheelTorque != 0.0f);
         assertEquals(91_000L, state.rpmUpdatedAtMs);
-        assertEquals(91_000L, state.instantFuelConsumptionUpdatedAtMs);
+        assertEquals(
+                91_000L,
+                state.journeyAverageFuelConsumptionUpdatedAtMs);
         assertEquals(91_000L, state.journeyOdometerUpdatedAtMs);
         assertEquals(91_000L, state.steeringUpdatedAtMs);
         assertEquals(91_000L, state.transmissionTemperatureUpdatedAtMs);
@@ -169,8 +199,10 @@ public final class DemoScenarioTest {
         assertEquals(frozen.dayKm, stopped.dayKm, 0.0f);
         assertEquals(25_000L, stopped.rpmUpdatedAtMs);
         assertEquals(25_000L, stopped.journeyOdometerUpdatedAtMs);
-        assertEquals(25_000L, stopped.instantFuelConsumptionUpdatedAtMs);
-        assertTrue(stopped.instantFuelConsumption > 0.0f);
+        assertEquals(
+                25_000L,
+                stopped.journeyAverageFuelConsumptionUpdatedAtMs);
+        assertTrue(stopped.journeyAverageFuelConsumption > 0.0f);
     }
 
     @Test
@@ -178,9 +210,11 @@ public final class DemoScenarioTest {
         DemoScenario scenario = new DemoScenario();
         ClusterState state = scenario.snapshot(12_000L, 20_000L, true);
 
-        assertTrue(Float.isNaN(state.instantFuelConsumption));
+        assertTrue(Float.isNaN(state.journeyAverageFuelConsumption));
         assertTrue(Float.isNaN(state.consumptionLitersPer100Km));
         assertTrue(state.dayKm > 0.0f);
-        assertEquals(20_000L, state.instantFuelConsumptionUpdatedAtMs);
+        assertEquals(
+                20_000L,
+                state.journeyAverageFuelConsumptionUpdatedAtMs);
     }
 }

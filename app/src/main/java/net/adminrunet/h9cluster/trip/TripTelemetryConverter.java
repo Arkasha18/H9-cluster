@@ -10,5 +10,4 @@ public final class TripTelemetryConverter {
                 ? rawValue
                 : Double.NaN;
     }
-
 }

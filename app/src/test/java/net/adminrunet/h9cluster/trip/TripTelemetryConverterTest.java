@@ -15,9 +15,12 @@ public final class TripTelemetryConverterTest {
     }
 
     @Test
-    public void rejectsNonFiniteAndNegativeJourneyValues() {
+    public void rejectsNonFiniteAndNegativeJourneyOdometer() {
         assertTrue(Double.isNaN(
                 TripTelemetryConverter.journeyOdometerKm(Float.NaN)));
+        assertTrue(Double.isNaN(
+                TripTelemetryConverter.journeyOdometerKm(
+                        Float.POSITIVE_INFINITY)));
         assertTrue(Double.isNaN(
                 TripTelemetryConverter.journeyOdometerKm(-1.0f)));
     }

@@ -291,13 +291,16 @@ public final class PreviewActivity extends Activity {
 
     private void logTripTelemetryIfDue(ClusterState state) {
         long nowMs = SystemClock.elapsedRealtime();
+        // Opt-in only, so no build logs vehicle telemetry continuously:
+        // adb shell setprop log.tag.H9TripTelemetry DEBUG
         if (!TripTelemetryDiagnostics.shouldLog(
+                Log.isLoggable(TRIP_TELEMETRY_TAG, Log.DEBUG),
                 lastTripTelemetryLogAtMs,
                 nowMs)) {
             return;
         }
         TripTelemetry telemetry = TripTelemetry.from(state, nowMs);
-        Log.i(
+        Log.d(
                 TRIP_TELEMETRY_TAG,
                 TripTelemetryDiagnostics.format(
                         telemetry,

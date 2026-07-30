@@ -58,14 +58,13 @@ public final class GwmClusterDataSource
     private static final int INDEX_TPMS_UNITS = 12;
     private static final int INDEX_AVG_CONSUMPTION_B = 13;
     private static final int INDEX_AVG_CONSUMPTION_A = 14;
-    private static final int INDEX_INSTANT_CONSUMPTION = 15;
-    private static final int INDEX_VOLTAGE = 16;
-    private static final int INDEX_STEERING_ANGLE = 18;
-    private static final int INDEX_WHEEL_FRONT_LEFT = 19;
-    private static final int INDEX_WHEEL_FRONT_RIGHT = 20;
-    private static final int INDEX_WHEEL_REAR_LEFT = 21;
-    private static final int INDEX_WHEEL_REAR_RIGHT = 22;
-    private static final int INDEX_ENGINE_FLYWHEEL_TORQUE = 23;
+    private static final int INDEX_VOLTAGE = 15;
+    private static final int INDEX_STEERING_ANGLE = 17;
+    private static final int INDEX_WHEEL_FRONT_LEFT = 18;
+    private static final int INDEX_WHEEL_FRONT_RIGHT = 19;
+    private static final int INDEX_WHEEL_REAR_LEFT = 20;
+    private static final int INDEX_WHEEL_REAR_RIGHT = 21;
+    private static final int INDEX_ENGINE_FLYWHEEL_TORQUE = 22;
 
     private static final String[] DATA_IDS = new String[] {
             "car.basic.vehicle_speed",
@@ -83,7 +82,6 @@ public final class GwmClusterDataSource
             "car.basic.tpms_units",
             "car.basic.avg_fuel_consumption",
             "car.basic.cur_journey_avg_fuel_consumption_a",
-            "car.basic.instant_fuel_consumption",
             "car.basic.battery_voltage",
             "car.basic.tire_temp_unit",
             "car.basic.steering_wheel_angle",
@@ -113,7 +111,7 @@ public final class GwmClusterDataSource
     private long binderRpmUpdatedAtMs;
     private long fdbusRpmUpdatedAtMs;
     private int fdbusRpm;
-    private long instantFuelConsumptionUpdatedAtMs;
+    private long journeyAverageFuelConsumptionUpdatedAtMs;
     private long journeyOdometerUpdatedAtMs;
     private long steeringUpdatedAtMs;
     private float transmissionTemperatureC = Float.NaN;
@@ -246,8 +244,8 @@ public final class GwmClusterDataSource
                         binderRpmUpdatedAtMs = now;
                     } else if (index == INDEX_DAY) {
                         journeyOdometerUpdatedAtMs = now;
-                    } else if (index == INDEX_INSTANT_CONSUMPTION) {
-                        instantFuelConsumptionUpdatedAtMs = now;
+                    } else if (index == INDEX_AVG_CONSUMPTION_A) {
+                        journeyAverageFuelConsumptionUpdatedAtMs = now;
                     } else if (index == INDEX_STEERING_ANGLE) {
                         steeringUpdatedAtMs = now;
                     }
@@ -300,8 +298,8 @@ public final class GwmClusterDataSource
                             binderRpmUpdatedAtMs = now;
                         } else if (index == INDEX_DAY) {
                             journeyOdometerUpdatedAtMs = now;
-                        } else if (index == INDEX_INSTANT_CONSUMPTION) {
-                            instantFuelConsumptionUpdatedAtMs = now;
+                        } else if (index == INDEX_AVG_CONSUMPTION_A) {
+                            journeyAverageFuelConsumptionUpdatedAtMs = now;
                         } else if (index == INDEX_STEERING_ANGLE) {
                             steeringUpdatedAtMs = now;
                         }
@@ -382,12 +380,12 @@ public final class GwmClusterDataSource
                 ? lastState.fuelLiters
                 : clamp(fuelPercent, 0.0f, 100.0f) * TANK_CAPACITY_LITERS / 100.0f;
 
-        float consumption = parseFloat(values[INDEX_AVG_CONSUMPTION_A], Float.NaN);
-        if (Float.isNaN(consumption)) {
-            consumption = parseFloat(
-                    values[INDEX_AVG_CONSUMPTION_B],
-                    lastState.consumptionLitersPer100Km);
-        }
+        float journeyAverageConsumption = journeyAverageConsumption(
+                values[INDEX_AVG_CONSUMPTION_A]);
+        float consumption = clusterConsumption(
+                values[INDEX_AVG_CONSUMPTION_A],
+                values[INDEX_AVG_CONSUMPTION_B],
+                lastState.consumptionLitersPer100Km);
 
         long now = SystemClock.elapsedRealtime();
         boolean useFdbusRpm = fdbusRpmUpdatedAtMs > 0L
@@ -417,7 +415,7 @@ public final class GwmClusterDataSource
                 pressures[2],
                 pressures[3],
                 Math.max(0.0f, consumption),
-                parseFloat(values[INDEX_INSTANT_CONSUMPTION], Float.NaN),
+                journeyAverageConsumption,
                 Math.max(0.0f, parseFloat(values[INDEX_VOLTAGE], lastState.voltage)),
                 clamp(parseFloat(
                         values[INDEX_OUTSIDE_TEMP],
@@ -441,7 +439,7 @@ public final class GwmClusterDataSource
                         values[INDEX_ENGINE_FLYWHEEL_TORQUE],
                         lastState.engineFlywheelTorque), -2000.0f, 2000.0f),
                 effectiveRpmUpdatedAtMs,
-                instantFuelConsumptionUpdatedAtMs,
+                journeyAverageFuelConsumptionUpdatedAtMs,
                 journeyOdometerUpdatedAtMs,
                 steeringUpdatedAtMs,
                 transmissionTemperatureUpdatedAtMs,
@@ -532,6 +530,28 @@ public final class GwmClusterDataSource
     private static int parseInt(String value, int fallback) {
         double parsed = parseDouble(value, Double.NaN);
         return Double.isNaN(parsed) ? fallback : (int) Math.round(parsed);
+    }
+
+    /**
+     * The trip summary is contractually tied to
+     * {@code cur_journey_avg_fuel_consumption_a}: when that indicator is
+     * unavailable the trip has to show "—" rather than a plausible stand-in,
+     * so this never falls back to indicator B or to the previous reading.
+     */
+    static float journeyAverageConsumption(String rawIndicatorA) {
+        return parseFloat(rawIndicatorA, Float.NaN);
+    }
+
+    /** The cluster gauge, unlike the trip, may substitute B or hold its value. */
+    static float clusterConsumption(
+            String rawIndicatorA,
+            String rawIndicatorB,
+            float previousConsumption) {
+        float consumption = parseFloat(rawIndicatorA, Float.NaN);
+        if (Float.isNaN(consumption)) {
+            consumption = parseFloat(rawIndicatorB, previousConsumption);
+        }
+        return consumption;
     }
 
     static int normalizeCurrentGear(int rawGear) {

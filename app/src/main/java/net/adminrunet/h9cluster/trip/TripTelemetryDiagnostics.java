@@ -20,12 +20,13 @@ public final class TripTelemetryDiagnostics {
                 : -1L;
         return String.format(
                 Locale.US,
-                "journeyRaw=%.3f journeyKm=%.3f "
+                "journeyRaw=%.3f journeyKm=%.3f journeyValid=%s "
                         + "averageFuelRaw=%.3f averageFuelValid=%s "
                         + "rpmRaw=%d rpmAgeMs=%d "
                         + "speedKph=%d elapsedMs=%d",
                 telemetry.rawJourneyOdometer,
                 convertedJourneyKm,
+                telemetry.journeyOdometerValid,
                 telemetry.averageFuelConsumption,
                 telemetry.averageFuelConsumptionValid,
                 rpm,
@@ -34,9 +35,13 @@ public final class TripTelemetryDiagnostics {
                 telemetry.capturedAtMs);
     }
 
-    public static boolean shouldLog(long lastLoggedAtMs, long nowMs) {
-        return lastLoggedAtMs < 0L
-                || nowMs < lastLoggedAtMs
-                || nowMs - lastLoggedAtMs >= MINIMUM_INTERVAL_MS;
+    public static boolean shouldLog(
+            boolean loggingEnabled,
+            long lastLoggedAtMs,
+            long nowMs) {
+        return loggingEnabled
+                && (lastLoggedAtMs < 0L
+                        || nowMs < lastLoggedAtMs
+                        || nowMs - lastLoggedAtMs >= MINIMUM_INTERVAL_MS);
     }
 }

@@ -20,6 +20,7 @@ public final class TripSessionNormalizerTest {
         assertEquals(15_000L, normalized.lastUpdatedAtMs);
         assertEquals(2.5, normalized.distanceKm, 0.0);
         assertEquals(8.5f, normalized.lastAverageFuelConsumption, 0.0f);
+        assertTrue(normalized.lastAverageFuelConsumptionValid);
     }
 
     @Test
@@ -53,6 +54,26 @@ public final class TripSessionNormalizerTest {
     }
 
     @Test
+    public void invalidJourneyAverageNeverBecomesValid() {
+        TripSession normalized = TripSessionNormalizer.normalize(
+                withAverageFuel(validSession(), Float.NaN, true),
+                20_000L);
+
+        assertNotNull(normalized);
+        assertFalse(normalized.lastAverageFuelConsumptionValid);
+    }
+
+    @Test
+    public void nonPositiveJourneyAverageNeverBecomesValid() {
+        TripSession normalized = TripSessionNormalizer.normalize(
+                withAverageFuel(validSession(), 0.0f, true),
+                20_000L);
+
+        assertNotNull(normalized);
+        assertFalse(normalized.lastAverageFuelConsumptionValid);
+    }
+
+    @Test
     public void clearsMalformedBaselinesWithoutDiscardingRunningSession() {
         TripSession malformed = new TripSession(
                 true,
@@ -62,7 +83,7 @@ public final class TripSessionNormalizerTest {
                 Double.NaN,
                 true,
                 true,
-                8.5f,
+                Float.NaN,
                 true);
 
         TripSession normalized =
@@ -70,6 +91,8 @@ public final class TripSessionNormalizerTest {
 
         assertNotNull(normalized);
         assertFalse(normalized.lastJourneyOdometerValid);
+        assertFalse(normalized.lastAverageFuelConsumptionValid);
+        assertTrue(normalized.distanceValid);
     }
 
     private static TripSession validSession() {
@@ -91,7 +114,9 @@ public final class TripSessionNormalizerTest {
                 active,
                 source.lastUpdatedAtMs,
                 source.distanceKm,
-                source.distanceValid);
+                source.distanceValid,
+                source.lastAverageFuelConsumption,
+                source.lastAverageFuelConsumptionValid);
     }
 
     private static TripSession withLastUpdated(
@@ -102,7 +127,9 @@ public final class TripSessionNormalizerTest {
                 source.active,
                 lastUpdatedAtMs,
                 source.distanceKm,
-                source.distanceValid);
+                source.distanceValid,
+                source.lastAverageFuelConsumption,
+                source.lastAverageFuelConsumptionValid);
     }
 
     private static TripSession withDistance(
@@ -114,7 +141,23 @@ public final class TripSessionNormalizerTest {
                 source.active,
                 source.lastUpdatedAtMs,
                 distanceKm,
-                distanceValid);
+                distanceValid,
+                source.lastAverageFuelConsumption,
+                source.lastAverageFuelConsumptionValid);
+    }
+
+    private static TripSession withAverageFuel(
+            TripSession source,
+            float lastAverageFuelConsumption,
+            boolean lastAverageFuelConsumptionValid) {
+        return copy(
+                source,
+                source.active,
+                source.lastUpdatedAtMs,
+                source.distanceKm,
+                source.distanceValid,
+                lastAverageFuelConsumption,
+                lastAverageFuelConsumptionValid);
     }
 
     private static TripSession copy(
@@ -122,7 +165,9 @@ public final class TripSessionNormalizerTest {
             boolean active,
             long lastUpdatedAtMs,
             double distanceKm,
-            boolean distanceValid) {
+            boolean distanceValid,
+            float lastAverageFuelConsumption,
+            boolean lastAverageFuelConsumptionValid) {
         return new TripSession(
                 active,
                 source.startedAtMs,
@@ -131,7 +176,7 @@ public final class TripSessionNormalizerTest {
                 source.lastJourneyOdometerKm,
                 source.lastJourneyOdometerValid,
                 distanceValid,
-                source.lastAverageFuelConsumption,
-                source.lastAverageFuelConsumptionValid);
+                lastAverageFuelConsumption,
+                lastAverageFuelConsumptionValid);
     }
 }

@@ -10,8 +10,8 @@ public final class ClusterStateTripTelemetryTest {
     public void emptyStateMarksTripTelemetryUnavailable() {
         ClusterState state = ClusterState.empty();
 
-        assertTrue(Float.isNaN(state.instantFuelConsumption));
-        assertEquals(0L, state.instantFuelConsumptionUpdatedAtMs);
+        assertTrue(Float.isNaN(state.journeyAverageFuelConsumption));
+        assertEquals(0L, state.journeyAverageFuelConsumptionUpdatedAtMs);
         assertEquals(0L, state.journeyOdometerUpdatedAtMs);
     }
 }
