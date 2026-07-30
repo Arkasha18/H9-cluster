@@ -225,6 +225,65 @@ public final class SimpleRedLayoutTest {
     }
 
     @Test
+    public void softBandLayersNarrowFromHaloDownToCore() {
+        assertEquals(
+                SimpleRedLayout.PROGRESS_HALO_WIDTH,
+                SimpleRedLayout.progressSoftLayerWidth(0),
+                0.001f);
+        assertEquals(
+                SimpleRedLayout.PROGRESS_CORE_WIDTH,
+                SimpleRedLayout.progressSoftLayerWidth(
+                        SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT - 1),
+                0.001f);
+        float previous = Float.MAX_VALUE;
+        for (int layer = 0;
+                layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
+                layer++) {
+            float width = SimpleRedLayout.progressSoftLayerWidth(layer);
+            org.junit.Assert.assertTrue(
+                    "soft layers must narrow monotonically",
+                    width < previous);
+            previous = width;
+        }
+        int previousAlpha = -1;
+        for (int layer = 0;
+                layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
+                layer++) {
+            int alpha = SimpleRedLayout.progressSoftLayerAlpha(layer);
+            org.junit.Assert.assertTrue(
+                    "stacked layers must stay translucent to accumulate",
+                    alpha < 255);
+            org.junit.Assert.assertTrue(
+                    "alpha must rise as the layers narrow",
+                    alpha > previousAlpha);
+            previousAlpha = alpha;
+        }
+        assertEquals(
+                SimpleRedLayout.PROGRESS_SOFT_LAYER_MIN_ALPHA,
+                SimpleRedLayout.progressSoftLayerAlpha(0));
+        assertEquals(
+                SimpleRedLayout.PROGRESS_SOFT_LAYER_MAX_ALPHA,
+                SimpleRedLayout.progressSoftLayerAlpha(
+                        SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT - 1));
+        org.junit.Assert.assertTrue(
+                "the widest layer must still clear the scale arc",
+                SimpleRedLayout.PROGRESS_BAND_RADIUS
+                        + SimpleRedLayout.progressSoftLayerWidth(0) * 0.5f
+                        < SimpleRedLayout.GAUGE_RADIUS);
+    }
+
+    @Test
+    public void tipBloomIsClampedToTheBandAndStaysTranslucent() {
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.PROGRESS_TIP_BLOOM_RADIUS > 0.0f);
+        org.junit.Assert.assertTrue(
+                "a fully opaque bloom would hide the leading edge",
+                SimpleRedLayout.PROGRESS_TIP_BLOOM_ALPHA < 255);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.PROGRESS_TIP_BLOOM_ALPHA > 0);
+    }
+
+    @Test
     public void notificationPanelIsOpaqueBlackOutsideDemoBuilds() {
         assertEquals(
                 0xFF000000,

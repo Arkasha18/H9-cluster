@@ -12,6 +12,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
@@ -34,6 +35,7 @@ public final class SimpleRedClusterView extends View
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
+    private final Shader tipBloomShader = createTipBloomShader();
 
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
@@ -210,35 +212,29 @@ public final class SimpleRedClusterView extends View
         float sweep = SimpleRedLayout.progressSweepDegrees(
                 clampedFraction);
 
-        Shader glowGradient = progressGradient(
+        progressPaint.setShader(progressGradient(
                 centerX,
                 centerY,
                 clampedFraction,
-                true);
-        progressPaint.setStrokeWidth(
-                SimpleRedLayout.PROGRESS_HALO_WIDTH);
-        progressPaint.setAlpha(
-                SimpleRedLayout.PROGRESS_HALO_ALPHA);
-        progressPaint.setShader(glowGradient);
-        canvas.drawArc(
-                arcBounds,
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                sweep,
-                false,
-                progressPaint);
-
-        progressPaint.setStrokeWidth(
-                SimpleRedLayout.PROGRESS_GLOW_WIDTH);
-        progressPaint.setAlpha(255);
-        canvas.drawArc(
-                arcBounds,
-                SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
-                sweep,
-                false,
-                progressPaint);
+                true));
+        for (int layer = 0;
+                layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
+                layer++) {
+            progressPaint.setAlpha(
+                    SimpleRedLayout.progressSoftLayerAlpha(layer));
+            progressPaint.setStrokeWidth(
+                    SimpleRedLayout.progressSoftLayerWidth(layer));
+            canvas.drawArc(
+                    arcBounds,
+                    SimpleRedLayout.SCALE_START_ANGLE_DEGREES,
+                    sweep,
+                    false,
+                    progressPaint);
+        }
 
         progressPaint.setStrokeWidth(
                 SimpleRedLayout.PROGRESS_CORE_WIDTH);
+        progressPaint.setAlpha(255);
         progressPaint.setShader(progressGradient(
                 centerX,
                 centerY,
@@ -250,8 +246,52 @@ public final class SimpleRedClusterView extends View
                 sweep,
                 false,
                 progressPaint);
-        progressPaint.setAlpha(255);
+
         progressPaint.setShader(null);
+        progressPaint.setAlpha(255);
+        drawProgressTipBloom(canvas, clampedFraction, rightGauge);
+    }
+
+    /**
+     * Soft halo around the leading edge, so it reads as a glow. The shader
+     * is built once at the origin and moved by translating the canvas,
+     * keeping this off the per-frame allocation path.
+     */
+    private void drawProgressTipBloom(
+            Canvas canvas,
+            float fraction,
+            boolean rightGauge) {
+        float tipX = SimpleRedLayout.radialX(
+                fraction,
+                SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                rightGauge);
+        float tipY = SimpleRedLayout.radialY(
+                fraction,
+                SimpleRedLayout.PROGRESS_BAND_RADIUS);
+        int save = canvas.save();
+        canvas.translate(tipX, tipY);
+        progressPaint.setStyle(Paint.Style.FILL);
+        progressPaint.setShader(tipBloomShader);
+        canvas.drawCircle(
+                0.0f,
+                0.0f,
+                SimpleRedLayout.PROGRESS_TIP_BLOOM_RADIUS,
+                progressPaint);
+        progressPaint.setShader(null);
+        progressPaint.setStyle(Paint.Style.STROKE);
+        canvas.restoreToCount(save);
+    }
+
+    private static Shader createTipBloomShader() {
+        int center = (SimpleRedLayout.PROGRESS_TIP_BLOOM_ALPHA << 24)
+                | (SimpleRedLayout.PROGRESS_TIP_BLOOM_COLOR & 0x00FFFFFF);
+        return new RadialGradient(
+                0.0f,
+                0.0f,
+                SimpleRedLayout.PROGRESS_TIP_BLOOM_RADIUS,
+                new int[] {center, center & 0x00FFFFFF},
+                new float[] {0.0f, 1.0f},
+                Shader.TileMode.CLAMP);
     }
 
     private Shader progressGradient(

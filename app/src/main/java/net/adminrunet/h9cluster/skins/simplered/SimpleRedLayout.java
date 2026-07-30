@@ -66,6 +66,20 @@ final class SimpleRedLayout {
     static final float SCALE_START_ANGLE_DEGREES =
             SCALE_START_DEGREES + 180.0f;
     static final int PROGRESS_HALO_ALPHA = 140;
+    /**
+     * The band is softened by stacking translucent strokes from
+     * PROGRESS_HALO_WIDTH down to PROGRESS_CORE_WIDTH. Overlapping alpha
+     * accumulates towards the middle, which fakes a blurred edge without
+     * BlurMaskFilter — unreliable on the hardware canvas this layer uses.
+     */
+    static final int PROGRESS_SOFT_LAYER_COUNT = 6;
+    /** Outermost layer: faint, so the halo fades out rather than edges. */
+    static final int PROGRESS_SOFT_LAYER_MIN_ALPHA = 34;
+    /** Innermost layer, keeping the band as bright as it was before. */
+    static final int PROGRESS_SOFT_LAYER_MAX_ALPHA = 160;
+    static final float PROGRESS_TIP_BLOOM_RADIUS = 46.0f;
+    static final int PROGRESS_TIP_BLOOM_COLOR = 0xFFFFD54F;
+    static final int PROGRESS_TIP_BLOOM_ALPHA = 200;
     static final int PROGRESS_START_COLOR = 0x08FF2020;
     static final int PROGRESS_LEADING_COLOR = 0xFFFFD54F;
     static final float TEXT_SKEW_X = 0.0f;
@@ -200,6 +214,33 @@ final class SimpleRedLayout {
 
     static float rpmFraction(float rpm) {
         return clamp(rpm / MAX_RPM, 0.0f, 1.0f);
+    }
+
+    /** Stroke width of a soft band layer, index 0 being the widest. */
+    static float progressSoftLayerWidth(int index) {
+        if (PROGRESS_SOFT_LAYER_COUNT <= 1) {
+            return PROGRESS_CORE_WIDTH;
+        }
+        int checked = Math.max(
+                0,
+                Math.min(PROGRESS_SOFT_LAYER_COUNT - 1, index));
+        float step = (float) checked / (PROGRESS_SOFT_LAYER_COUNT - 1);
+        return PROGRESS_HALO_WIDTH
+                + (PROGRESS_CORE_WIDTH - PROGRESS_HALO_WIDTH) * step;
+    }
+
+    /** Alpha of a soft band layer, rising as the layers narrow. */
+    static int progressSoftLayerAlpha(int index) {
+        if (PROGRESS_SOFT_LAYER_COUNT <= 1) {
+            return PROGRESS_SOFT_LAYER_MAX_ALPHA;
+        }
+        int checked = Math.max(
+                0,
+                Math.min(PROGRESS_SOFT_LAYER_COUNT - 1, index));
+        float step = (float) checked / (PROGRESS_SOFT_LAYER_COUNT - 1);
+        return Math.round(PROGRESS_SOFT_LAYER_MIN_ALPHA
+                + (PROGRESS_SOFT_LAYER_MAX_ALPHA
+                - PROGRESS_SOFT_LAYER_MIN_ALPHA) * step);
     }
 
     static float progressSweepDegrees(float fraction) {
