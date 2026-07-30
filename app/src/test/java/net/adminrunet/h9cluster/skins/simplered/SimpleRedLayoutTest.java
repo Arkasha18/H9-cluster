@@ -17,13 +17,13 @@ public final class SimpleRedLayoutTest {
             boolean maximum) {
         float best = horizontal
                 ? SimpleRedLayout.pointXAt(0.0f, radius, rightGauge)
-                : SimpleRedLayout.pointYAt(0.0f, radius);
+                : SimpleRedLayout.pointYAt(0.0f, radius, rightGauge);
         for (int index = 0; index <= 128; index++) {
             float along = SimpleRedLayout.SCALE_TOTAL_LENGTH
                     * index / 128.0f;
             float value = horizontal
                     ? SimpleRedLayout.pointXAt(along, radius, rightGauge)
-                    : SimpleRedLayout.pointYAt(along, radius);
+                    : SimpleRedLayout.pointYAt(along, radius, rightGauge);
             best = maximum
                     ? Math.max(best, value)
                     : Math.min(best, value);
@@ -33,32 +33,45 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void mainScalesAreMatchingTiltedArcs() {
-        // The tilt carries the full-scale end below the zero end, and
-        // the apex stays above the centre on both gauges.
+        // The speedometer tilt lifts its zero end above the centre and
+        // drops its full-scale end below, so the ends straddle the
+        // centre line rather than both hanging under it.
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.scaleY(1.0f)
-                        > SimpleRedLayout.scaleY(0.0f));
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.scaleY(0.5f)
-                        < SimpleRedLayout.GAUGE_CENTER_Y);
-        // The ends straddle the centre line rather than both hanging
-        // below it: the tilt lifts the zero end and drops the far one.
-        org.junit.Assert.assertTrue(
-                SimpleRedLayout.scaleY(0.0f)
+                SimpleRedLayout.scaleY(0.0f, false)
                         < SimpleRedLayout.GAUGE_CENTER_Y);
         org.junit.Assert.assertTrue(
-                SimpleRedLayout.scaleY(1.0f)
+                SimpleRedLayout.scaleY(1.0f, false)
                         > SimpleRedLayout.GAUGE_CENTER_Y);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(0.5f, false)
+                        < SimpleRedLayout.GAUGE_CENTER_Y);
+        // The tachometer is the mirror, so its tilt runs the other way:
+        // zero sits low on the near side and the far end climbs.
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(0.0f, true)
+                        > SimpleRedLayout.GAUGE_CENTER_Y);
+        org.junit.Assert.assertTrue(
+                SimpleRedLayout.scaleY(1.0f, true)
+                        < SimpleRedLayout.GAUGE_CENTER_Y);
+        // Both scales still read left to right.
+        for (boolean rightGauge : new boolean[] {false, true}) {
+            org.junit.Assert.assertTrue(
+                    "zero must sit left of full scale",
+                    SimpleRedLayout.scaleX(0.0f, rightGauge)
+                            < SimpleRedLayout.scaleX(1.0f, rightGauge));
+        }
         // The apex is the top of the circle and nothing rises past it.
-        assertEquals(
-                SimpleRedLayout.GAUGE_CENTER_Y
-                        - SimpleRedLayout.GAUGE_RADIUS,
-                outlineExtreme(
-                        false,
-                        SimpleRedLayout.GAUGE_RADIUS,
-                        false,
-                        false),
-                0.001f);
+        for (boolean rightGauge : new boolean[] {false, true}) {
+            assertEquals(
+                    SimpleRedLayout.GAUGE_CENTER_Y
+                            - SimpleRedLayout.GAUGE_RADIUS,
+                    outlineExtreme(
+                            rightGauge,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            false,
+                            false),
+                    0.001f);
+        }
     }
 
     @Test
@@ -110,7 +123,7 @@ public final class SimpleRedLayoutTest {
             assertEquals(
                     "nothing moves before the cut",
                     0.0f,
-                    SimpleRedLayout.stretchOffsetAtLength(along, false),
+                    SimpleRedLayout.stretchOffsetAtLength(along),
                     0.0001f);
             float angle = SimpleRedLayout.SCALE_START_ANGLE_RADIANS
                     + along / SimpleRedLayout.GAUGE_RADIUS;
@@ -128,17 +141,28 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void theInsertIsHorizontalAndAsLongAsTheConstant() {
-        float before = SimpleRedLayout.SCALE_LEADING_LENGTH;
-        float after = before + SimpleRedLayout.SCALE_STRETCH_X;
+        float canonicalBefore = SimpleRedLayout.SCALE_LEADING_LENGTH;
+        float canonicalAfter =
+                canonicalBefore + SimpleRedLayout.SCALE_STRETCH_X;
         for (boolean rightGauge : new boolean[] {false, true}) {
+            // The tachometer walks the outline backwards, so its insert
+            // is entered from the other end.
+            float before = rightGauge
+                    ? SimpleRedLayout.SCALE_TOTAL_LENGTH - canonicalAfter
+                    : canonicalBefore;
+            float after = rightGauge
+                    ? SimpleRedLayout.SCALE_TOTAL_LENGTH - canonicalBefore
+                    : canonicalAfter;
             assertEquals(
                     "the insert must not rise or fall",
                     SimpleRedLayout.pointYAt(
                             before,
-                            SimpleRedLayout.GAUGE_RADIUS),
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            rightGauge),
                     SimpleRedLayout.pointYAt(
                             after,
-                            SimpleRedLayout.GAUGE_RADIUS),
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            rightGauge),
                     0.001f);
             assertEquals(
                     "it opens the scale by exactly the constant",
@@ -152,17 +176,24 @@ public final class SimpleRedLayoutTest {
                                     SimpleRedLayout.GAUGE_RADIUS,
                                     rightGauge),
                     0.001f);
+            // The insert sits at the top of the circle, the one place
+            // the tangent is already horizontal, so no joint can show.
+            assertEquals(
+                    SimpleRedLayout.GAUGE_CENTER_Y
+                            - SimpleRedLayout.GAUGE_RADIUS,
+                    SimpleRedLayout.pointYAt(
+                            before,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            rightGauge),
+                    0.001f);
         }
-        // Both ends sit at the top of the circle, the one place its
-        // tangent is already horizontal, so the joints cannot show.
-        assertEquals(CUT, SimpleRedLayout.angleAtLength(before), 0.001f);
-        assertEquals(CUT, SimpleRedLayout.angleAtLength(after), 0.001f);
         assertEquals(
-                SimpleRedLayout.GAUGE_CENTER_Y
-                        - SimpleRedLayout.GAUGE_RADIUS,
-                SimpleRedLayout.pointYAt(
-                        before,
-                        SimpleRedLayout.GAUGE_RADIUS),
+                CUT,
+                SimpleRedLayout.angleAtLength(canonicalBefore),
+                0.001f);
+        assertEquals(
+                CUT,
+                SimpleRedLayout.angleAtLength(canonicalAfter),
                 0.001f);
     }
 
@@ -173,19 +204,25 @@ public final class SimpleRedLayoutTest {
         for (int index = 0; index <= 32; index++) {
             float along = SimpleRedLayout.SCALE_TOTAL_LENGTH
                     * index / 32.0f;
-            float angle = SimpleRedLayout.angleAtLength(along);
             for (boolean rightGauge : new boolean[] {false, true}) {
+                float canonical = SimpleRedLayout.canonicalLength(
+                        along,
+                        rightGauge);
+                float angle = SimpleRedLayout.angleAtLength(canonical);
+                float fromCentre = SimpleRedLayout.pointXAt(
+                        along,
+                        SimpleRedLayout.GAUGE_RADIUS,
+                        rightGauge)
+                        - SimpleRedLayout.gaugeCenterX(rightGauge);
+                if (rightGauge) {
+                    fromCentre = -fromCentre;
+                }
                 assertEquals(
-                        SimpleRedLayout.gaugeCenterX(rightGauge)
-                                - SimpleRedLayout.GAUGE_RADIUS
+                        -SimpleRedLayout.GAUGE_RADIUS
                                 * (float) Math.cos(angle),
-                        SimpleRedLayout.pointXAt(
-                                along,
-                                SimpleRedLayout.GAUGE_RADIUS,
-                                rightGauge)
+                        fromCentre
                                 - SimpleRedLayout.stretchOffsetAtLength(
-                                        along,
-                                        rightGauge),
+                                        canonical),
                         0.001f);
             }
         }
@@ -193,55 +230,63 @@ public final class SimpleRedLayoutTest {
 
     @Test
     public void theTwoGaugesAreMirrorImages() {
-        // Reflecting a speedometer point about the vertical lands on a
-        // tachometer point, which is what keeps the pair symmetric while
-        // the tachometer opens the other way. The mirrored distance is
-        // derived from the geometry: the reflection sends angle to
-        // pi - angle, and the insert onto itself reversed.
-        float mirror = SimpleRedLayout.SCALE_STRETCH_X
-                + SimpleRedLayout.GAUGE_RADIUS
-                * (float) (Math.PI
-                        - 2.0 * SimpleRedLayout.SCALE_START_ANGLE_RADIANS);
+        // The pair is symmetric about the line halfway between the two
+        // centres: a tachometer point and the speedometer point at the
+        // mirrored distance are equally far from it and level with one
+        // another. This is what makes the tachometer read as the
+        // speedometer reflected rather than as a second copy of it.
+        float centresSum = SimpleRedLayout.LEFT_GAUGE_CENTER_X
+                + SimpleRedLayout.RIGHT_GAUGE_CENTER_X;
         for (int index = 0; index <= 32; index++) {
             float along = SimpleRedLayout.SCALE_TOTAL_LENGTH
                     * index / 32.0f;
-            float mirrored = mirror - along;
+            float mirrored = SimpleRedLayout.SCALE_TOTAL_LENGTH - along;
             assertEquals(
-                    -(SimpleRedLayout.pointXAt(
+                    centresSum,
+                    SimpleRedLayout.pointXAt(
                             along,
                             SimpleRedLayout.GAUGE_RADIUS,
-                            false)
-                            - SimpleRedLayout.LEFT_GAUGE_CENTER_X),
-                    SimpleRedLayout.pointXAt(
-                            mirrored,
-                            SimpleRedLayout.GAUGE_RADIUS,
                             true)
-                            - SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
+                            + SimpleRedLayout.pointXAt(
+                                    mirrored,
+                                    SimpleRedLayout.GAUGE_RADIUS,
+                                    false),
                     0.01f);
             assertEquals(
                     SimpleRedLayout.pointYAt(
-                            along,
-                            SimpleRedLayout.GAUGE_RADIUS),
-                    SimpleRedLayout.pointYAt(
                             mirrored,
-                            SimpleRedLayout.GAUGE_RADIUS),
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            false),
+                    SimpleRedLayout.pointYAt(
+                            along,
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            true),
                     0.01f);
         }
     }
 
     @Test
     public void tachometerOpensTowardsTheScreenCentre() {
-        // Its low end faces the middle of the screen, so that is the
-        // side that sits pulled out, and it is pulled left.
+        // Mirroring puts the tachometer zero on the side facing the
+        // middle of the screen, and the insert opens that end outwards
+        // from the far edge, so the pair spreads towards each other.
+        org.junit.Assert.assertTrue(
+                "zero must face the middle of the screen",
+                SimpleRedLayout.scaleX(0.0f, true)
+                        < SimpleRedLayout.RIGHT_GAUGE_CENTER_X);
         assertEquals(
-                -SimpleRedLayout.SCALE_STRETCH_X,
-                SimpleRedLayout.stretchOffsetAtLength(0.0f, true),
-                0.001f);
-        assertEquals(
+                "the far end is the untouched edge of the circle",
                 0.0f,
                 SimpleRedLayout.stretchOffsetAtLength(
-                        SimpleRedLayout.SCALE_TOTAL_LENGTH,
-                        true),
+                        SimpleRedLayout.canonicalLength(
+                                SimpleRedLayout.SCALE_TOTAL_LENGTH,
+                                true)),
+                0.001f);
+        assertEquals(
+                "zero carries the whole insert",
+                SimpleRedLayout.SCALE_STRETCH_X,
+                SimpleRedLayout.stretchOffsetAtLength(
+                        SimpleRedLayout.canonicalLength(0.0f, true)),
                 0.001f);
     }
 
@@ -250,22 +295,24 @@ public final class SimpleRedLayoutTest {
         // Reading the scale by length rather than by angle is what earns
         // this: spaced by angle, the pair of ticks straddling the cut
         // would sit SCALE_STRETCH_X further apart than every other pair.
-        int steps = SimpleRedLayout.majorTickIntervals(false)
-                * SimpleRedLayout.minorTicksPerMajor(false);
-        float expected = SimpleRedLayout.SCALE_TOTAL_LENGTH / steps;
-        for (int index = 0; index < steps; index++) {
-            float from = (float) index / steps;
-            float to = (float) (index + 1) / steps;
-            float gap = (float) Math.hypot(
-                    SimpleRedLayout.scaleX(to, false)
-                            - SimpleRedLayout.scaleX(from, false),
-                    SimpleRedLayout.scaleY(to)
-                            - SimpleRedLayout.scaleY(from));
-            assertEquals(
-                    "tick gap at " + from,
-                    expected,
-                    gap,
-                    0.5f);
+        for (boolean rightGauge : new boolean[] {false, true}) {
+            int steps = SimpleRedLayout.majorTickIntervals(rightGauge)
+                    * SimpleRedLayout.minorTicksPerMajor(rightGauge);
+            float expected = SimpleRedLayout.SCALE_TOTAL_LENGTH / steps;
+            for (int index = 0; index < steps; index++) {
+                float from = (float) index / steps;
+                float to = (float) (index + 1) / steps;
+                float gap = (float) Math.hypot(
+                        SimpleRedLayout.scaleX(to, rightGauge)
+                                - SimpleRedLayout.scaleX(from, rightGauge),
+                        SimpleRedLayout.scaleY(to, rightGauge)
+                                - SimpleRedLayout.scaleY(from, rightGauge));
+                assertEquals(
+                        "tick gap at " + from,
+                        expected,
+                        gap,
+                        0.5f);
+            }
         }
     }
 
@@ -277,32 +324,52 @@ public final class SimpleRedLayoutTest {
         // rate, and matching a central difference through both joints is
         // the shape having no corner at either.
         float step = 0.001f;
-        for (int index = 1; index < 64; index++) {
-            float fraction = index / 64.0f;
-            float numeric = (SimpleRedLayout.scaleX(fraction + step, false)
-                    - SimpleRedLayout.scaleX(fraction - step, false))
-                    / (2.0f * step);
+        for (boolean rightGauge : new boolean[] {false, true}) {
+            for (int index = 1; index < 64; index++) {
+                float fraction = index / 64.0f;
+                float numericX = (SimpleRedLayout.scaleX(
+                        fraction + step,
+                        rightGauge)
+                        - SimpleRedLayout.scaleX(fraction - step, rightGauge))
+                        / (2.0f * step);
+                float numericY = (SimpleRedLayout.scaleY(
+                        fraction + step,
+                        rightGauge)
+                        - SimpleRedLayout.scaleY(fraction - step, rightGauge))
+                        / (2.0f * step);
+                assertEquals(
+                        "tangent x at " + fraction,
+                        numericX,
+                        SimpleRedLayout.scaleTangentX(fraction, rightGauge),
+                        1.0f);
+                assertEquals(
+                        "tangent y at " + fraction,
+                        numericY,
+                        SimpleRedLayout.scaleTangentY(fraction, rightGauge),
+                        1.0f);
+                assertEquals(
+                        "the outline is walked at a steady rate",
+                        SimpleRedLayout.SCALE_TOTAL_LENGTH,
+                        (float) Math.hypot(
+                                SimpleRedLayout.scaleTangentX(
+                                        fraction,
+                                        rightGauge),
+                                SimpleRedLayout.scaleTangentY(
+                                        fraction,
+                                        rightGauge)),
+                        0.01f);
+            }
+            float insertMiddle = (SimpleRedLayout.SCALE_LEADING_LENGTH
+                    + SimpleRedLayout.SCALE_STRETCH_X * 0.5f)
+                    / SimpleRedLayout.SCALE_TOTAL_LENGTH;
             assertEquals(
-                    "tangent at fraction " + fraction,
-                    numeric,
-                    SimpleRedLayout.scaleTangentX(fraction),
-                    1.0f);
-            assertEquals(
-                    "the outline is walked at a steady rate",
-                    SimpleRedLayout.SCALE_TOTAL_LENGTH,
-                    (float) Math.hypot(
-                            SimpleRedLayout.scaleTangentX(fraction),
-                            SimpleRedLayout.scaleTangentY(fraction)),
-                    0.01f);
+                    "the tangent runs flat along the insert",
+                    0.0f,
+                    SimpleRedLayout.scaleTangentY(
+                            rightGauge ? 1.0f - insertMiddle : insertMiddle,
+                            rightGauge),
+                    0.001f);
         }
-        assertEquals(
-                "the tangent runs flat along the insert",
-                0.0f,
-                SimpleRedLayout.scaleTangentY(
-                        (SimpleRedLayout.SCALE_LEADING_LENGTH
-                                + SimpleRedLayout.SCALE_STRETCH_X * 0.5f)
-                                / SimpleRedLayout.SCALE_TOTAL_LENGTH),
-                0.001f);
     }
 
     @Test
@@ -643,29 +710,32 @@ public final class SimpleRedLayoutTest {
                             false),
                     0.001f);
             assertEquals(
-                    SimpleRedLayout.scaleY(fraction),
+                    SimpleRedLayout.scaleY(fraction, false),
                     SimpleRedLayout.radialY(
                             fraction,
-                            SimpleRedLayout.GAUGE_RADIUS),
+                            SimpleRedLayout.GAUGE_RADIUS,
+                            false),
                     0.001f);
         }
         assertEquals(
                 SimpleRedLayout.GAUGE_CENTER_Y,
-                SimpleRedLayout.radialY(0.0f, 0.0f),
+                SimpleRedLayout.radialY(0.0f, 0.0f, false),
                 0.001f);
         // The offset is deliberately independent of the radius, so it
-        // survives all the way down to a zero radius. Past the insert
-        // that leaves the centre itself; before it, the centre shifts by
-        // exactly the offset and nothing more.
+        // survives all the way down to a zero radius. Off the insert that
+        // leaves the centre itself; past it, the centre shifts by exactly
+        // the offset and nothing more. The tachometer mirrors, so its
+        // shift lands on the other side of its centre.
         assertEquals(
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X,
                 SimpleRedLayout.radialX(1.0f, 0.0f, true),
                 0.001f);
         assertEquals(
                 SimpleRedLayout.RIGHT_GAUGE_CENTER_X
-                        + SimpleRedLayout.stretchOffsetAtLength(
-                                SimpleRedLayout.scaleLength(0.35f),
-                                true),
+                        - SimpleRedLayout.stretchOffsetAtLength(
+                                SimpleRedLayout.canonicalLength(
+                                        SimpleRedLayout.scaleLength(0.35f),
+                                        true)),
                 SimpleRedLayout.radialX(0.35f, 0.0f, true),
                 0.001f);
     }

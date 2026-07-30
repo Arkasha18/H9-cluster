@@ -254,7 +254,8 @@ public final class SimpleRedClusterView extends View
                     rightGauge);
             float y = SimpleRedLayout.pointYAt(
                     along,
-                    SimpleRedLayout.PROGRESS_BAND_RADIUS);
+                    SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                    rightGauge);
             if (index == 0) {
                 progressPath.moveTo(x, y);
             } else {
@@ -278,7 +279,8 @@ public final class SimpleRedClusterView extends View
                 rightGauge);
         float tipY = SimpleRedLayout.radialY(
                 fraction,
-                SimpleRedLayout.PROGRESS_BAND_RADIUS);
+                SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                rightGauge);
         int save = canvas.save();
         canvas.translate(tipX, tipY);
         progressPaint.setStyle(Paint.Style.FILL);
@@ -401,9 +403,9 @@ public final class SimpleRedClusterView extends View
             boolean rightGauge,
             float inwardOffset) {
         float x = SimpleRedLayout.scaleX(fraction, rightGauge);
-        float y = SimpleRedLayout.scaleY(fraction);
-        float tangentX = SimpleRedLayout.scaleTangentX(fraction);
-        float tangentY = SimpleRedLayout.scaleTangentY(fraction);
+        float y = SimpleRedLayout.scaleY(fraction, rightGauge);
+        float tangentX = SimpleRedLayout.scaleTangentX(fraction, rightGauge);
+        float tangentY = SimpleRedLayout.scaleTangentY(fraction, rightGauge);
         float length = (float) Math.hypot(tangentX, tangentY);
         if (length < 0.001f) {
             return;

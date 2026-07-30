@@ -229,17 +229,29 @@ final class SimpleRedLayout {
     /**
      * How far the outline has been pulled sideways by this point. It
      * stands at zero along the first arc, walks across the insert, and
-     * holds at SCALE_STRETCH_X along the second. The tachometer runs the
-     * same walk shifted, so it arrives at zero rather than leaving it.
+     * holds at SCALE_STRETCH_X along the second.
      */
-    static float stretchOffsetAtLength(
-            float lengthAlong,
-            boolean rightGauge) {
-        float travelled = clamp(
+    static float stretchOffsetAtLength(float lengthAlong) {
+        return clamp(
                 lengthAlong - SCALE_LEADING_LENGTH,
                 0.0f,
                 SCALE_STRETCH_X);
-        return rightGauge ? travelled - SCALE_STRETCH_X : travelled;
+    }
+
+    /**
+     * Where a gauge stands on the canonical outline after travelling this
+     * far along its own.
+     *
+     * <p>Only one outline is described, the speedometer's. The tachometer
+     * is that shape reflected about the vertical, and it walks it
+     * backwards so its own zero lands where the speedometer's full scale
+     * does — below the centre on the near side, rising to the far top
+     * corner. Both scales therefore still read left to right.</p>
+     */
+    static float canonicalLength(float lengthAlong, boolean rightGauge) {
+        return rightGauge
+                ? SCALE_TOTAL_LENGTH - lengthAlong
+                : lengthAlong;
     }
 
     /**
@@ -251,14 +263,21 @@ final class SimpleRedLayout {
             float lengthAlong,
             float radius,
             boolean rightGauge) {
+        float along = canonicalLength(lengthAlong, rightGauge);
+        float fromCentre =
+                -radius * (float) Math.cos(angleAtLength(along))
+                        + stretchOffsetAtLength(along);
         return gaugeCenterX(rightGauge)
-                - radius * (float) Math.cos(angleAtLength(lengthAlong))
-                + stretchOffsetAtLength(lengthAlong, rightGauge);
+                + (rightGauge ? -fromCentre : fromCentre);
     }
 
-    static float pointYAt(float lengthAlong, float radius) {
+    static float pointYAt(
+            float lengthAlong,
+            float radius,
+            boolean rightGauge) {
+        float along = canonicalLength(lengthAlong, rightGauge);
         return GAUGE_CENTER_Y
-                - radius * (float) Math.sin(angleAtLength(lengthAlong));
+                - radius * (float) Math.sin(angleAtLength(along));
     }
 
     /**
@@ -277,16 +296,19 @@ final class SimpleRedLayout {
         return pointXAt(scaleLength(fraction), radius, rightGauge);
     }
 
-    static float radialY(float fraction, float radius) {
-        return pointYAt(scaleLength(fraction), radius);
+    static float radialY(
+            float fraction,
+            float radius,
+            boolean rightGauge) {
+        return pointYAt(scaleLength(fraction), radius, rightGauge);
     }
 
     static float scaleX(float fraction, boolean rightGauge) {
         return radialX(fraction, GAUGE_RADIUS, rightGauge);
     }
 
-    static float scaleY(float fraction) {
-        return radialY(fraction, GAUGE_RADIUS);
+    static float scaleY(float fraction, boolean rightGauge) {
+        return radialY(fraction, GAUGE_RADIUS, rightGauge);
     }
 
     /**
@@ -297,18 +319,26 @@ final class SimpleRedLayout {
      * which is exactly a horizontal step. The tangent therefore runs
      * continuously through both joints, and neither reads as a corner.
      *
-     * <p>drawScaleText turns this into the inward normal it offsets the
-     * labels along, so a tangent that ignored the insert would push them
-     * off the band.</p>
+     * <p>The tachometer walks the outline backwards and mirrored, which
+     * flips the sign of the vertical component and leaves the horizontal
+     * one alone. Both effects cancel in the inward normal drawScaleText
+     * builds from this, so labels sit inside the band on either gauge.</p>
      */
-    static float scaleTangentX(float fraction) {
-        float angle = angleAtLength(scaleLength(fraction));
-        return (float) (SCALE_TOTAL_LENGTH * Math.sin(angle));
+    static float scaleTangentX(float fraction, boolean rightGauge) {
+        return (float) (SCALE_TOTAL_LENGTH * Math.sin(tangentAngle(
+                fraction,
+                rightGauge)));
     }
 
-    static float scaleTangentY(float fraction) {
-        float angle = angleAtLength(scaleLength(fraction));
-        return (float) (-SCALE_TOTAL_LENGTH * Math.cos(angle));
+    static float scaleTangentY(float fraction, boolean rightGauge) {
+        double cosine = Math.cos(tangentAngle(fraction, rightGauge));
+        return (float) (SCALE_TOTAL_LENGTH
+                * (rightGauge ? cosine : -cosine));
+    }
+
+    private static float tangentAngle(float fraction, boolean rightGauge) {
+        return angleAtLength(
+                canonicalLength(scaleLength(fraction), rightGauge));
     }
 
     static float steeringRotation(float angleDeg) {

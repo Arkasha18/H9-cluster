@@ -76,7 +76,7 @@ final class SimpleRedBackground {
             float along = startLength
                     + (endLength - startLength) * index / segments;
             float x = SimpleRedLayout.pointXAt(along, radius, rightGauge);
-            float y = SimpleRedLayout.pointYAt(along, radius);
+            float y = SimpleRedLayout.pointYAt(along, radius, rightGauge);
             if (index == 0 && path.isEmpty()) {
                 path.moveTo(x, y);
             } else {
@@ -164,12 +164,16 @@ final class SimpleRedBackground {
                             rightGauge),
                     SimpleRedLayout.radialY(
                             fraction,
-                            SimpleRedLayout.TICK_OUTER_RADIUS),
+                            SimpleRedLayout.TICK_OUTER_RADIUS,
+                            rightGauge),
                     SimpleRedLayout.radialX(
                             fraction,
                             innerRadius,
                             rightGauge),
-                    SimpleRedLayout.radialY(fraction, innerRadius),
+                    SimpleRedLayout.radialY(
+                            fraction,
+                            innerRadius,
+                            rightGauge),
                     paint);
         }
     }
