@@ -40,6 +40,7 @@ public final class GwmClusterDataSource
     private static final int TRANSACTION_GET_DATA = 1;
     private static final int TRANSACTION_REGISTER_LISTENER = 3;
     private static final int TRANSACTION_UNREGISTER_LISTENER = 4;
+    private static final int MAX_ENGINE_RPM = 8000;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final long REBIND_DELAY_MS = 1500L;
     private static final long FDBUS_RPM_STALE_MS = 500L;
@@ -116,6 +117,26 @@ public final class GwmClusterDataSource
     private long steeringUpdatedAtMs;
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
+
+    static final class RpmSample {
+        final int rpm;
+        final long updatedAtMs;
+
+        RpmSample(int rpm, long updatedAtMs) {
+            this.rpm = rpm;
+            this.updatedAtMs = updatedAtMs;
+        }
+    }
+
+    static final class JourneyOdometerSample {
+        final float displayValue;
+        final long updatedAtMs;
+
+        JourneyOdometerSample(float displayValue, long updatedAtMs) {
+            this.displayValue = displayValue;
+            this.updatedAtMs = updatedAtMs;
+        }
+    }
 
     private final Runnable rebindTask = new Runnable() {
         @Override
@@ -237,22 +258,28 @@ public final class GwmClusterDataSource
         for (int index = 0; index < DATA_IDS.length; index++) {
             if (DATA_IDS[index].equals(id)) {
                 String normalized = normalizeValue(value);
-                values[index] = normalized;
-                if (normalized != null) {
-                    long now = SystemClock.elapsedRealtime();
-                    if (index == INDEX_RPM) {
-                        binderRpmUpdatedAtMs = now;
-                    } else if (index == INDEX_DAY) {
-                        journeyOdometerUpdatedAtMs = now;
-                    } else if (index == INDEX_AVG_CONSUMPTION_A) {
-                        journeyAverageFuelConsumptionUpdatedAtMs = now;
-                    } else if (index == INDEX_STEERING_ANGLE) {
-                        steeringUpdatedAtMs = now;
-                    }
-                }
+                storeValue(index, normalized, SystemClock.elapsedRealtime());
                 publishState();
                 return;
             }
+        }
+    }
+
+    private void storeValue(int index, String value, long nowMs) {
+        values[index] = value;
+        if (index == INDEX_RPM) {
+            binderRpmUpdatedAtMs = engineRpm(value) >= 0 ? nowMs : 0L;
+        } else if (index == INDEX_DAY) {
+            journeyOdometerUpdatedAtMs =
+                    Float.isFinite(journeyOdometer(value)) ? nowMs : 0L;
+        } else if (index == INDEX_AVG_CONSUMPTION_A) {
+            float journeyAverage = journeyAverageConsumption(value);
+            journeyAverageFuelConsumptionUpdatedAtMs =
+                    Float.isFinite(journeyAverage) && journeyAverage > 0.0f
+                            ? nowMs
+                            : 0L;
+        } else if (index == INDEX_STEERING_ANGLE && value != null) {
+            steeringUpdatedAtMs = nowMs;
         }
     }
 
@@ -292,17 +319,11 @@ public final class GwmClusterDataSource
                 long now = SystemClock.elapsedRealtime();
                 for (int index = 0; index < count; index++) {
                     String value = normalizeValue(response[index]);
-                    if (value != null) {
-                        values[index] = value;
-                        if (index == INDEX_RPM) {
-                            binderRpmUpdatedAtMs = now;
-                        } else if (index == INDEX_DAY) {
-                            journeyOdometerUpdatedAtMs = now;
-                        } else if (index == INDEX_AVG_CONSUMPTION_A) {
-                            journeyAverageFuelConsumptionUpdatedAtMs = now;
-                        } else if (index == INDEX_STEERING_ANGLE) {
-                            steeringUpdatedAtMs = now;
-                        }
+                    if (value != null
+                            || index == INDEX_RPM
+                            || index == INDEX_DAY
+                            || index == INDEX_AVG_CONSUMPTION_A) {
+                        storeValue(index, value, now);
                     }
                 }
             }
@@ -388,27 +409,32 @@ public final class GwmClusterDataSource
                 lastState.consumptionLitersPer100Km);
 
         long now = SystemClock.elapsedRealtime();
-        boolean useFdbusRpm = fdbusRpmUpdatedAtMs > 0L
-                && now - fdbusRpmUpdatedAtMs <= FDBUS_RPM_STALE_MS;
-        int rpm = useFdbusRpm
-                ? fdbusRpm
-                : clamp(parseInt(values[INDEX_RPM], lastState.rpm), 0, 8000);
-        long effectiveRpmUpdatedAtMs = useFdbusRpm
-                ? fdbusRpmUpdatedAtMs
-                : binderRpmUpdatedAtMs;
+        RpmSample rpmSample = selectRpmSample(
+                now,
+                fdbusRpm,
+                fdbusRpmUpdatedAtMs,
+                values[INDEX_RPM],
+                binderRpmUpdatedAtMs,
+                lastState.rpm,
+                lastState.rpmUpdatedAtMs);
+        JourneyOdometerSample journeyOdometerSample =
+                selectJourneyOdometerSample(
+                        values[INDEX_DAY],
+                        journeyOdometerUpdatedAtMs,
+                        lastState.dayKm);
         int currentGear = normalizeCurrentGear(
                 parseInt(values[INDEX_CURRENT_GEAR], -1));
 
         ClusterState state = new ClusterState(
                 clamp(parseInt(values[INDEX_SPEED], lastState.speedKph), 0, 220),
-                rpm,
+                rpmSample.rpm,
                 currentGear,
                 clamp(parseInt(values[INDEX_COOLANT], lastState.coolantC), 40, 130),
                 transmissionTemperatureC,
                 clamp(fuelLiters, 0.0f, TANK_CAPACITY_LITERS),
                 Math.max(0, parseInt(values[INDEX_RANGE], lastState.rangeKm)),
                 Math.max(0.0d, parseDouble(values[INDEX_ODOMETER], lastState.odometerKm)),
-                Math.max(0.0f, parseFloat(values[INDEX_DAY], lastState.dayKm)),
+                journeyOdometerSample.displayValue,
                 Math.max(0.0f, parseFloat(values[INDEX_TRIP], lastState.tripKm)),
                 pressures[0],
                 pressures[1],
@@ -438,9 +464,9 @@ public final class GwmClusterDataSource
                 clamp(parseFloat(
                         values[INDEX_ENGINE_FLYWHEEL_TORQUE],
                         lastState.engineFlywheelTorque), -2000.0f, 2000.0f),
-                effectiveRpmUpdatedAtMs,
+                rpmSample.updatedAtMs,
                 journeyAverageFuelConsumptionUpdatedAtMs,
-                journeyOdometerUpdatedAtMs,
+                journeyOdometerSample.updatedAtMs,
                 steeringUpdatedAtMs,
                 transmissionTemperatureUpdatedAtMs,
                 lastState.driveMode);
@@ -450,10 +476,13 @@ public final class GwmClusterDataSource
 
     @Override
     public void onFdbusRpm(int rpm, long receivedAtMs) {
-        if (!started) {
+        if (!started
+                || rpm < 0
+                || rpm > MAX_ENGINE_RPM
+                || receivedAtMs <= 0L) {
             return;
         }
-        fdbusRpm = clamp(rpm, 0, 8000);
+        fdbusRpm = rpm;
         fdbusRpmUpdatedAtMs = receivedAtMs;
         publishState();
     }
@@ -530,6 +559,64 @@ public final class GwmClusterDataSource
     private static int parseInt(String value, int fallback) {
         double parsed = parseDouble(value, Double.NaN);
         return Double.isNaN(parsed) ? fallback : (int) Math.round(parsed);
+    }
+
+    static RpmSample selectRpmSample(
+            long nowMs,
+            int fdbusValue,
+            long fdbusUpdatedAtMs,
+            String binderValue,
+            long binderUpdatedAtMs,
+            int previousValue,
+            long previousUpdatedAtMs) {
+        boolean useFdbus = fdbusValue >= 0
+                && fdbusValue <= MAX_ENGINE_RPM
+                && fdbusUpdatedAtMs > 0L
+                && nowMs >= fdbusUpdatedAtMs
+                && nowMs - fdbusUpdatedAtMs <= FDBUS_RPM_STALE_MS;
+        if (useFdbus) {
+            return new RpmSample(fdbusValue, fdbusUpdatedAtMs);
+        }
+
+        int binderRpm = engineRpm(binderValue);
+        boolean useBinder = binderRpm >= 0
+                && binderUpdatedAtMs > 0L
+                && nowMs >= binderUpdatedAtMs
+                && binderUpdatedAtMs > previousUpdatedAtMs;
+        if (useBinder) {
+            return new RpmSample(binderRpm, binderUpdatedAtMs);
+        }
+        return new RpmSample(previousValue, previousUpdatedAtMs);
+    }
+
+    static JourneyOdometerSample selectJourneyOdometerSample(
+            String rawValue,
+            long updatedAtMs,
+            float previousDisplayValue) {
+        float value = journeyOdometer(rawValue);
+        if (Float.isFinite(value) && updatedAtMs > 0L) {
+            return new JourneyOdometerSample(value, updatedAtMs);
+        }
+        return new JourneyOdometerSample(previousDisplayValue, 0L);
+    }
+
+    static int engineRpm(String rawValue) {
+        double value = parseDouble(rawValue, Double.NaN);
+        // The Binder adapter reports -1 while the engine is running. Treat it
+        // as unavailable instead of manufacturing a shutdown sample at 0 RPM.
+        if (!Double.isFinite(value)
+                || value < 0.0d
+                || value > MAX_ENGINE_RPM) {
+            return -1;
+        }
+        return (int) Math.round(value);
+    }
+
+    static float journeyOdometer(String rawValue) {
+        float value = parseFloat(rawValue, Float.NaN);
+        return Float.isFinite(value) && value >= 0.0f
+                ? value
+                : Float.NaN;
     }
 
     /**
