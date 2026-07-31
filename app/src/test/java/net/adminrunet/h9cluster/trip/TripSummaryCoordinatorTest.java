@@ -143,8 +143,9 @@ public final class TripSummaryCoordinatorTest {
         confirmStart(coordinator, clock, 10.0f);
 
         // Idling at a light: RPM stays at 800 but the bus stops republishing.
+        // No amount of silence may end the trip on its own.
         long lastRpmAtMs = 2_000L;
-        for (long nowMs = 3_500L; nowMs <= 14_000L; nowMs += 1_500L) {
+        for (long nowMs = 3_500L; nowMs <= 62_000L; nowMs += 1_500L) {
             clock.now = nowMs;
             coordinator.onClusterState(state(
                     800,
@@ -206,7 +207,7 @@ public final class TripSummaryCoordinatorTest {
     }
 
     @Test
-    public void clockTickCompletesProlongedSilenceStopWithoutAnotherDataEvent() {
+    public void clockTickCompletesStopHoldWithoutAnotherDataEvent() {
         MutableClock clock = new MutableClock(1_000L);
         MemoryPersistence persistence = new MemoryPersistence();
         RecordingListener listener = new RecordingListener(persistence);
@@ -214,13 +215,14 @@ public final class TripSummaryCoordinatorTest {
                 new TripSummaryCoordinator(persistence, listener, clock);
         confirmStart(coordinator, clock, 10.0f);
 
+        // The shutdown RPM arrives once and the bus goes quiet afterwards.
         clock.now = 20_000L;
         coordinator.onClusterState(state(
-                800,
+                0,
                 0,
                 10.1f,
                 9.0f,
-                2_000L,
+                20_000L,
                 clock.nowMs()));
         clock.now = 21_500L;
         coordinator.onClockTick();

@@ -5,7 +5,6 @@ public final class EngineRunDetector {
     private static final int START_RPM = 400;
     private static final int STOP_RPM = 50;
     private static final long RPM_FRESH_MS = 1_000L;
-    private static final long RPM_SILENT_STOP_MS = 15_000L;
     private static final long START_HOLD_MS = 1_000L;
     private static final long STOP_HOLD_MS = 1_500L;
 
@@ -40,14 +39,12 @@ public final class EngineRunDetector {
         boolean freshRpm = observedRpm
                 && nowMs - rpmUpdatedAtMs <= RPM_FRESH_MS;
         boolean startCondition = freshRpm && rpm >= START_RPM;
-        // A stale sample never proves shutdown on its own: the last observed
-        // RPM has to be at idle-off level, or the bus has to stay silent long
-        // enough that the head unit really has stopped publishing.
+        // Only an RPM value the bus actually delivered can prove shutdown.
+        // Silence is not evidence: while the engine idles, updates may pause
+        // for an arbitrarily long time, and treating that as a stop would end
+        // the trip under a running engine.
         boolean lastObservedRpmStopped = observedRpm && rpm <= STOP_RPM;
-        boolean prolongedRpmSilence = observedRpm
-                && nowMs - rpmUpdatedAtMs >= RPM_SILENT_STOP_MS;
-        boolean stopCondition = speedKph == 0
-                && (lastObservedRpmStopped || prolongedRpmSilence);
+        boolean stopCondition = speedKph == 0 && lastObservedRpmStopped;
 
         switch (state) {
             case OFF:
