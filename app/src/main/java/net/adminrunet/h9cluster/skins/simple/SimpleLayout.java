@@ -1,8 +1,8 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 import java.util.Locale;
 
-final class SimpleRedLayout {
+final class SimpleLayout {
     static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15_000L;
     static final int COLOR_NORMAL = 0xFFF5F5F3;
     static final int COLOR_WARNING = 0xFFFFD54F;
@@ -73,13 +73,11 @@ final class SimpleRedLayout {
     static final int SPEED_MINOR_TICKS_PER_MAJOR = 4;
     static final int RPM_MINOR_TICKS_PER_MAJOR = 10;
 
-    static final float REDLINE_ARC_RADIUS = GAUGE_RADIUS - 34.0f;
-    static final float REDLINE_ARC_WIDTH = 4.0f;
-    static final int REDLINE_ARC_COLOR = 0xFFFF1C1C;
-    static final float REDLINE_GLOW_WIDTH = 17.0f;
-    static final int REDLINE_GLOW_COLOR = 0xDCFF1212;
+    static final float ACCENT_ARC_RADIUS = GAUGE_RADIUS - 34.0f;
+    static final float ACCENT_ARC_WIDTH = 4.0f;
+    static final float ACCENT_GLOW_WIDTH = 17.0f;
     /** Skia blur radius approximating the PIL sigma the asset used. */
-    static final float REDLINE_GLOW_BLUR_RADIUS = 18.0f;
+    static final float ACCENT_GLOW_BLUR_RADIUS = 18.0f;
 
     /**
      * Opaque annular sector sitting under the tachometer scale only. It
@@ -117,16 +115,14 @@ final class SimpleRedLayout {
     /** Innermost layer, keeping the band as bright as it was before. */
     static final int PROGRESS_SOFT_LAYER_MAX_ALPHA = 160;
     static final float PROGRESS_TIP_BLOOM_RADIUS = 46.0f;
-    static final int PROGRESS_TIP_BLOOM_COLOR = 0xFFFFD54F;
     static final int PROGRESS_TIP_BLOOM_ALPHA = 200;
-    static final int PROGRESS_START_COLOR = 0x08FF2020;
-    static final int PROGRESS_LEADING_COLOR = 0xFFFFD54F;
     /**
      * How far before the band the colour ramp opens, in degrees. The
      * band is painted by a sweep gradient keyed to its own start, so
-     * without a lead-in its first pixels would carry PROGRESS_START_COLOR
-     * at full transparency and the band would appear to begin above zero.
-     * Starting the ramp early lets it reach zero already tinted.
+     * without a lead-in its first pixels would carry the nearly
+     * transparent {@link SimpleScaleColor#bandStart()} and the band would
+     * appear to begin above zero. Starting the ramp early lets it reach
+     * zero already tinted.
      */
     static final float PROGRESS_GRADIENT_LEAD_IN_DEGREES = 20.0f;
     static final float TEXT_SKEW_X = 0.0f;
@@ -172,7 +168,7 @@ final class SimpleRedLayout {
     static final float VOLTAGE_X = 1896.0f;
     static final float VOLTAGE_BASELINE = FACTORY_SCALE_BASELINE;
 
-    private SimpleRedLayout() {
+    private SimpleLayout() {
     }
 
     /**

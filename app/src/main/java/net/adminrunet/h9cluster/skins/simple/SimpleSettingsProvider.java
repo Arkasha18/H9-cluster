@@ -1,4 +1,4 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 import net.adminrunet.h9cluster.skins.SkinSettings;
 import net.adminrunet.h9cluster.skins.SkinSettingsProvider;
@@ -11,8 +11,8 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 
-/** Settings owned by the Simple Red skin: the colour its scale is drawn in. */
-public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
+/** Settings owned by the Simple skin: the colour its scale is drawn in. */
+public final class SimpleSettingsProvider implements SkinSettingsProvider {
     public static final String KEY_SCALE_COLOR = "scale_color";
 
     private static final int SWATCH_DP = 20;
@@ -23,15 +23,15 @@ public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
      * Reads the choice out of settings that may be absent, stale or hand
      * edited, so it always answers with a colour the skin can draw.
      */
-    public static SimpleRedScaleColor scaleColor(SkinSettings settings) {
+    public static SimpleScaleColor scaleColor(SkinSettings settings) {
         if (settings == null) {
-            return SimpleRedScaleColor.defaultColor();
+            return SimpleScaleColor.defaultColor();
         }
-        return SimpleRedScaleColor.byId(
+        return SimpleScaleColor.byId(
                 settings.getString(KEY_SCALE_COLOR, null));
     }
 
-    private static SkinSettings settingsFor(SimpleRedScaleColor color) {
+    private static SkinSettings settingsFor(SimpleScaleColor color) {
         return SkinSettings.builder()
                 .putString(KEY_SCALE_COLOR, color.id)
                 .build();
@@ -39,7 +39,7 @@ public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
 
     @Override
     public SkinSettings getDefaultSettings() {
-        return settingsFor(SimpleRedScaleColor.defaultColor());
+        return settingsFor(SimpleScaleColor.defaultColor());
     }
 
     @Override
@@ -52,13 +52,13 @@ public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
             Context context,
             SkinSettings initialSettings,
             final Listener listener) {
-        SimpleRedScaleColor selected = scaleColor(initialSettings);
+        SimpleScaleColor selected = scaleColor(initialSettings);
         final RadioGroup group = new RadioGroup(context);
         group.setOrientation(RadioGroup.VERTICAL);
         int padding = dip(context, PADDING_DP);
         group.setPadding(padding, padding, padding, padding);
 
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
             group.addView(createRow(context, color, color == selected));
         }
         group.setOnCheckedChangeListener(
@@ -70,7 +70,7 @@ public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
                             return;
                         }
                         listener.onSettingsChanged(settingsFor(
-                                (SimpleRedScaleColor) checked.getTag()));
+                                (SimpleScaleColor) checked.getTag()));
                     }
                 });
 
@@ -85,7 +85,7 @@ public final class SimpleRedSettingsProvider implements SkinSettingsProvider {
      */
     private static RadioButton createRow(
             Context context,
-            SimpleRedScaleColor color,
+            SimpleScaleColor color,
             boolean checked) {
         RadioButton button = new RadioButton(context);
         button.setId(View.generateViewId());

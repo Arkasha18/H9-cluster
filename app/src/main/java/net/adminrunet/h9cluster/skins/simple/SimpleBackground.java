@@ -1,4 +1,4 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
@@ -6,21 +6,21 @@ import android.graphics.Paint;
 import android.graphics.Path;
 
 /**
- * Draws the Simple Red static layer straight from {@link SimpleRedLayout}.
+ * Draws the Simple skin's static layer straight from {@link SimpleLayout}.
  *
  * <p>Every coordinate is logical (1920x720); the caller supplies the
  * transform. The blur filters need a software canvas, so callers are
  * expected to render this into an offscreen bitmap once rather than on
  * every frame.
  */
-final class SimpleRedBackground {
-    private SimpleRedBackground() {
+final class SimpleBackground {
+    private SimpleBackground() {
     }
 
     static void draw(
             Canvas canvas,
             boolean demoMode,
-            SimpleRedScaleColor scaleColor) {
+            SimpleScaleColor scaleColor) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         drawTachBackdrop(canvas, paint, demoMode);
         drawGauge(canvas, paint, false, scaleColor);
@@ -35,18 +35,18 @@ final class SimpleRedBackground {
             Canvas canvas,
             Paint paint,
             boolean demoMode) {
-        float start = SimpleRedLayout.tachBackdropStartLength();
-        float end = SimpleRedLayout.tachBackdropEndLength();
+        float start = SimpleLayout.tachBackdropStartLength();
+        float end = SimpleLayout.tachBackdropEndLength();
         Path sector = new Path();
         appendSweep(
                 sector,
-                SimpleRedLayout.TACH_BACKDROP_RADIUS,
+                SimpleLayout.TACH_BACKDROP_RADIUS,
                 start,
                 end,
                 true);
         appendSweep(
                 sector,
-                SimpleRedLayout.TACH_BACKDROP_INNER_RADIUS,
+                SimpleLayout.TACH_BACKDROP_INNER_RADIUS,
                 end,
                 start,
                 true);
@@ -55,9 +55,9 @@ final class SimpleRedBackground {
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(SimpleRedLayout.tachBackdropColor(demoMode));
+        paint.setColor(SimpleLayout.tachBackdropColor(demoMode));
         paint.setMaskFilter(new BlurMaskFilter(
-                SimpleRedLayout.TACH_BACKDROP_EDGE_BLUR_RADIUS,
+                SimpleLayout.TACH_BACKDROP_EDGE_BLUR_RADIUS,
                 BlurMaskFilter.Blur.NORMAL));
         canvas.drawPath(sector, paint);
     }
@@ -74,12 +74,12 @@ final class SimpleRedBackground {
             float startLength,
             float endLength,
             boolean rightGauge) {
-        int segments = SimpleRedLayout.pathSegments(startLength, endLength);
+        int segments = SimpleLayout.pathSegments(startLength, endLength);
         for (int index = 0; index <= segments; index++) {
             float along = startLength
                     + (endLength - startLength) * index / segments;
-            float x = SimpleRedLayout.pointXAt(along, radius, rightGauge);
-            float y = SimpleRedLayout.pointYAt(along, radius, rightGauge);
+            float x = SimpleLayout.pointXAt(along, radius, rightGauge);
+            float y = SimpleLayout.pointYAt(along, radius, rightGauge);
             if (index == 0 && path.isEmpty()) {
                 path.moveTo(x, y);
             } else {
@@ -92,40 +92,40 @@ final class SimpleRedBackground {
             Canvas canvas,
             Paint paint,
             boolean rightGauge,
-            SimpleRedScaleColor scaleColor) {
+            SimpleScaleColor scaleColor) {
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.BUTT);
 
         paint.setColor(scaleColor.glow());
-        paint.setStrokeWidth(SimpleRedLayout.REDLINE_GLOW_WIDTH);
+        paint.setStrokeWidth(SimpleLayout.ACCENT_GLOW_WIDTH);
         paint.setMaskFilter(new BlurMaskFilter(
-                SimpleRedLayout.REDLINE_GLOW_BLUR_RADIUS,
+                SimpleLayout.ACCENT_GLOW_BLUR_RADIUS,
                 BlurMaskFilter.Blur.NORMAL));
         drawFullArc(
                 canvas,
                 paint,
-                SimpleRedLayout.REDLINE_ARC_RADIUS,
+                SimpleLayout.ACCENT_ARC_RADIUS,
                 rightGauge);
         paint.setMaskFilter(null);
 
-        paint.setColor(SimpleRedLayout.SCALE_ARC_COLOR);
-        paint.setStrokeWidth(SimpleRedLayout.SCALE_ARC_WIDTH);
+        paint.setColor(SimpleLayout.SCALE_ARC_COLOR);
+        paint.setStrokeWidth(SimpleLayout.SCALE_ARC_WIDTH);
         drawFullArc(
                 canvas,
                 paint,
-                SimpleRedLayout.SCALE_ARC_RADIUS,
+                SimpleLayout.SCALE_ARC_RADIUS,
                 rightGauge);
 
         drawTicks(canvas, paint, rightGauge);
 
         paint.setColor(scaleColor.accent);
-        paint.setStrokeWidth(SimpleRedLayout.REDLINE_ARC_WIDTH);
+        paint.setStrokeWidth(SimpleLayout.ACCENT_ARC_WIDTH);
         drawFullArc(
                 canvas,
                 paint,
-                SimpleRedLayout.REDLINE_ARC_RADIUS,
+                SimpleLayout.ACCENT_ARC_RADIUS,
                 rightGauge);
     }
 
@@ -139,7 +139,7 @@ final class SimpleRedBackground {
                 arc,
                 radius,
                 0.0f,
-                SimpleRedLayout.SCALE_TOTAL_LENGTH,
+                SimpleLayout.SCALE_TOTAL_LENGTH,
                 rightGauge);
         canvas.drawPath(arc, paint);
     }
@@ -148,33 +148,33 @@ final class SimpleRedBackground {
             Canvas canvas,
             Paint paint,
             boolean rightGauge) {
-        int minorPerMajor = SimpleRedLayout.minorTicksPerMajor(rightGauge);
-        int divisions = SimpleRedLayout.majorTickIntervals(rightGauge)
+        int minorPerMajor = SimpleLayout.minorTicksPerMajor(rightGauge);
+        int divisions = SimpleLayout.majorTickIntervals(rightGauge)
                 * minorPerMajor;
-        paint.setColor(SimpleRedLayout.TICK_COLOR);
+        paint.setColor(SimpleLayout.TICK_COLOR);
         for (int index = 0; index <= divisions; index++) {
             boolean major = index % minorPerMajor == 0;
             float fraction = (float) index / divisions;
             float innerRadius = major
-                    ? SimpleRedLayout.TICK_MAJOR_INNER_RADIUS
-                    : SimpleRedLayout.TICK_MINOR_INNER_RADIUS;
+                    ? SimpleLayout.TICK_MAJOR_INNER_RADIUS
+                    : SimpleLayout.TICK_MINOR_INNER_RADIUS;
             paint.setStrokeWidth(major
-                    ? SimpleRedLayout.TICK_MAJOR_WIDTH
-                    : SimpleRedLayout.TICK_MINOR_WIDTH);
+                    ? SimpleLayout.TICK_MAJOR_WIDTH
+                    : SimpleLayout.TICK_MINOR_WIDTH);
             canvas.drawLine(
-                    SimpleRedLayout.radialX(
+                    SimpleLayout.radialX(
                             fraction,
-                            SimpleRedLayout.TICK_OUTER_RADIUS,
+                            SimpleLayout.TICK_OUTER_RADIUS,
                             rightGauge),
-                    SimpleRedLayout.radialY(
+                    SimpleLayout.radialY(
                             fraction,
-                            SimpleRedLayout.TICK_OUTER_RADIUS,
+                            SimpleLayout.TICK_OUTER_RADIUS,
                             rightGauge),
-                    SimpleRedLayout.radialX(
+                    SimpleLayout.radialX(
                             fraction,
                             innerRadius,
                             rightGauge),
-                    SimpleRedLayout.radialY(
+                    SimpleLayout.radialY(
                             fraction,
                             innerRadius,
                             rightGauge),

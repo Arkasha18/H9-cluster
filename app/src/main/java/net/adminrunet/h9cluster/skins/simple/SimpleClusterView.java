@@ -1,4 +1,4 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 import net.adminrunet.h9cluster.BuildConfig;
 import net.adminrunet.h9cluster.ClusterRenderer;
@@ -21,8 +21,8 @@ import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.view.View;
 
-/** Simple Red renderer that preserves the factory indicator zones. */
-public final class SimpleRedClusterView extends View
+/** Simple skin renderer that preserves the factory indicator zones. */
+public final class SimpleClusterView extends View
         implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
@@ -48,7 +48,7 @@ public final class SimpleRedClusterView extends View
      * the cached background are built from it, so a new colour arrives as a
      * new view rather than as a repaint.
      */
-    private final SimpleRedScaleColor scaleColor;
+    private final SimpleScaleColor scaleColor;
     private final Shader tipBloomShader;
 
     private final Typeface dataTypeface;
@@ -73,12 +73,12 @@ public final class SimpleRedClusterView extends View
     private float displayedSteering = targetState.steeringAngleDeg;
     private long lastFrameAtMs;
 
-    public SimpleRedClusterView(
+    public SimpleClusterView(
             Context context,
-            SimpleRedScaleColor scaleColor) {
+            SimpleScaleColor scaleColor) {
         super(context);
         this.scaleColor = scaleColor == null
-                ? SimpleRedScaleColor.defaultColor()
+                ? SimpleScaleColor.defaultColor()
                 : scaleColor;
         tipBloomShader = createTipBloomShader(this.scaleColor);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -92,7 +92,7 @@ public final class SimpleRedClusterView extends View
                 Typeface.BOLD);
         scaleTypeface = Typeface.createFromAsset(
                 context.getAssets(),
-                SimpleRedLayout.SCALE_LABEL_FONT_ASSET);
+                SimpleLayout.SCALE_LABEL_FONT_ASSET);
 
         bitmapPaint.setAlpha(255);
         linePaint.setStyle(Paint.Style.STROKE);
@@ -162,14 +162,14 @@ public final class SimpleRedClusterView extends View
             int width,
             int height,
             boolean demoMode,
-            SimpleRedScaleColor scaleColor) {
+            SimpleScaleColor scaleColor) {
         Bitmap bitmap = Bitmap.createBitmap(
                 width,
                 height,
                 Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         applyLogicalTransform(canvas, width, height);
-        SimpleRedBackground.draw(canvas, demoMode, scaleColor);
+        SimpleBackground.draw(canvas, demoMode, scaleColor);
         return bitmap;
     }
 
@@ -195,11 +195,11 @@ public final class SimpleRedClusterView extends View
 
     private void drawProgressLayer(Canvas canvas) {
         float speedFraction = clamp(
-                SimpleRedLayout.speedFraction(displayedSpeed),
+                SimpleLayout.speedFraction(displayedSpeed),
                 0.0f,
                 1.0f);
         float rpmFraction = clamp(
-                SimpleRedLayout.rpmFraction(displayedRpm),
+                SimpleLayout.rpmFraction(displayedRpm),
                 0.0f,
                 1.0f);
         drawScaleProgress(
@@ -221,9 +221,9 @@ public final class SimpleRedClusterView extends View
             return;
         }
         float centerX = rightGauge
-                ? SimpleRedLayout.RIGHT_GAUGE_CENTER_X
-                : SimpleRedLayout.LEFT_GAUGE_CENTER_X;
-        float centerY = SimpleRedLayout.GAUGE_CENTER_Y;
+                ? SimpleLayout.RIGHT_GAUGE_CENTER_X
+                : SimpleLayout.LEFT_GAUGE_CENTER_X;
+        float centerY = SimpleLayout.GAUGE_CENTER_Y;
         buildProgressPath(clampedFraction, rightGauge);
 
         progressPaint.setShader(progressGradient(
@@ -233,17 +233,17 @@ public final class SimpleRedClusterView extends View
                 rightGauge,
                 true));
         for (int layer = 0;
-                layer < SimpleRedLayout.PROGRESS_SOFT_LAYER_COUNT;
+                layer < SimpleLayout.PROGRESS_SOFT_LAYER_COUNT;
                 layer++) {
             progressPaint.setAlpha(
-                    SimpleRedLayout.progressSoftLayerAlpha(layer));
+                    SimpleLayout.progressSoftLayerAlpha(layer));
             progressPaint.setStrokeWidth(
-                    SimpleRedLayout.progressSoftLayerWidth(layer));
+                    SimpleLayout.progressSoftLayerWidth(layer));
             canvas.drawPath(progressPath, progressPaint);
         }
 
         progressPaint.setStrokeWidth(
-                SimpleRedLayout.PROGRESS_CORE_WIDTH);
+                SimpleLayout.PROGRESS_CORE_WIDTH);
         progressPaint.setAlpha(255);
         progressPaint.setShader(progressGradient(
                 centerX,
@@ -261,17 +261,17 @@ public final class SimpleRedClusterView extends View
     /** Samples the band from the start of the scale up to the fraction. */
     private void buildProgressPath(float fraction, boolean rightGauge) {
         progressPath.rewind();
-        float end = SimpleRedLayout.scaleLength(fraction);
-        int segments = SimpleRedLayout.pathSegments(0.0f, end);
+        float end = SimpleLayout.scaleLength(fraction);
+        int segments = SimpleLayout.pathSegments(0.0f, end);
         for (int index = 0; index <= segments; index++) {
             float along = end * index / segments;
-            float x = SimpleRedLayout.pointXAt(
+            float x = SimpleLayout.pointXAt(
                     along,
-                    SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                    SimpleLayout.PROGRESS_BAND_RADIUS,
                     rightGauge);
-            float y = SimpleRedLayout.pointYAt(
+            float y = SimpleLayout.pointYAt(
                     along,
-                    SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                    SimpleLayout.PROGRESS_BAND_RADIUS,
                     rightGauge);
             if (index == 0) {
                 progressPath.moveTo(x, y);
@@ -290,13 +290,13 @@ public final class SimpleRedClusterView extends View
             Canvas canvas,
             float fraction,
             boolean rightGauge) {
-        float tipX = SimpleRedLayout.radialX(
+        float tipX = SimpleLayout.radialX(
                 fraction,
-                SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                SimpleLayout.PROGRESS_BAND_RADIUS,
                 rightGauge);
-        float tipY = SimpleRedLayout.radialY(
+        float tipY = SimpleLayout.radialY(
                 fraction,
-                SimpleRedLayout.PROGRESS_BAND_RADIUS,
+                SimpleLayout.PROGRESS_BAND_RADIUS,
                 rightGauge);
         int save = canvas.save();
         canvas.translate(tipX, tipY);
@@ -305,7 +305,7 @@ public final class SimpleRedClusterView extends View
         canvas.drawCircle(
                 0.0f,
                 0.0f,
-                SimpleRedLayout.PROGRESS_TIP_BLOOM_RADIUS,
+                SimpleLayout.PROGRESS_TIP_BLOOM_RADIUS,
                 progressPaint);
         progressPaint.setShader(null);
         progressPaint.setStyle(Paint.Style.STROKE);
@@ -316,13 +316,13 @@ public final class SimpleRedClusterView extends View
         return alpha << 24 | color & 0x00FFFFFF;
     }
 
-    private static Shader createTipBloomShader(SimpleRedScaleColor color) {
-        int center = (SimpleRedLayout.PROGRESS_TIP_BLOOM_ALPHA << 24)
+    private static Shader createTipBloomShader(SimpleScaleColor color) {
+        int center = (SimpleLayout.PROGRESS_TIP_BLOOM_ALPHA << 24)
                 | (color.bloom() & 0x00FFFFFF);
         return new RadialGradient(
                 0.0f,
                 0.0f,
-                SimpleRedLayout.PROGRESS_TIP_BLOOM_RADIUS,
+                SimpleLayout.PROGRESS_TIP_BLOOM_RADIUS,
                 new int[] {center, center & 0x00FFFFFF},
                 new float[] {0.0f, 1.0f},
                 Shader.TileMode.CLAMP);
@@ -344,9 +344,9 @@ public final class SimpleRedClusterView extends View
             float fraction,
             boolean rightGauge,
             boolean glow) {
-        float leadIn = SimpleRedLayout.PROGRESS_GRADIENT_LEAD_IN_DEGREES;
-        float bandStart = SimpleRedLayout.bandAngleDegrees(0.0f, rightGauge);
-        float travelled = SimpleRedLayout.bandAngleDegrees(
+        float leadIn = SimpleLayout.PROGRESS_GRADIENT_LEAD_IN_DEGREES;
+        float bandStart = SimpleLayout.bandAngleDegrees(0.0f, rightGauge);
+        float travelled = SimpleLayout.bandAngleDegrees(
                 fraction,
                 rightGauge) - bandStart;
         float end = (travelled + leadIn) / 360.0f;
@@ -396,37 +396,37 @@ public final class SimpleRedClusterView extends View
     private void drawScaleLabels(Canvas canvas) {
         configureText(
                 scaleTypeface,
-                SimpleRedLayout.SCALE_LABEL_TEXT_SIZE,
+                SimpleLayout.SCALE_LABEL_TEXT_SIZE,
                 Paint.Align.CENTER,
-                SimpleRedLayout.SCALE_LABEL_COLOR,
+                SimpleLayout.SCALE_LABEL_COLOR,
                 true);
-        textPaint.setTextSkewX(SimpleRedLayout.SCALE_LABEL_SKEW_X);
-        int speedSteps = SimpleRedLayout.majorTickIntervals(false);
+        textPaint.setTextSkewX(SimpleLayout.SCALE_LABEL_SKEW_X);
+        int speedSteps = SimpleLayout.majorTickIntervals(false);
         for (int index = 0; index <= speedSteps; index++) {
-            int speed = index * SimpleRedLayout.SPEED_LABEL_STEP_KPH;
+            int speed = index * SimpleLayout.SPEED_LABEL_STEP_KPH;
             drawScaleText(
                     canvas,
                     Integer.toString(speed),
-                    SimpleRedLayout.speedFraction(speed),
+                    SimpleLayout.speedFraction(speed),
                     false,
-                    SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
+                    SimpleLayout.MAIN_SCALE_LABEL_OFFSET);
         }
-        int rpmSteps = SimpleRedLayout.majorTickIntervals(true);
+        int rpmSteps = SimpleLayout.majorTickIntervals(true);
         for (int index = 0; index <= rpmSteps; index++) {
             drawScaleText(
                     canvas,
                     Integer.toString(index),
                     (float) index / rpmSteps,
                     true,
-                    SimpleRedLayout.MAIN_SCALE_LABEL_OFFSET);
+                    SimpleLayout.MAIN_SCALE_LABEL_OFFSET);
         }
 
-        if (SimpleRedLayout.DRAW_SCALE_UNITS) {
+        if (SimpleLayout.DRAW_SCALE_UNITS) {
             configureText(
                     dataTypeface,
-                    SimpleRedLayout.SCALE_UNIT_TEXT_SIZE,
+                    SimpleLayout.SCALE_UNIT_TEXT_SIZE,
                     Paint.Align.CENTER,
-                    SimpleRedLayout.SCALE_UNIT_COLOR,
+                    SimpleLayout.SCALE_UNIT_COLOR,
                     true);
             drawScaleText(canvas, "km/h", 0.90f, false, 98.0f);
             drawScaleText(canvas, "×1000 rpm", 0.90f, true, 98.0f);
@@ -439,10 +439,10 @@ public final class SimpleRedClusterView extends View
             float fraction,
             boolean rightGauge,
             float inwardOffset) {
-        float x = SimpleRedLayout.scaleX(fraction, rightGauge);
-        float y = SimpleRedLayout.scaleY(fraction, rightGauge);
-        float tangentX = SimpleRedLayout.scaleTangentX(fraction, rightGauge);
-        float tangentY = SimpleRedLayout.scaleTangentY(fraction, rightGauge);
+        float x = SimpleLayout.scaleX(fraction, rightGauge);
+        float y = SimpleLayout.scaleY(fraction, rightGauge);
+        float tangentX = SimpleLayout.scaleTangentX(fraction, rightGauge);
+        float tangentY = SimpleLayout.scaleTangentY(fraction, rightGauge);
         float length = (float) Math.hypot(tangentX, tangentY);
         if (length < 0.001f) {
             return;
@@ -457,15 +457,15 @@ public final class SimpleRedClusterView extends View
     private void drawSteeringIcon(Canvas canvas) {
         int save = canvas.save();
         canvas.rotate(
-                SimpleRedLayout.steeringRotation(displayedSteering),
-                SimpleRedLayout.STEERING_ICON_X,
-                SimpleRedLayout.STEERING_ICON_Y);
+                SimpleLayout.steeringRotation(displayedSteering),
+                SimpleLayout.STEERING_ICON_X,
+                SimpleLayout.STEERING_ICON_Y);
         drawSteeringWheel(
                 canvas,
-                SimpleRedLayout.STEERING_ICON_X,
-                SimpleRedLayout.STEERING_ICON_Y,
-                SimpleRedLayout.STEERING_ICON_RADIUS,
-                SimpleRedLayout.STEERING_COLOR);
+                SimpleLayout.STEERING_ICON_X,
+                SimpleLayout.STEERING_ICON_Y,
+                SimpleLayout.STEERING_ICON_RADIUS,
+                SimpleLayout.STEERING_COLOR);
         canvas.restoreToCount(save);
     }
 
@@ -477,39 +477,39 @@ public final class SimpleRedClusterView extends View
                 0xFFF7F7F5,
                 true);
         canvas.drawText(
-                SimpleRedLayout.formatGear(state.currentGear),
-                SimpleRedLayout.GEAR_NUMBER_X,
-                SimpleRedLayout.GEAR_NUMBER_BASELINE,
+                SimpleLayout.formatGear(state.currentGear),
+                SimpleLayout.GEAR_NUMBER_X,
+                SimpleLayout.GEAR_NUMBER_BASELINE,
                 textPaint);
     }
 
     private void drawTyrePressures(Canvas canvas, ClusterState state) {
         configureText(
                 gaugeTypeface,
-                SimpleRedLayout.TYRE_TEXT_SIZE,
+                SimpleLayout.TYRE_TEXT_SIZE,
                 Paint.Align.CENTER,
                 0xFFF4F4F2,
                 false);
         drawTyrePressure(
                 canvas,
                 state.tyreFrontLeftBar,
-                SimpleRedLayout.TYRE_LEFT_X,
-                SimpleRedLayout.TYRE_TOP_Y);
+                SimpleLayout.TYRE_LEFT_X,
+                SimpleLayout.TYRE_TOP_Y);
         drawTyrePressure(
                 canvas,
                 state.tyreFrontRightBar,
-                SimpleRedLayout.TYRE_RIGHT_X,
-                SimpleRedLayout.TYRE_TOP_Y);
+                SimpleLayout.TYRE_RIGHT_X,
+                SimpleLayout.TYRE_TOP_Y);
         drawTyrePressure(
                 canvas,
                 state.tyreRearLeftBar,
-                SimpleRedLayout.TYRE_LEFT_X,
-                SimpleRedLayout.TYRE_BOTTOM_Y);
+                SimpleLayout.TYRE_LEFT_X,
+                SimpleLayout.TYRE_BOTTOM_Y);
         drawTyrePressure(
                 canvas,
                 state.tyreRearRightBar,
-                SimpleRedLayout.TYRE_RIGHT_X,
-                SimpleRedLayout.TYRE_BOTTOM_Y);
+                SimpleLayout.TYRE_RIGHT_X,
+                SimpleLayout.TYRE_BOTTOM_Y);
         drawSteeringIcon(canvas);
     }
 
@@ -518,9 +518,9 @@ public final class SimpleRedClusterView extends View
             float pressure,
             float x,
             float y) {
-        textPaint.setColor(SimpleRedLayout.pressureColor(pressure));
+        textPaint.setColor(SimpleLayout.pressureColor(pressure));
         canvas.drawText(
-                SimpleRedLayout.formatPressure(pressure),
+                SimpleLayout.formatPressure(pressure),
                 x,
                 y,
                 textPaint);
@@ -534,44 +534,44 @@ public final class SimpleRedClusterView extends View
                 gaugeTypeface,
                 22.0f,
                 Paint.Align.LEFT,
-                SimpleRedLayout.consumptionColor(
+                SimpleLayout.consumptionColor(
                         state.consumptionLitersPer100Km),
                 true);
         canvas.drawText(
-                SimpleRedLayout.formatConsumption(
+                SimpleLayout.formatConsumption(
                         state.consumptionLitersPer100Km),
-                SimpleRedLayout.CONSUMPTION_X,
-                SimpleRedLayout.CONSUMPTION_BASELINE,
+                SimpleLayout.CONSUMPTION_X,
+                SimpleLayout.CONSUMPTION_BASELINE,
                 textPaint);
 
         configureText(
                 gaugeTypeface,
                 22.0f,
                 Paint.Align.RIGHT,
-                SimpleRedLayout.fuelColor(state.fuelLiters),
+                SimpleLayout.fuelColor(state.fuelLiters),
                 true);
         canvas.drawText(
-                SimpleRedLayout.formatFuel(state.fuelLiters),
-                SimpleRedLayout.FUEL_LITERS_X,
-                SimpleRedLayout.FUEL_LITERS_BASELINE,
+                SimpleLayout.formatFuel(state.fuelLiters),
+                SimpleLayout.FUEL_LITERS_X,
+                SimpleLayout.FUEL_LITERS_BASELINE,
                 textPaint);
 
         configureText(
                 gaugeTypeface,
                 22.0f,
                 Paint.Align.RIGHT,
-                SimpleRedLayout.temperatureColor(state.coolantC),
+                SimpleLayout.temperatureColor(state.coolantC),
                 true);
         canvas.drawText(
-                SimpleRedLayout.formatCoolant(state.coolantC),
-                SimpleRedLayout.COOLANT_X,
-                SimpleRedLayout.COOLANT_BASELINE,
+                SimpleLayout.formatCoolant(state.coolantC),
+                SimpleLayout.COOLANT_X,
+                SimpleLayout.COOLANT_BASELINE,
                 textPaint);
 
-        int transmissionColor = SimpleRedLayout.temperatureColor(
+        int transmissionColor = SimpleLayout.temperatureColor(
                 state.transmissionTemperatureC);
         String transmissionTemperature =
-                SimpleRedLayout.formatTransmissionTemperature(
+                SimpleLayout.formatTransmissionTemperature(
                         state.transmissionTemperatureC,
                         state.transmissionTemperatureUpdatedAtMs,
                         frameAtMs);
@@ -583,8 +583,8 @@ public final class SimpleRedClusterView extends View
                 true);
         canvas.drawText(
                 transmissionTemperature,
-                SimpleRedLayout.TRANSMISSION_X,
-                SimpleRedLayout.TRANSMISSION_BASELINE,
+                SimpleLayout.TRANSMISSION_X,
+                SimpleLayout.TRANSMISSION_BASELINE,
                 textPaint);
         if (!transmissionTemperature.isEmpty()) {
             configureText(
@@ -595,8 +595,8 @@ public final class SimpleRedClusterView extends View
                     true);
             canvas.drawText(
                     "АКПП",
-                    SimpleRedLayout.TRANSMISSION_LABEL_X,
-                    SimpleRedLayout.TRANSMISSION_LABEL_Y,
+                    SimpleLayout.TRANSMISSION_LABEL_X,
+                    SimpleLayout.TRANSMISSION_LABEL_Y,
                     textPaint);
         }
 
@@ -604,12 +604,12 @@ public final class SimpleRedClusterView extends View
                 gaugeTypeface,
                 24.0f,
                 Paint.Align.RIGHT,
-                SimpleRedLayout.voltageColor(state.voltage),
+                SimpleLayout.voltageColor(state.voltage),
                 true);
         canvas.drawText(
-                SimpleRedLayout.formatVoltage(state.voltage),
-                SimpleRedLayout.VOLTAGE_X,
-                SimpleRedLayout.VOLTAGE_BASELINE,
+                SimpleLayout.formatVoltage(state.voltage),
+                SimpleLayout.VOLTAGE_X,
+                SimpleLayout.VOLTAGE_BASELINE,
                 textPaint);
     }
 
@@ -620,36 +620,36 @@ public final class SimpleRedClusterView extends View
             float radius,
             int color) {
         linePaint.setColor(color);
-        linePaint.setStrokeWidth(SimpleRedLayout.STEERING_RIM_WIDTH);
+        linePaint.setStrokeWidth(SimpleLayout.STEERING_RIM_WIDTH);
         linePaint.setStrokeCap(Paint.Cap.ROUND);
         linePaint.setStyle(Paint.Style.STROKE);
         canvas.drawCircle(centerX, centerY, radius, linePaint);
         float barY = centerY
-                + SimpleRedLayout.STEERING_T_BAR_Y_OFFSET;
-        linePaint.setStrokeWidth(SimpleRedLayout.STEERING_SPOKE_WIDTH);
+                + SimpleLayout.STEERING_T_BAR_Y_OFFSET;
+        linePaint.setStrokeWidth(SimpleLayout.STEERING_SPOKE_WIDTH);
         canvas.drawLine(
-                centerX - SimpleRedLayout.STEERING_T_BAR_HALF_WIDTH,
+                centerX - SimpleLayout.STEERING_T_BAR_HALF_WIDTH,
                 barY,
-                centerX + SimpleRedLayout.STEERING_T_BAR_HALF_WIDTH,
+                centerX + SimpleLayout.STEERING_T_BAR_HALF_WIDTH,
                 barY,
                 linePaint);
         canvas.drawLine(
                 centerX,
                 barY,
                 centerX,
-                barY + SimpleRedLayout.STEERING_T_STEM_LENGTH,
+                barY + SimpleLayout.STEERING_T_STEM_LENGTH,
                 linePaint);
         linePaint.setStyle(Paint.Style.FILL);
         canvas.drawCircle(
                 centerX,
                 barY,
-                SimpleRedLayout.STEERING_HUB_RADIUS,
+                SimpleLayout.STEERING_HUB_RADIUS,
                 linePaint);
         linePaint.setColor(Color.BLACK);
         canvas.drawCircle(
                 centerX,
                 barY,
-                SimpleRedLayout.STEERING_HUB_HOLE_RADIUS,
+                SimpleLayout.STEERING_HUB_HOLE_RADIUS,
                 linePaint);
         linePaint.setStyle(Paint.Style.STROKE);
     }
@@ -687,7 +687,7 @@ public final class SimpleRedClusterView extends View
         textPaint.setTextAlign(align);
         textPaint.setColor(color);
         textPaint.setFakeBoldText(bold);
-        textPaint.setTextSkewX(SimpleRedLayout.TEXT_SKEW_X);
+        textPaint.setTextSkewX(SimpleLayout.TEXT_SKEW_X);
         textPaint.setTextScaleX(1.0f);
         textPaint.setStyle(Paint.Style.FILL);
     }
@@ -701,7 +701,7 @@ public final class SimpleRedClusterView extends View
                         && state.transmissionTemperatureUpdatedAtMs > 0L
                         && nowMs
                         - state.transmissionTemperatureUpdatedAtMs
-                        <= SimpleRedLayout
+                        <= SimpleLayout
                         .TRANSMISSION_TEMPERATURE_STALE_AFTER_MS;
         return transmissionTemperatureAlert.update(
                 state.transmissionTemperatureC,

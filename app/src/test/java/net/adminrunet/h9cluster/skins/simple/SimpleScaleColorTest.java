@@ -1,4 +1,4 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -10,7 +10,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-public final class SimpleRedScaleColorTest {
+public final class SimpleScaleColorTest {
     @Test
     public void theEightChoicesArriveInTheOrderTheyAreOffered() {
         String[] expected = {
@@ -23,11 +23,11 @@ public final class SimpleRedScaleColorTest {
             "cyan",
             "blue"
         };
-        assertEquals(expected.length, SimpleRedScaleColor.values().length);
+        assertEquals(expected.length, SimpleScaleColor.values().length);
         for (int index = 0; index < expected.length; index++) {
             assertEquals(
                     expected[index],
-                    SimpleRedScaleColor.values()[index].id);
+                    SimpleScaleColor.values()[index].id);
         }
     }
 
@@ -35,7 +35,7 @@ public final class SimpleRedScaleColorTest {
     public void everyChoiceIsDistinctAndNamed() {
         Set<String> ids = new HashSet<>();
         Set<Integer> accents = new HashSet<>();
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
             assertTrue("duplicate id " + color.id, ids.add(color.id));
             assertTrue(
                     "duplicate accent for " + color.id,
@@ -54,13 +54,13 @@ public final class SimpleRedScaleColorTest {
     @Test
     public void redIsTheDefaultAndKeepsTheSkinLookingAsItDid() {
         assertSame(
-                SimpleRedScaleColor.RED,
-                SimpleRedScaleColor.defaultColor());
-        assertEquals("red", SimpleRedScaleColor.defaultColor().id);
+                SimpleScaleColor.RED,
+                SimpleScaleColor.defaultColor());
+        assertEquals("red", SimpleScaleColor.defaultColor().id);
         // The skin ships red, so the default must reproduce the colours
         // the renderer used before the setting existed.
-        assertEquals(0xFFFF1C1C, SimpleRedScaleColor.RED.accent);
-        assertEquals(0xFFFFD54F, SimpleRedScaleColor.RED.leading);
+        assertEquals(0xFFFF1C1C, SimpleScaleColor.RED.accent);
+        assertEquals(0xFFFFD54F, SimpleScaleColor.RED.leading);
     }
 
     @Test
@@ -68,7 +68,7 @@ public final class SimpleRedScaleColorTest {
         // Glow, band body and band start are the accent at different
         // transparencies. Keeping them derived is what stops them from
         // drifting apart from the accent when the palette is retuned.
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
             int rgb = color.accent & 0x00FFFFFF;
             assertEquals(0xDC, color.glow() >>> 24);
             assertEquals(0xAA, color.bandBody() >>> 24);
@@ -81,7 +81,7 @@ public final class SimpleRedScaleColorTest {
 
     @Test
     public void theLeadingEdgeCarriesTheBloomAndStaysOpaque() {
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
             assertEquals(
                     "the bloom is the leading edge spread out",
                     color.leading,
@@ -97,7 +97,7 @@ public final class SimpleRedScaleColorTest {
     public void everyLeadingEdgeReadsBrighterThanItsAccent() {
         // The end of the band is marked by lightness rather than by a
         // borrowed hue, so it has to actually be lighter.
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
             assertTrue(
                     "leading edge must be lighter for " + color.id,
                     luminance(color.leading) > luminance(color.accent));
@@ -108,20 +108,20 @@ public final class SimpleRedScaleColorTest {
     public void unknownIdsFallBackToRedRatherThanFailing() {
         // Settings arrive from storage and from preview intents, so a
         // stale or hand-edited value must not take the skin down.
-        assertSame(SimpleRedScaleColor.RED, SimpleRedScaleColor.byId(null));
-        assertSame(SimpleRedScaleColor.RED, SimpleRedScaleColor.byId(""));
+        assertSame(SimpleScaleColor.RED, SimpleScaleColor.byId(null));
+        assertSame(SimpleScaleColor.RED, SimpleScaleColor.byId(""));
         assertSame(
-                SimpleRedScaleColor.RED,
-                SimpleRedScaleColor.byId("chartreuse"));
+                SimpleScaleColor.RED,
+                SimpleScaleColor.byId("chartreuse"));
         assertSame(
-                SimpleRedScaleColor.RED,
-                SimpleRedScaleColor.byId("RED"));
+                SimpleScaleColor.RED,
+                SimpleScaleColor.byId("RED"));
     }
 
     @Test
     public void knownIdsRoundTrip() {
-        for (SimpleRedScaleColor color : SimpleRedScaleColor.values()) {
-            assertSame(color, SimpleRedScaleColor.byId(color.id));
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
+            assertSame(color, SimpleScaleColor.byId(color.id));
         }
     }
 

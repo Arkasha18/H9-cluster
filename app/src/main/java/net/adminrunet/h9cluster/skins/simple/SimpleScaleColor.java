@@ -1,7 +1,7 @@
-package net.adminrunet.h9cluster.skins.simplered;
+package net.adminrunet.h9cluster.skins.simple;
 
 /**
- * Colour the Simple Red scale is drawn in.
+ * Colour the Simple skin's scale is drawn in.
  *
  * <p>A choice states only two colours: the accent that runs along the scale
  * and the leading edge of the progress band. Everything else the band needs
@@ -11,7 +11,7 @@ package net.adminrunet.h9cluster.skins.simplered;
  * <p>The white arc, its ticks and the scale numbers are deliberately left
  * out. Readability rests on them, and it should not depend on the choice.</p>
  */
-public enum SimpleRedScaleColor {
+public enum SimpleScaleColor {
     /** Ships with the skin, and reproduces how it looked without settings. */
     RED("red", "Красный", 0xFFFF1C1C, 0xFFFFD54F),
     WHITE("white", "Белый", 0xFFEFF1F1, 0xFFFFFFFF),
@@ -33,14 +33,14 @@ public enum SimpleRedScaleColor {
     public final int accent;
     public final int leading;
 
-    SimpleRedScaleColor(String id, String title, int accent, int leading) {
+    SimpleScaleColor(String id, String title, int accent, int leading) {
         this.id = id;
         this.title = title;
         this.accent = accent;
         this.leading = leading;
     }
 
-    public static SimpleRedScaleColor defaultColor() {
+    public static SimpleScaleColor defaultColor() {
         return RED;
     }
 
@@ -48,9 +48,9 @@ public enum SimpleRedScaleColor {
      * Settings reach the skin from storage and from preview intents, so an
      * unrecognised value has to fall back rather than fail.
      */
-    public static SimpleRedScaleColor byId(String id) {
+    public static SimpleScaleColor byId(String id) {
         if (id != null) {
-            for (SimpleRedScaleColor color : values()) {
+            for (SimpleScaleColor color : values()) {
                 if (color.id.equals(id)) {
                     return color;
                 }
