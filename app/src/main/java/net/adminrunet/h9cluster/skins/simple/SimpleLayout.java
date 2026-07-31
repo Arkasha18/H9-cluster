@@ -10,6 +10,8 @@ final class SimpleLayout {
     static final float MAX_SPEED_KPH = 200.0f;
     static final float MAX_RPM = 6000.0f;
     static final int SPEED_LABEL_STEP_KPH = 20;
+    /** Measured-to-indicated speed ratio; see indicatedSpeedFraction. */
+    static final float SPEED_INDICATION_FACTOR = 1.045f;
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
@@ -17,7 +19,7 @@ final class SimpleLayout {
     static final float GAUGE_CENTER_Y = 442.0f;
     static final float GAUGE_RADIUS = 256.0f;
     static final float SCALE_START_DEGREES = 21.0f;
-    static final float SCALE_SWEEP_DEGREES = 190.0f;
+    static final float SCALE_SWEEP_DEGREES = 188.0f;
     static final float SCALE_START_ANGLE_RADIANS =
             (float) Math.toRadians(SCALE_START_DEGREES);
     static final float SCALE_SWEEP_ANGLE_RADIANS =
@@ -41,7 +43,7 @@ final class SimpleLayout {
      * <p>The insert is the same length at every radius, so each layer of
      * a gauge is displaced equally and the ring keeps its thickness.</p>
      */
-    static final float SCALE_STRETCH_X = 30.0f;
+    static final float SCALE_STRETCH_X = 23.0f;
     /** Outline before the cut, and the circular remainder after it. */
     static final float SCALE_LEADING_LENGTH =
             (SCALE_SPLIT_ANGLE_RADIANS - SCALE_START_ANGLE_RADIANS)
@@ -80,24 +82,25 @@ final class SimpleLayout {
     static final float ACCENT_GLOW_BLUR_RADIUS = 18.0f;
 
     /**
-     * Opaque annular sector sitting under the tachometer scale only. It
-     * hides the factory content behind the scale band while leaving the
-     * middle of the gauge transparent. Bounded outside by the scale arc
-     * plus a margin, inside by the labels plus a clearance, and extended
-     * past both scale ends by the padding below.
+     * Opaque annular sector sitting under each scale. It hides the factory
+     * content behind the scale band while leaving the middle of the gauge
+     * transparent. Bounded outside by the scale arc plus a margin, inside
+     * by the labels plus a clearance, and extended past both scale ends by
+     * the padding below. Both gauges use the same shape, the speedometer's
+     * being the tachometer's mirrored.
      */
-    static final float TACH_BACKDROP_RADIUS = GAUGE_RADIUS + 14.0f;
-    static final float TACH_BACKDROP_INNER_CLEARANCE = 30.0f;
-    static final float TACH_BACKDROP_INNER_RADIUS =
+    static final float GAUGE_BACKDROP_RADIUS = GAUGE_RADIUS + 14.0f;
+    static final float GAUGE_BACKDROP_INNER_CLEARANCE = 30.0f;
+    static final float GAUGE_BACKDROP_INNER_RADIUS =
             GAUGE_RADIUS - MAIN_SCALE_LABEL_OFFSET
-                    - TACH_BACKDROP_INNER_CLEARANCE;
-    static final float TACH_BACKDROP_PADDING_DEGREES = 6.0f;
-    static final float TACH_BACKDROP_PADDING_RADIANS =
-            (float) Math.toRadians(TACH_BACKDROP_PADDING_DEGREES);
-    static final float TACH_BACKDROP_EDGE_BLUR_RADIUS = 20.0f;
-    static final int TACH_BACKDROP_COLOR_VEHICLE = 0xFF000000;
+                    - GAUGE_BACKDROP_INNER_CLEARANCE;
+    static final float GAUGE_BACKDROP_PADDING_DEGREES = 6.0f;
+    static final float GAUGE_BACKDROP_PADDING_RADIANS =
+            (float) Math.toRadians(GAUGE_BACKDROP_PADDING_DEGREES);
+    static final float GAUGE_BACKDROP_EDGE_BLUR_RADIUS = 20.0f;
+    static final int GAUGE_BACKDROP_COLOR_VEHICLE = 0xFF000000;
     /** Demo builds tint it so its bounds are visible while tuning. */
-    static final int TACH_BACKDROP_COLOR_DEMO = 0xFF0044FF;
+    static final int GAUGE_BACKDROP_COLOR_DEMO = 0xFF0044FF;
     /** The band sits at the inner end of the major ticks, so it tracks
      * GAUGE_RADIUS instead of drifting when the gauge is resized. */
     static final float PROGRESS_BAND_RADIUS = TICK_MAJOR_INNER_RADIUS;
@@ -176,20 +179,20 @@ final class SimpleLayout {
      * factory content. Demo builds tint it instead, because on a demo
      * background black-on-black gives no clue where it sits.
      */
-    static int tachBackdropColor(boolean demoMode) {
+    static int gaugeBackdropColor(boolean demoMode) {
         return demoMode
-                ? TACH_BACKDROP_COLOR_DEMO
-                : TACH_BACKDROP_COLOR_VEHICLE;
+                ? GAUGE_BACKDROP_COLOR_DEMO
+                : GAUGE_BACKDROP_COLOR_VEHICLE;
     }
 
     /** Start of the backdrop sector, padded past the start of the scale. */
-    static float tachBackdropStartLength() {
-        return -TACH_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
+    static float gaugeBackdropStartLength() {
+        return -GAUGE_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
     }
 
-    static float tachBackdropEndLength() {
+    static float gaugeBackdropEndLength() {
         return SCALE_TOTAL_LENGTH
-                + TACH_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
+                + GAUGE_BACKDROP_PADDING_RADIANS * GAUGE_RADIUS;
     }
 
     /** Labelled intervals on a gauge, which are also its major ticks. */
@@ -366,8 +369,19 @@ final class SimpleLayout {
         return -clamp(angleDeg, -1080.0f, 1080.0f);
     }
 
+    /** Where a speed sits on the scale. Labels are placed by this too. */
     static float speedFraction(float speedKph) {
         return clamp(speedKph / MAX_SPEED_KPH, 0.0f, 1.0f);
+    }
+
+    /**
+     * Where the band sits for a measured speed. The bus reports a speed
+     * derived from GPS while the factory speedometer reads the wheels, so
+     * the band is scaled to agree with the dial the driver is used to.
+     * Tune this one constant if the two still disagree.
+     */
+    static float indicatedSpeedFraction(float measuredKph) {
+        return speedFraction(measuredKph * SPEED_INDICATION_FACTOR);
     }
 
     static float rpmFraction(float rpm) {

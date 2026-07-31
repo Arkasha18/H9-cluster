@@ -22,42 +22,44 @@ final class SimpleBackground {
             boolean demoMode,
             SimpleScaleColor scaleColor) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        drawTachBackdrop(canvas, paint, demoMode);
+        drawGaugeBackdrop(canvas, paint, demoMode, false);
+        drawGaugeBackdrop(canvas, paint, demoMode, true);
         drawGauge(canvas, paint, false, scaleColor);
         drawGauge(canvas, paint, true, scaleColor);
     }
 
     /**
-     * Opaque annular sector under the tachometer scale, hiding the factory
-     * content behind the band while leaving the gauge centre transparent.
+     * Opaque annular sector under one scale, hiding the factory content
+     * behind the band while leaving the gauge centre transparent.
      */
-    private static void drawTachBackdrop(
+    private static void drawGaugeBackdrop(
             Canvas canvas,
             Paint paint,
-            boolean demoMode) {
-        float start = SimpleLayout.tachBackdropStartLength();
-        float end = SimpleLayout.tachBackdropEndLength();
+            boolean demoMode,
+            boolean rightGauge) {
+        float start = SimpleLayout.gaugeBackdropStartLength();
+        float end = SimpleLayout.gaugeBackdropEndLength();
         Path sector = new Path();
         appendSweep(
                 sector,
-                SimpleLayout.TACH_BACKDROP_RADIUS,
+                SimpleLayout.GAUGE_BACKDROP_RADIUS,
                 start,
                 end,
-                true);
+                rightGauge);
         appendSweep(
                 sector,
-                SimpleLayout.TACH_BACKDROP_INNER_RADIUS,
+                SimpleLayout.GAUGE_BACKDROP_INNER_RADIUS,
                 end,
                 start,
-                true);
+                rightGauge);
         sector.close();
 
         paint.reset();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(SimpleLayout.tachBackdropColor(demoMode));
+        paint.setColor(SimpleLayout.gaugeBackdropColor(demoMode));
         paint.setMaskFilter(new BlurMaskFilter(
-                SimpleLayout.TACH_BACKDROP_EDGE_BLUR_RADIUS,
+                SimpleLayout.GAUGE_BACKDROP_EDGE_BLUR_RADIUS,
                 BlurMaskFilter.Blur.NORMAL));
         canvas.drawPath(sector, paint);
     }

@@ -208,7 +208,7 @@ public final class SimpleClusterView extends View
 
     private void drawProgressLayer(Canvas canvas) {
         float speedFraction = clamp(
-                SimpleLayout.speedFraction(displayedSpeed),
+                SimpleLayout.indicatedSpeedFraction(displayedSpeed),
                 0.0f,
                 1.0f);
         float rpmFraction = clamp(

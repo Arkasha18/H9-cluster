@@ -85,9 +85,9 @@ public final class SimpleLayoutTest {
         float speedoRight = outlineExtreme(
                 false, SimpleLayout.GAUGE_RADIUS, true, true);
         float tachLeft = outlineExtreme(
-                true, SimpleLayout.TACH_BACKDROP_RADIUS, true, false);
+                true, SimpleLayout.GAUGE_BACKDROP_RADIUS, true, false);
         float tachRight = outlineExtreme(
-                true, SimpleLayout.TACH_BACKDROP_RADIUS, true, true);
+                true, SimpleLayout.GAUGE_BACKDROP_RADIUS, true, true);
         org.junit.Assert.assertTrue(
                 "the speedometer runs off the left edge",
                 speedoLeft >= 0.0f);
@@ -99,9 +99,9 @@ public final class SimpleLayoutTest {
                 speedoRight < tachLeft);
 
         float top = outlineExtreme(
-                true, SimpleLayout.TACH_BACKDROP_RADIUS, false, false);
+                true, SimpleLayout.GAUGE_BACKDROP_RADIUS, false, false);
         float bottom = outlineExtreme(
-                true, SimpleLayout.TACH_BACKDROP_RADIUS, false, true);
+                true, SimpleLayout.GAUGE_BACKDROP_RADIUS, false, true);
         org.junit.Assert.assertTrue("the gauges overflow the top", top >= 0.0f);
         org.junit.Assert.assertTrue(
                 "the gauges overflow the bottom",
@@ -593,16 +593,55 @@ public final class SimpleLayoutTest {
     }
 
     @Test
-    public void tachBackdropClearsTheLeftGauge() {
-        // Both gauges stretch towards the middle of the screen, so the
-        // clearance has to account for them closing in on each other.
+    public void gaugeBackdropsDoNotReachEachOther() {
+        // Both gauges stretch towards the middle of the screen, and both
+        // now carry a backdrop, so the clearance has to account for the
+        // two sectors closing in on each other.
         org.junit.Assert.assertTrue(
                 SimpleLayout.RIGHT_GAUGE_CENTER_X
-                        - SimpleLayout.TACH_BACKDROP_RADIUS
+                        - SimpleLayout.GAUGE_BACKDROP_RADIUS
                         - SimpleLayout.SCALE_STRETCH_X
                         > SimpleLayout.LEFT_GAUGE_CENTER_X
-                        + SimpleLayout.GAUGE_RADIUS
+                        + SimpleLayout.GAUGE_BACKDROP_RADIUS
                         + SimpleLayout.SCALE_STRETCH_X);
+    }
+
+    @Test
+    public void bandLeadsTheMeasuredSpeedByTheIndicationFactor() {
+        // The band has to sit where the factory dial would put the same
+        // moment, which is further along than the raw bus reading.
+        assertEquals(
+                SimpleLayout.speedFraction(
+                        100.0f * SimpleLayout.SPEED_INDICATION_FACTOR),
+                SimpleLayout.indicatedSpeedFraction(100.0f),
+                0.0001f);
+        org.junit.Assert.assertTrue(
+                SimpleLayout.indicatedSpeedFraction(100.0f)
+                        > SimpleLayout.speedFraction(100.0f));
+    }
+
+    @Test
+    public void indicatedSpeedStaysPinnedAtBothEndsOfTheScale() {
+        assertEquals(
+                0.0f,
+                SimpleLayout.indicatedSpeedFraction(0.0f),
+                0.0001f);
+        assertEquals(
+                1.0f,
+                SimpleLayout.indicatedSpeedFraction(
+                        SimpleLayout.MAX_SPEED_KPH),
+                0.0001f);
+    }
+
+    @Test
+    public void labelsStayOnTheUncorrectedScale() {
+        // Only the band is scaled; moving the labels with it would cancel
+        // the correction out and leave the dial reading as before.
+        assertEquals(
+                0.5f,
+                SimpleLayout.speedFraction(
+                        SimpleLayout.MAX_SPEED_KPH * 0.5f),
+                0.0001f);
     }
 
     @Test
@@ -665,75 +704,75 @@ public final class SimpleLayoutTest {
     }
 
     @Test
-    public void tachBackdropIsOpaqueBlackOutsideDemoBuilds() {
+    public void gaugeBackdropIsOpaqueBlackOutsideDemoBuilds() {
         assertEquals(
                 0xFF000000,
-                SimpleLayout.tachBackdropColor(false));
+                SimpleLayout.gaugeBackdropColor(false));
         org.junit.Assert.assertNotEquals(
                 "demo builds must tint the backdrop to make it visible",
-                SimpleLayout.tachBackdropColor(false),
-                SimpleLayout.tachBackdropColor(true));
+                SimpleLayout.gaugeBackdropColor(false),
+                SimpleLayout.gaugeBackdropColor(true));
         assertEquals(
                 "the demo tint must stay fully opaque",
                 0xFF,
-                SimpleLayout.tachBackdropColor(true) >>> 24);
+                SimpleLayout.gaugeBackdropColor(true) >>> 24);
     }
 
     @Test
-    public void tachBackdropCoversTheScaleBandButNotTheCentre() {
+    public void gaugeBackdropCoversTheScaleBandButNotTheCentre() {
         org.junit.Assert.assertTrue(
                 "the backdrop must reach past the scale arc",
-                SimpleLayout.TACH_BACKDROP_RADIUS
+                SimpleLayout.GAUGE_BACKDROP_RADIUS
                         > SimpleLayout.SCALE_ARC_RADIUS);
         float labelRadius = SimpleLayout.GAUGE_RADIUS
                 - SimpleLayout.MAIN_SCALE_LABEL_OFFSET;
         org.junit.Assert.assertTrue(
                 "the backdrop must reach under the scale labels",
-                SimpleLayout.TACH_BACKDROP_INNER_RADIUS < labelRadius);
+                SimpleLayout.GAUGE_BACKDROP_INNER_RADIUS < labelRadius);
         org.junit.Assert.assertTrue(
                 "the gauge centre must stay uncovered",
-                SimpleLayout.TACH_BACKDROP_INNER_RADIUS > 0.0f);
+                SimpleLayout.GAUGE_BACKDROP_INNER_RADIUS > 0.0f);
         org.junit.Assert.assertTrue(
-                SimpleLayout.TACH_BACKDROP_INNER_RADIUS
-                        < SimpleLayout.TACH_BACKDROP_RADIUS);
+                SimpleLayout.GAUGE_BACKDROP_INNER_RADIUS
+                        < SimpleLayout.GAUGE_BACKDROP_RADIUS);
     }
 
     @Test
-    public void tachBackdropOverhangsBothScaleEnds() {
+    public void gaugeBackdropOverhangsBothScaleEnds() {
         org.junit.Assert.assertTrue(
-                SimpleLayout.TACH_BACKDROP_PADDING_RADIANS > 0.0f);
+                SimpleLayout.GAUGE_BACKDROP_PADDING_RADIANS > 0.0f);
         org.junit.Assert.assertTrue(
                 "the sector must start before the scale does",
-                SimpleLayout.tachBackdropStartLength() < 0.0f);
+                SimpleLayout.gaugeBackdropStartLength() < 0.0f);
         org.junit.Assert.assertTrue(
                 "and run past where it ends",
-                SimpleLayout.tachBackdropEndLength()
+                SimpleLayout.gaugeBackdropEndLength()
                         > SimpleLayout.SCALE_TOTAL_LENGTH);
         // The padding is stated as an angle, so it has to arrive as the
         // matching length of circle at the gauge radius.
         assertEquals(
-                SimpleLayout.TACH_BACKDROP_PADDING_RADIANS
+                SimpleLayout.GAUGE_BACKDROP_PADDING_RADIANS
                         * SimpleLayout.GAUGE_RADIUS,
-                -SimpleLayout.tachBackdropStartLength(),
+                -SimpleLayout.gaugeBackdropStartLength(),
                 0.001f);
         assertEquals(
                 SimpleLayout.angleAtLength(
-                        SimpleLayout.tachBackdropStartLength()),
+                        SimpleLayout.gaugeBackdropStartLength()),
                 SimpleLayout.SCALE_START_ANGLE_RADIANS
-                        - SimpleLayout.TACH_BACKDROP_PADDING_RADIANS,
+                        - SimpleLayout.GAUGE_BACKDROP_PADDING_RADIANS,
                 0.001f);
         org.junit.Assert.assertTrue(
                 "the sector must not wrap onto itself",
                 SimpleLayout.angleAtLength(
-                        SimpleLayout.tachBackdropEndLength())
+                        SimpleLayout.gaugeBackdropEndLength())
                         - SimpleLayout.angleAtLength(
-                                SimpleLayout.tachBackdropStartLength())
+                                SimpleLayout.gaugeBackdropStartLength())
                         < (float) (Math.PI * 2.0));
         org.junit.Assert.assertTrue(
                 "the padded ends still get sampled",
                 SimpleLayout.pathSegments(
-                        SimpleLayout.tachBackdropStartLength(),
-                        SimpleLayout.tachBackdropEndLength())
+                        SimpleLayout.gaugeBackdropStartLength(),
+                        SimpleLayout.gaugeBackdropEndLength())
                         > SimpleLayout.SCALE_PATH_SEGMENTS);
     }
 
