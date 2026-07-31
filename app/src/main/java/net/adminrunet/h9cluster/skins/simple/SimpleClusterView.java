@@ -175,7 +175,20 @@ public final class SimpleClusterView extends View
 
     private void drawStaticLayer(Canvas canvas) {
         if (staticBackground == null) {
-            return;
+            // Detaching releases the bitmap, and a re-attach at an unchanged
+            // size never calls onSizeChanged, so rebuilding has to happen
+            // here as well. Otherwise the arcs and ticks stay gone for the
+            // rest of the view's life while the live layers keep drawing.
+            int width = getWidth();
+            int height = getHeight();
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+            staticBackground = renderStaticLayer(
+                    width,
+                    height,
+                    BuildConfig.DEMO_MODE,
+                    scaleColor);
         }
         canvas.drawBitmap(staticBackground, 0.0f, 0.0f, bitmapPaint);
     }
