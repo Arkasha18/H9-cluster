@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 public final class SkinPreferences {
     private static final String PREFERENCES_NAME = "cluster_settings";
     private static final String KEY_SELECTED_SKIN = "selected_skin";
+    private static final String KEY_SWAP_PRIMARY_GAUGES = "swap_primary_gauges";
 
     private SkinPreferences() {
     }
@@ -27,6 +28,18 @@ public final class SkinPreferences {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEY_SELECTED_SKIN, safeSkin)
+                .apply();
+    }
+
+    public static boolean getSwapPrimaryGauges(Context context) {
+        return context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_SWAP_PRIMARY_GAUGES, false);
+    }
+
+    public static void setSwapPrimaryGauges(Context context, boolean swap) {
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_SWAP_PRIMARY_GAUGES, swap)
                 .apply();
     }
 }

@@ -55,6 +55,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
+    private final boolean swapPrimaryGauges;
 
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
@@ -64,7 +65,12 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public HorizonClusterView(Context context) {
+        this(context, false);
+    }
+
+    public HorizonClusterView(Context context, boolean swapPrimaryGauges) {
         super(context);
+        this.swapPrimaryGauges = swapPrimaryGauges;
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
@@ -94,8 +100,10 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         canvas.scale(scale, scale);
 
         drawSidePanels(canvas);
-        drawGauge(canvas, 330.0f, 315.0f, displayedSpeed, 220.0f, false);
-        drawGauge(canvas, 1590.0f, 315.0f, displayedRpm, 8000.0f, true);
+        float speedCenterX = swapPrimaryGauges ? 1590.0f : 330.0f;
+        float rpmCenterX = swapPrimaryGauges ? 330.0f : 1590.0f;
+        drawGauge(canvas, speedCenterX, 315.0f, displayedSpeed, 220.0f, false);
+        drawGauge(canvas, rpmCenterX, 315.0f, displayedRpm, 8000.0f, true);
         drawFuelCard(canvas, targetState);
         drawCoolantCard(canvas, targetState);
         drawStatusBar(canvas, targetState, frameAtMs);

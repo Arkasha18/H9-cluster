@@ -29,31 +29,40 @@ public final class SettingsView extends View {
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
     private static final float CONFIGURE_TOP = 300.0f;
     private static final float CONFIGURE_BOTTOM = 348.0f;
-    private static final float SAVE_TOP_DEFAULT = 340.0f;
-    private static final float SAVE_BOTTOM_DEFAULT = 398.0f;
-    private static final float SAVE_TOP_WITH_SETTINGS = 365.0f;
-    private static final float SAVE_BOTTOM_WITH_SETTINGS = 423.0f;
+    private static final float SETTINGS_TOP_DEFAULT = 300.0f;
+    private static final float SETTINGS_TOP_WITH_SKIN_SETTINGS = 356.0f;
+    private static final float BUTTON_HEIGHT = 48.0f;
+    private static final float SAVE_TOP_DEFAULT = 365.0f;
+    private static final float SAVE_TOP_WITH_SETTINGS = 418.0f;
+    private static final float SAVE_HEIGHT = 58.0f;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final SkinSettingsSession session;
     private final Listener listener;
+    private boolean swapPrimaryGauges;
     private String status = "";
     private float contentScale = 1.0f;
     private float contentOffsetX;
     private float contentOffsetY;
 
     interface Listener {
-        void onDraftChanged(SkinSettingsSession.Snapshot draft);
+        void onDraftChanged(
+                SkinSettingsSession.Snapshot draft,
+                boolean swapPrimaryGauges);
 
-        void onSaveRequested(SkinSettingsSession.Snapshot draft);
+        void onSaveRequested(
+                SkinSettingsSession.Snapshot draft,
+                boolean swapPrimaryGauges);
     }
 
     SettingsView(
             Context context,
             SkinSettingsSession session,
+            boolean swapPrimaryGauges,
             Listener listener) {
         super(context);
         this.session = session;
+        this.swapPrimaryGauges = swapPrimaryGauges;
         this.listener = listener;
         setBackgroundColor(COLOR_BACKGROUND);
     }
@@ -98,12 +107,15 @@ public final class SettingsView extends View {
             drawConfigureButton(canvas);
         }
 
+        float settingsTop = configurable
+                ? SETTINGS_TOP_WITH_SKIN_SETTINGS
+                : SETTINGS_TOP_DEFAULT;
+        drawSettingsButton(canvas, settingsTop);
+
         float saveTop = configurable
                 ? SAVE_TOP_WITH_SETTINGS
                 : SAVE_TOP_DEFAULT;
-        float saveBottom = configurable
-                ? SAVE_BOTTOM_WITH_SETTINGS
-                : SAVE_BOTTOM_DEFAULT;
+        float saveBottom = saveTop + SAVE_HEIGHT;
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_ACCENT);
         canvas.drawRoundRect(
@@ -133,12 +145,38 @@ public final class SettingsView extends View {
                                 : "При автозапуске основной дисплей остаётся свободным"
                         : status,
                 480.0f,
-                455.0f,
+                configurable ? 515.0f : 455.0f,
                 16.0f,
                 status.length() == 0 ? COLOR_MUTED : COLOR_ACCENT,
                 false);
 
         canvas.restoreToCount(save);
+    }
+
+    private void drawSettingsButton(Canvas canvas, float top) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(COLOR_CARD_SELECTED);
+        canvas.drawRoundRect(
+                255.0f, top, 705.0f, top + BUTTON_HEIGHT,
+                12.0f, 12.0f, paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                255.0f, top, 705.0f, top + BUTTON_HEIGHT,
+                12.0f, 12.0f, paint);
+        drawCenteredText(
+                canvas,
+                "Настройки",
+                480.0f,
+                top + 31.0f,
+                17.0f,
+                COLOR_TEXT,
+                true);
+    }
+
+    private boolean supportsPrimaryGaugeSwap() {
+        return SkinRegistry.HORIZON.equals(session.snapshot().skinId);
     }
 
     private void drawConfigureButton(Canvas canvas) {
@@ -222,17 +260,25 @@ public final class SettingsView extends View {
             showSettingsEditor();
             return true;
         }
+        float settingsTop = configurable
+                ? SETTINGS_TOP_WITH_SKIN_SETTINGS
+                : SETTINGS_TOP_DEFAULT;
+        if (x >= 255.0f
+                && x <= 705.0f
+                && y >= settingsTop
+                && y <= settingsTop + BUTTON_HEIGHT) {
+            showGeneralSettings();
+            return true;
+        }
         float saveTop = configurable
                 ? SAVE_TOP_WITH_SETTINGS
                 : SAVE_TOP_DEFAULT;
-        float saveBottom = configurable
-                ? SAVE_BOTTOM_WITH_SETTINGS
-                : SAVE_BOTTOM_DEFAULT;
+        float saveBottom = saveTop + SAVE_HEIGHT;
         if (x >= 255.0f
                 && x <= 705.0f
                 && y >= saveTop
                 && y <= saveBottom) {
-            listener.onSaveRequested(session.snapshot());
+            listener.onSaveRequested(session.snapshot(), swapPrimaryGauges);
             return true;
         }
         return true;
@@ -256,11 +302,48 @@ public final class SettingsView extends View {
                                 session.selectSkin(SKINS[which].id);
                                 status = "Предпросмотр темы изменён";
                                 dialog.dismiss();
-                                listener.onDraftChanged(session.snapshot());
+                                listener.onDraftChanged(
+                                        session.snapshot(),
+                                        swapPrimaryGauges);
                                 invalidate();
                             }
                         })
                 .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showGeneralSettings() {
+        if (!supportsPrimaryGaugeSwap()) {
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Настройки")
+                    .setMessage("Смена мест приборов доступна только в теме Horizon.")
+                    .setPositiveButton("Готово", null)
+                    .show();
+            return;
+        }
+
+        new AlertDialog.Builder(getContext())
+                .setTitle("Настройки")
+                .setMultiChoiceItems(
+                        new CharSequence[]{
+                                "Поменять местами спидометр и тахометр"
+                        },
+                        new boolean[]{swapPrimaryGauges},
+                        new DialogInterface.OnMultiChoiceClickListener() {
+                            @Override
+                            public void onClick(
+                                    DialogInterface dialog,
+                                    int which,
+                                    boolean checked) {
+                                swapPrimaryGauges = checked;
+                                status = "Предпросмотр расположения приборов изменён";
+                                listener.onDraftChanged(
+                                        session.snapshot(),
+                                        swapPrimaryGauges);
+                                invalidate();
+                            }
+                        })
+                .setPositiveButton("Готово", null)
                 .show();
     }
 
@@ -291,7 +374,9 @@ public final class SettingsView extends View {
                     public void onSettingsChanged(SkinSettings settings) {
                         session.updateSettings(settings);
                         status = "Предпросмотр настроек изменён";
-                        listener.onDraftChanged(session.snapshot());
+                        listener.onDraftChanged(
+                                session.snapshot(),
+                                swapPrimaryGauges);
                         invalidate();
                     }
                 });

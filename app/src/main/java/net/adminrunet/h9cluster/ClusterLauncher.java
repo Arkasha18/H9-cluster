@@ -21,13 +21,21 @@ public final class ClusterLauncher {
 
     static boolean previewOnClusterDisplay(
             Context context,
-            SkinSettingsSession.Snapshot draft) {
-        return launchOnClusterDisplay(context, draft);
+            SkinSettingsSession.Snapshot draft,
+            boolean swapPrimaryGauges) {
+        return launchOnClusterDisplay(context, draft, swapPrimaryGauges);
     }
 
     private static boolean launchOnClusterDisplay(
             Context context,
             SkinSettingsSession.Snapshot draft) {
+        return launchOnClusterDisplay(context, draft, false);
+    }
+
+    private static boolean launchOnClusterDisplay(
+            Context context,
+            SkinSettingsSession.Snapshot draft,
+            boolean swapPrimaryGauges) {
         DisplayManager displayManager =
                 (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
         boolean clusterDisplayAvailable =
@@ -51,6 +59,9 @@ public final class ClusterLauncher {
             intent.putExtra(
                     PreviewActivity.EXTRA_DRAFT_SETTINGS,
                     SkinSettingsTransport.toBundle(draft.settings));
+            intent.putExtra(
+                    PreviewActivity.EXTRA_DRAFT_SWAP_PRIMARY_GAUGES,
+                    swapPrimaryGauges);
         }
         intent.putExtra(
                 PreviewActivity.EXTRA_SINGLE_DISPLAY_FALLBACK,

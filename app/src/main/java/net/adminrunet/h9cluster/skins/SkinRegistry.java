@@ -21,7 +21,10 @@ public final class SkinRegistry {
     public static final String SPORT = "sport";
 
     private interface RendererFactory {
-        View create(Context context, SkinSettings settings);
+        View create(
+                Context context,
+                SkinSettings settings,
+                boolean swapPrimaryGauges);
     }
 
     public static final class Definition {
@@ -85,8 +88,14 @@ public final class SkinRegistry {
             return editor;
         }
 
-        private View createRenderer(Context context, SkinSettings settings) {
-            return factory.create(context, normalizeSettings(settings));
+        private View createRenderer(
+                Context context,
+                SkinSettings settings,
+                boolean swapPrimaryGauges) {
+            return factory.create(
+                    context,
+                    normalizeSettings(settings),
+                    swapPrimaryGauges);
         }
     }
 
@@ -99,7 +108,8 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
+                            SkinSettings settings,
+                            boolean swapPrimaryGauges) {
                         return new ClassicClusterView(context);
                     }
                 },
@@ -112,7 +122,8 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
+                            SkinSettings settings,
+                            boolean swapPrimaryGauges) {
                         return new SportClusterView(context);
                     }
                 },
@@ -125,8 +136,11 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new HorizonClusterView(context);
+                            SkinSettings settings,
+                            boolean swapPrimaryGauges) {
+                        return new HorizonClusterView(
+                                context,
+                                swapPrimaryGauges);
                     }
                 },
                 null)
@@ -180,8 +194,19 @@ public final class SkinRegistry {
             Context context,
             String id,
             SkinSettings settings) {
+        return createRenderer(context, id, settings, false);
+    }
+
+    public static View createRenderer(
+            Context context,
+            String id,
+            SkinSettings settings,
+            boolean swapPrimaryGauges) {
         Definition definition = getDefinition(id);
-        View view = definition.createRenderer(context, settings);
+        View view = definition.createRenderer(
+                context,
+                settings,
+                swapPrimaryGauges);
         if (!(view instanceof ClusterRenderer)) {
             throw new IllegalStateException(
                     "Skin renderer must implement ClusterRenderer: " + definition.id);

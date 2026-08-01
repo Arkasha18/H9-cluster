@@ -41,6 +41,7 @@ val hasReleaseSigning = listOf(
 android {
     namespace = "net.adminrunet.h9cluster"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "net.adminrunet.h9cluster"
