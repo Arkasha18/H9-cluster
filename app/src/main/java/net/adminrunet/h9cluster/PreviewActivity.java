@@ -23,8 +23,6 @@ public final class PreviewActivity extends Activity {
     public static final String EXTRA_HAS_DRAFT = "has_skin_settings_draft";
     public static final String EXTRA_DRAFT_SKIN = "draft_skin";
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
-    public static final String EXTRA_DRAFT_SWAP_PRIMARY_GAUGES =
-            "draft_swap_primary_gauges";
     private static final String TAG = "H9Cluster";
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -36,7 +34,6 @@ public final class PreviewActivity extends Activity {
 
     private ClusterRenderer clusterRenderer;
     private SkinSettingsSession.Snapshot activeSnapshot;
-    private boolean activeSwapPrimaryGauges;
     private ClusterDataSource dataSource;
     private ClusterState lastState = ClusterState.empty();
 
@@ -62,10 +59,7 @@ public final class PreviewActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
-        applySnapshot(
-                resolveSnapshot(getIntent()),
-                resolveSwapPrimaryGauges(getIntent()),
-                true);
+        applySnapshot(resolveSnapshot(getIntent()), true);
 
         dataSource = BuildConfig.DEMO_MODE
                 ? new DemoClusterDataSource(this)
@@ -86,10 +80,7 @@ public final class PreviewActivity extends Activity {
         setIntent(intent);
         boolean forceReload = intent != null
                 && intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false);
-        applySnapshot(
-                resolveSnapshot(intent),
-                resolveSwapPrimaryGauges(intent),
-                forceReload);
+        applySnapshot(resolveSnapshot(intent), forceReload);
     }
 
     private SkinSettingsSession.Snapshot resolveSnapshot(Intent intent) {
@@ -113,33 +104,18 @@ public final class PreviewActivity extends Activity {
                 SkinSettingsStore.load(this, persistedSkin));
     }
 
-    private boolean resolveSwapPrimaryGauges(Intent intent) {
-        boolean hasDraft = intent != null
-                && intent.getBooleanExtra(EXTRA_HAS_DRAFT, false);
-        return hasDraft
-                ? intent.getBooleanExtra(
-                        EXTRA_DRAFT_SWAP_PRIMARY_GAUGES,
-                        false)
-                : SkinPreferences.getSwapPrimaryGauges(this);
-    }
-
     private void applySnapshot(
             SkinSettingsSession.Snapshot snapshot,
-            boolean swapPrimaryGauges,
             boolean forceReload) {
-        if (!forceReload
-                && snapshot.equals(activeSnapshot)
-                && swapPrimaryGauges == activeSwapPrimaryGauges) {
+        if (!forceReload && snapshot.equals(activeSnapshot)) {
             return;
         }
         View rendererView = SkinRegistry.createRenderer(
                 this,
                 snapshot.skinId,
-                snapshot.settings,
-                swapPrimaryGauges);
+                snapshot.settings);
         clusterRenderer = (ClusterRenderer) rendererView;
         activeSnapshot = snapshot;
-        activeSwapPrimaryGauges = swapPrimaryGauges;
         rendererView.setBackgroundColor(
                 PreviewAppearance.backgroundColor(BuildConfig.DEMO_MODE));
         if (shouldReturnToSettingsOnInteraction()) {

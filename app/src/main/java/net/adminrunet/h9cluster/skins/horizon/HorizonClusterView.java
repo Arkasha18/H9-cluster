@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster.skins.horizon;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.SkinSettings;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -65,12 +66,15 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public HorizonClusterView(Context context) {
-        this(context, false);
+        this(context, new HorizonSettingsProvider().getDefaultSettings());
     }
 
-    public HorizonClusterView(Context context, boolean swapPrimaryGauges) {
+    public HorizonClusterView(
+            Context context,
+            SkinSettings settings) {
         super(context);
-        this.swapPrimaryGauges = swapPrimaryGauges;
+        this.swapPrimaryGauges = HorizonSettingsProvider
+                .shouldSwapPrimaryGauges(settings);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
@@ -380,7 +384,12 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         shapePaint.setStyle(Paint.Style.STROKE);
         shapePaint.setStrokeWidth(2.0f);
         shapePaint.setColor(0x5531D7C5);
-        canvas.drawLine(STATUS_GEAR_GAP_LEFT, 72.0f, STATUS_GEAR_GAP_RIGHT, 72.0f, shapePaint);
+        canvas.drawLine(
+                STATUS_GEAR_GAP_LEFT,
+                72.0f,
+                STATUS_GEAR_GAP_RIGHT,
+                72.0f,
+                shapePaint);
     }
 
     private void drawCurrentGearCard(Canvas canvas, ClusterState state) {

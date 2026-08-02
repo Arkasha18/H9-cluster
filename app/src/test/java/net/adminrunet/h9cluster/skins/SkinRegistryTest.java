@@ -19,9 +19,11 @@ public final class SkinRegistryTest {
     }
 
     @Test
-    public void builtInSkinsDoNotExposeUnrelatedSettings() {
-        for (SkinRegistry.Definition definition
-                : SkinRegistry.getDefinitions()) {
+    public void classicAndSportDoNotExposeSettings() {
+        SkinRegistry.Definition[] definitions =
+                SkinRegistry.getDefinitions();
+        for (int index = 0; index < 2; index++) {
+            SkinRegistry.Definition definition = definitions[index];
             assertFalse(definition.hasSettings());
             assertTrue(definition.getDefaultSettings().isEmpty());
             assertTrue(definition.normalizeSettings(
@@ -30,6 +32,17 @@ public final class SkinRegistryTest {
                             .build())
                     .isEmpty());
         }
+    }
+
+    @Test
+    public void horizonExposesItsOwnSettings() {
+        SkinRegistry.Definition definition =
+                SkinRegistry.getDefinition(SkinRegistry.HORIZON);
+
+        assertTrue(definition.hasSettings());
+        assertFalse(definition.getDefaultSettings().getBoolean(
+                "swap_primary_gauges",
+                true));
     }
 
     @Test

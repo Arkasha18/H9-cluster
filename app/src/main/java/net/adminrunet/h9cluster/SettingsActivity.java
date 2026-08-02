@@ -35,30 +35,23 @@ public final class SettingsActivity extends Activity {
         settingsView = new SettingsView(
                 this,
                 session,
-                SkinPreferences.getSwapPrimaryGauges(this),
                 new SettingsView.Listener() {
                     @Override
                     public void onDraftChanged(
-                            SkinSettingsSession.Snapshot draft,
-                            boolean swapPrimaryGauges) {
+                            SkinSettingsSession.Snapshot draft) {
                         if (ClusterLauncher.previewOnClusterDisplay(
                                 SettingsActivity.this,
-                                draft,
-                                swapPrimaryGauges)) {
+                                draft)) {
                             unsavedPreviewActive = true;
                         }
                     }
 
                     @Override
                     public void onSaveRequested(
-                            SkinSettingsSession.Snapshot draft,
-                            boolean swapPrimaryGauges) {
+                            SkinSettingsSession.Snapshot draft) {
                         SkinPreferences.setSelectedSkin(
                                 SettingsActivity.this,
                                 draft.skinId);
-                        SkinPreferences.setSwapPrimaryGauges(
-                                SettingsActivity.this,
-                                swapPrimaryGauges);
                         for (Map.Entry<String, SkinSettings> entry
                                 : session.drafts().entrySet()) {
                             SkinSettingsStore.save(
