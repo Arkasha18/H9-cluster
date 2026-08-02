@@ -165,7 +165,7 @@ public final class SettingsView extends View {
                 paint);
         drawCenteredText(
                 canvas,
-                "Настроить выбранную тему",
+                "Настройки",
                 480.0f,
                 CONFIGURE_TOP + 31.0f,
                 17.0f,
