@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster.skins.horizon;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.SkinSettings;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -55,6 +56,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
+    private final boolean swapPrimaryGauges;
 
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
@@ -64,7 +66,15 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public HorizonClusterView(Context context) {
+        this(context, new HorizonSettingsProvider().getDefaultSettings());
+    }
+
+    public HorizonClusterView(
+            Context context,
+            SkinSettings settings) {
         super(context);
+        this.swapPrimaryGauges = HorizonSettingsProvider
+                .shouldSwapPrimaryGauges(settings);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
@@ -94,8 +104,10 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         canvas.scale(scale, scale);
 
         drawSidePanels(canvas);
-        drawGauge(canvas, 330.0f, 315.0f, displayedSpeed, 220.0f, false);
-        drawGauge(canvas, 1590.0f, 315.0f, displayedRpm, 8000.0f, true);
+        float speedCenterX = swapPrimaryGauges ? 1590.0f : 330.0f;
+        float rpmCenterX = swapPrimaryGauges ? 330.0f : 1590.0f;
+        drawGauge(canvas, speedCenterX, 315.0f, displayedSpeed, 220.0f, false);
+        drawGauge(canvas, rpmCenterX, 315.0f, displayedRpm, 8000.0f, true);
         drawFuelCard(canvas, targetState);
         drawCoolantCard(canvas, targetState);
         drawStatusBar(canvas, targetState, frameAtMs);
@@ -372,7 +384,12 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         shapePaint.setStyle(Paint.Style.STROKE);
         shapePaint.setStrokeWidth(2.0f);
         shapePaint.setColor(0x5531D7C5);
-        canvas.drawLine(STATUS_GEAR_GAP_LEFT, 72.0f, STATUS_GEAR_GAP_RIGHT, 72.0f, shapePaint);
+        canvas.drawLine(
+                STATUS_GEAR_GAP_LEFT,
+                72.0f,
+                STATUS_GEAR_GAP_RIGHT,
+                72.0f,
+                shapePaint);
     }
 
     private void drawCurrentGearCard(Canvas canvas, ClusterState state) {

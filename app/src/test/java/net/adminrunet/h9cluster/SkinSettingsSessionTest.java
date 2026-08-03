@@ -53,6 +53,32 @@ public final class SkinSettingsSessionTest {
     }
 
     @Test
+    public void horizonDraftSurvivesSwitchToSkinWithoutSettings() {
+        SkinSettingsSession session = new SkinSettingsSession(
+                SkinRegistry.HORIZON,
+                emptyLoader(),
+                new SkinSettingsSession.Normalizer() {
+                    @Override
+                    public SkinSettings normalize(
+                            String skinId,
+                            SkinSettings settings) {
+                        return SkinRegistry.normalizeSettings(skinId, settings);
+                    }
+                });
+
+        session.updateSettings(SkinSettings.builder()
+                .putBoolean("swap_primary_gauges", true)
+                .build());
+        session.selectSkin(SkinRegistry.CLASSIC);
+        assertTrue(session.snapshot().settings.isEmpty());
+
+        session.selectSkin(SkinRegistry.HORIZON);
+        assertTrue(session.snapshot().settings.getBoolean(
+                "swap_primary_gauges",
+                false));
+    }
+
+    @Test
     public void unknownSkinFallsBackToRegistryDefault() {
         SkinSettingsSession session = new SkinSettingsSession(
                 "missing",

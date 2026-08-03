@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster.skins;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
+import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
 
 import android.content.Context;
@@ -85,7 +86,9 @@ public final class SkinRegistry {
             return editor;
         }
 
-        private View createRenderer(Context context, SkinSettings settings) {
+        private View createRenderer(
+                Context context,
+                SkinSettings settings) {
             return factory.create(context, normalizeSettings(settings));
         }
     }
@@ -126,10 +129,10 @@ public final class SkinRegistry {
                     public View create(
                             Context context,
                             SkinSettings settings) {
-                        return new HorizonClusterView(context);
+                        return new HorizonClusterView(context, settings);
                     }
                 },
-                null)
+                new HorizonSettingsProvider())
     };
 
     private SkinRegistry() {
