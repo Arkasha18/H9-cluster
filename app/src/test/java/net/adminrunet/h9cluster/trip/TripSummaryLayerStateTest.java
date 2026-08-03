@@ -35,4 +35,49 @@ public final class TripSummaryLayerStateTest {
         state.onEngineStarted();
         assertTrue(state.isRendererVisible());
     }
+
+    @Test
+    public void userRequestShowsRendererHiddenSinceTheEngineStopped() {
+        TripSummaryLayerState state = new TripSummaryLayerState(true);
+
+        state.onUserRequestedRenderer();
+
+        assertTrue(state.isRendererVisible());
+    }
+
+    @Test
+    public void userRequestShowsRendererAfterAStopWithoutDistance() {
+        TripSummaryLayerState state = new TripSummaryLayerState();
+        state.onSummaryShown();
+        state.onSummaryDismissed();
+        assertFalse(state.isRendererVisible());
+
+        state.onUserRequestedRenderer();
+
+        assertTrue(state.isRendererVisible());
+        assertFalse(state.isSummaryVisible());
+    }
+
+    @Test
+    public void userRequestReplacesASummaryStillOnScreen() {
+        TripSummaryLayerState state = new TripSummaryLayerState();
+        state.onSummaryShown();
+
+        state.onUserRequestedRenderer();
+
+        assertTrue(state.isRendererVisible());
+        assertFalse(state.isSummaryVisible());
+    }
+
+    @Test
+    public void engineStartStillShowsRendererAfterAUserRequest() {
+        TripSummaryLayerState state = new TripSummaryLayerState(true);
+        state.onUserRequestedRenderer();
+
+        state.onSummaryShown();
+        assertFalse(state.isRendererVisible());
+
+        state.onEngineStarted();
+        assertTrue(state.isRendererVisible());
+    }
 }

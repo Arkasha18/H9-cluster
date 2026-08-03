@@ -22,6 +22,15 @@ public final class TripSummaryLayerState {
         summaryVisible = false;
     }
 
+    /**
+     * An explicit request from the settings screen outranks the hiding that
+     * follows an engine stop: the driver asked to look at a skin right now.
+     */
+    public void onUserRequestedRenderer() {
+        rendererVisible = true;
+        summaryVisible = false;
+    }
+
     public void onEngineStarted() {
         rendererVisible = true;
         summaryVisible = false;

@@ -15,19 +15,26 @@ public final class ClusterLauncher {
     private ClusterLauncher() {
     }
 
+    /** Automatic starts keep whatever visibility the engine stop left behind. */
     public static boolean startOnClusterDisplay(Context context) {
-        return launchOnClusterDisplay(context, null);
+        return launchOnClusterDisplay(context, null, false);
+    }
+
+    /** The settings screen asks for the chosen skin even with the engine off. */
+    static boolean applyOnClusterDisplay(Context context) {
+        return launchOnClusterDisplay(context, null, true);
     }
 
     static boolean previewOnClusterDisplay(
             Context context,
             SkinSettingsSession.Snapshot draft) {
-        return launchOnClusterDisplay(context, draft);
+        return launchOnClusterDisplay(context, draft, true);
     }
 
     private static boolean launchOnClusterDisplay(
             Context context,
-            SkinSettingsSession.Snapshot draft) {
+            SkinSettingsSession.Snapshot draft,
+            boolean userRequested) {
         DisplayManager displayManager =
                 (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
         boolean clusterDisplayAvailable =
@@ -52,6 +59,7 @@ public final class ClusterLauncher {
                     PreviewActivity.EXTRA_DRAFT_SETTINGS,
                     SkinSettingsTransport.toBundle(draft.settings));
         }
+        intent.putExtra(PreviewActivity.EXTRA_USER_REQUESTED, userRequested);
         intent.putExtra(
                 PreviewActivity.EXTRA_SINGLE_DISPLAY_FALLBACK,
                 ClusterDisplayPolicy.isSingleDisplayFallback(

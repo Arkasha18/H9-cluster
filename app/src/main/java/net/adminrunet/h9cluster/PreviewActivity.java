@@ -34,6 +34,7 @@ import android.widget.FrameLayout;
 public final class PreviewActivity extends Activity {
     public static final String EXTRA_RELOAD_SKIN = "reload_skin";
     public static final String EXTRA_SINGLE_DISPLAY_FALLBACK = "single_display_fallback";
+    public static final String EXTRA_USER_REQUESTED = "user_requested";
     public static final String EXTRA_HAS_DRAFT = "has_skin_settings_draft";
     public static final String EXTRA_DRAFT_SKIN = "draft_skin";
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
@@ -101,6 +102,7 @@ public final class PreviewActivity extends Activity {
         tripSummaryLayerStore = new TripSummaryLayerStore(this);
         tripSummaryLayers = new TripSummaryLayerState(
                 tripSummaryLayerStore.isRendererSuppressed());
+        clearSuppressionIfUserRequested(getIntent());
         applySnapshot(resolveSnapshot(getIntent()), true);
 
         tripCoordinator = new TripSummaryCoordinator(
@@ -154,7 +156,24 @@ public final class PreviewActivity extends Activity {
         setIntent(intent);
         boolean forceReload = intent != null
                 && intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false);
+        clearSuppressionIfUserRequested(intent);
         applySnapshot(resolveSnapshot(intent), forceReload);
+    }
+
+    /**
+     * Applying or previewing a skin from the settings screen is an explicit
+     * request to look at it, so it outlives the hiding an engine stop left
+     * behind — including across a later restart of this activity.
+     */
+    private void clearSuppressionIfUserRequested(Intent intent) {
+        if (intent == null
+                || !intent.getBooleanExtra(EXTRA_USER_REQUESTED, false)) {
+            return;
+        }
+        tripSummaryLayerStore.setRendererSuppressed(false);
+        tripSummaryLayers.onUserRequestedRenderer();
+        removeTripSummary();
+        syncRendererVisibility();
     }
 
     private SkinSettingsSession.Snapshot resolveSnapshot(Intent intent) {
