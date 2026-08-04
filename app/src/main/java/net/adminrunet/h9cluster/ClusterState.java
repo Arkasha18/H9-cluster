@@ -17,6 +17,7 @@ public final class ClusterState {
     public final float tyreRearLeftBar;
     public final float tyreRearRightBar;
     public final float consumptionLitersPer100Km;
+    public final float journeyAverageFuelConsumption;
     public final float voltage;
     public final float outsideTemperatureC;
     public final float steeringAngleDeg;
@@ -26,6 +27,8 @@ public final class ClusterState {
     public final float wheelRearRightKph;
     public final float engineFlywheelTorque;
     public final long rpmUpdatedAtMs;
+    public final long journeyAverageFuelConsumptionUpdatedAtMs;
+    public final long journeyOdometerUpdatedAtMs;
     public final long steeringUpdatedAtMs;
     public final long transmissionTemperatureUpdatedAtMs;
     public final String driveMode;
@@ -46,6 +49,7 @@ public final class ClusterState {
             float tyreRearLeftBar,
             float tyreRearRightBar,
             float consumptionLitersPer100Km,
+            float journeyAverageFuelConsumption,
             float voltage,
             float outsideTemperatureC,
             float steeringAngleDeg,
@@ -55,6 +59,8 @@ public final class ClusterState {
             float wheelRearRightKph,
             float engineFlywheelTorque,
             long rpmUpdatedAtMs,
+            long journeyAverageFuelConsumptionUpdatedAtMs,
+            long journeyOdometerUpdatedAtMs,
             long steeringUpdatedAtMs,
             long transmissionTemperatureUpdatedAtMs,
             String driveMode) {
@@ -73,6 +79,8 @@ public final class ClusterState {
         this.tyreRearLeftBar = tyreRearLeftBar;
         this.tyreRearRightBar = tyreRearRightBar;
         this.consumptionLitersPer100Km = consumptionLitersPer100Km;
+        this.journeyAverageFuelConsumption =
+                journeyAverageFuelConsumption;
         this.voltage = voltage;
         this.outsideTemperatureC = outsideTemperatureC;
         this.steeringAngleDeg = steeringAngleDeg;
@@ -82,6 +90,9 @@ public final class ClusterState {
         this.wheelRearRightKph = wheelRearRightKph;
         this.engineFlywheelTorque = engineFlywheelTorque;
         this.rpmUpdatedAtMs = rpmUpdatedAtMs;
+        this.journeyAverageFuelConsumptionUpdatedAtMs =
+                journeyAverageFuelConsumptionUpdatedAtMs;
+        this.journeyOdometerUpdatedAtMs = journeyOdometerUpdatedAtMs;
         this.steeringUpdatedAtMs = steeringUpdatedAtMs;
         this.transmissionTemperatureUpdatedAtMs =
                 transmissionTemperatureUpdatedAtMs;
@@ -109,6 +120,7 @@ public final class ClusterState {
                 0.0f,
                 0.0f,
                 0.0f,
+                Float.NaN,
                 0.0f,
                 0.0f,
                 0.0f,
@@ -117,6 +129,8 @@ public final class ClusterState {
                 Float.NaN,
                 Float.NaN,
                 Float.NaN,
+                0L,
+                0L,
                 0L,
                 0L,
                 0L,

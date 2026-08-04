@@ -26,6 +26,13 @@ final class DemoScenario {
     };
 
     ClusterState snapshot(long elapsedMs, long nowMs) {
+        return snapshot(elapsedMs, nowMs, false);
+    }
+
+    ClusterState snapshot(
+            long elapsedMs,
+            long nowMs,
+            boolean invalidConsumption) {
         long cycleTimeMs = Math.floorMod(elapsedMs, CYCLE_MS);
         float seconds = cycleTimeMs / 1_000.0f;
         float speed = speedAt(seconds);
@@ -41,24 +48,48 @@ final class DemoScenario {
         float turnDelta = steering / 100.0f;
         double distanceKm = Math.max(0L, elapsedMs)
                 * 65.0 / 3_600_000.0;
+        int alertPhase = seconds < 10.0f
+                ? 0
+                : seconds < 20.0f
+                ? 1
+                : 2;
+        int coolantC = alertPhase == 0
+                ? 105
+                : alertPhase == 1
+                ? 115
+                : 125;
+        float transmissionTemperatureC = coolantC;
+        float fuelLiters = alertPhase == 0
+                ? 58.0f
+                : alertPhase == 1
+                ? 7.0f
+                : 1.0f;
+        float frontLeftPressure = alertPhase == 0 ? 2.35f : 1.85f;
+        float averageConsumption = alertPhase == 0 ? 18.0f : 21.5f;
+        float voltage = alertPhase == 0 ? 13.8f : 11.8f;
 
         return new ClusterState(
                 Math.round(speed),
                 rpm,
                 gear,
-                Math.round(82.0f + 6.0f * seconds / 30.0f),
-                68.0f + 12.0f * seconds / 30.0f,
-                58.0f - 0.02f * seconds,
+                coolantC,
+                transmissionTemperatureC,
+                fuelLiters,
                 620 - Math.round(seconds * 0.3f),
                 28_642.0 + distanceKm,
                 42.3f + (float) distanceKm,
                 167.8f + (float) distanceKm,
-                2.35f + 0.02f * sin(seconds / 3.0f),
+                frontLeftPressure,
                 2.37f + 0.02f * sin(seconds / 3.0f + 0.5f),
                 2.42f + 0.02f * sin(seconds / 3.0f + 1.0f),
                 2.40f + 0.02f * sin(seconds / 3.0f + 1.5f),
-                9.2f + 1.4f * sin(seconds / 2.0f),
-                14.1f + 0.1f * sin(seconds / 4.0f),
+                invalidConsumption
+                        ? Float.NaN
+                        : averageConsumption,
+                invalidConsumption
+                        ? Float.NaN
+                        : averageConsumption,
+                voltage,
                 18.5f + 0.5f * sin(seconds / 8.0f),
                 steering,
                 Math.max(0.0f, speed - turnDelta),
@@ -69,7 +100,48 @@ final class DemoScenario {
                 nowMs,
                 nowMs,
                 nowMs,
+                nowMs,
+                nowMs,
                 driveModeAt(seconds));
+    }
+
+    ClusterState stoppedSnapshot(
+            long frozenElapsedMs,
+            long nowMs,
+            boolean invalidConsumption) {
+        ClusterState frozen =
+                snapshot(frozenElapsedMs, nowMs, invalidConsumption);
+        return new ClusterState(
+                0,
+                0,
+                0,
+                frozen.coolantC,
+                frozen.transmissionTemperatureC,
+                frozen.fuelLiters,
+                frozen.rangeKm,
+                frozen.odometerKm,
+                frozen.dayKm,
+                frozen.tripKm,
+                frozen.tyreFrontLeftBar,
+                frozen.tyreFrontRightBar,
+                frozen.tyreRearLeftBar,
+                frozen.tyreRearRightBar,
+                frozen.consumptionLitersPer100Km,
+                frozen.journeyAverageFuelConsumption,
+                frozen.voltage,
+                frozen.outsideTemperatureC,
+                frozen.steeringAngleDeg,
+                0.0f,
+                0.0f,
+                0.0f,
+                0.0f,
+                frozen.engineFlywheelTorque,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                nowMs,
+                frozen.driveMode);
     }
 
     private static float speedAt(float seconds) {

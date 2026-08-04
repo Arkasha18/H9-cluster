@@ -61,7 +61,7 @@ public final class SettingsActivity extends Activity {
                         }
                         unsavedPreviewActive = false;
                         boolean launched =
-                                ClusterLauncher.startOnClusterDisplay(
+                                ClusterLauncher.applyOnClusterDisplay(
                                         SettingsActivity.this);
                         settingsView.showSaveResult(launched);
                     }
@@ -86,7 +86,7 @@ public final class SettingsActivity extends Activity {
     private void restorePersistedPreview() {
         if (unsavedPreviewActive) {
             unsavedPreviewActive = false;
-            ClusterLauncher.startOnClusterDisplay(this);
+            ClusterLauncher.applyOnClusterDisplay(this);
         }
     }
 }

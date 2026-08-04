@@ -1,12 +1,18 @@
 package net.adminrunet.h9cluster;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import net.adminrunet.h9cluster.trip.TripSession;
+import net.adminrunet.h9cluster.trip.TripSessionPersistence;
+import net.adminrunet.h9cluster.trip.TripSummary;
+import net.adminrunet.h9cluster.trip.TripSummaryCoordinator;
 
 import org.junit.Test;
 
@@ -118,6 +124,86 @@ public final class DemoClusterDataSourceTest {
         assertEquals(0, scheduler.postCount);
     }
 
+    @Test
+    public void engineStopRequestIsIdempotentAndKeepsFreshTicks() {
+        FakeClock clock = new FakeClock(1_000L);
+        FakeScheduler scheduler = new FakeScheduler();
+        DemoClusterDataSource source = new DemoClusterDataSource(
+                new DemoScenario(),
+                clock,
+                scheduler);
+        List<ClusterState> received = new ArrayList<>();
+        source.start(received::add);
+        scheduler.runImmediate();
+        clock.nowMs = 5_000L;
+        scheduler.runDelayed();
+        float distanceAtRequest = received.get(received.size() - 1).dayKm;
+
+        assertTrue(source.requestEngineStop());
+        assertFalse(source.requestEngineStop());
+        clock.nowMs = 8_000L;
+        scheduler.runDelayed();
+
+        ClusterState stopped = received.get(received.size() - 1);
+        assertEquals(0, stopped.speedKph);
+        assertEquals(0, stopped.rpm);
+        assertEquals(0, stopped.currentGear);
+        assertEquals(distanceAtRequest, stopped.dayKm, 0.0f);
+        assertEquals(8_000L, stopped.rpmUpdatedAtMs);
+        assertEquals(50L, scheduler.lastDelayMs);
+    }
+
+    @Test
+    public void stopRequestUsesRealOneAndHalfSecondCoordinatorHold() {
+        FakeClock clock = new FakeClock(1_000L);
+        FakeScheduler scheduler = new FakeScheduler();
+        DemoClusterDataSource source = new DemoClusterDataSource(
+                new DemoScenario(),
+                clock,
+                scheduler);
+        MemoryPersistence persistence = new MemoryPersistence();
+        List<TripSummary> summaries = new ArrayList<>();
+        TripSummaryCoordinator coordinator = new TripSummaryCoordinator(
+                persistence,
+                summaries::add,
+                clock::nowMs);
+        source.start(coordinator::onClusterState);
+        scheduler.runImmediate();
+        clock.nowMs = 2_000L;
+        scheduler.runDelayed();
+        assertTrue(coordinator.isTripActive());
+
+        assertTrue(source.requestEngineStop());
+        scheduler.runDelayed();
+        clock.nowMs = 3_499L;
+        scheduler.runDelayed();
+        assertTrue(summaries.isEmpty());
+
+        clock.nowMs = 3_500L;
+        scheduler.runDelayed();
+        assertEquals(1, summaries.size());
+    }
+
+    @Test
+    public void invalidConsumptionModeProducesIndependentInvalidMetric() {
+        FakeClock clock = new FakeClock(1_000L);
+        FakeScheduler scheduler = new FakeScheduler();
+        DemoClusterDataSource source = new DemoClusterDataSource(
+                new DemoScenario(),
+                clock,
+                scheduler,
+                true);
+        List<ClusterState> received = new ArrayList<>();
+        source.start(received::add);
+        scheduler.runImmediate();
+
+        assertTrue(Float.isNaN(
+                received.get(0).journeyAverageFuelConsumption));
+        assertTrue(Float.isNaN(
+                received.get(0).consumptionLitersPer100Km));
+        assertTrue(received.get(0).dayKm > 0.0f);
+    }
+
     private static final class FakeClock
             implements DemoClusterDataSource.Clock {
         private long nowMs;
@@ -186,6 +272,38 @@ public final class DemoClusterDataSourceTest {
             if (task != null) {
                 task.run();
             }
+        }
+    }
+
+    private static final class MemoryPersistence
+            implements TripSessionPersistence {
+        private TripSession session;
+
+        @Override
+        public TripSession load(long nowMs) {
+            return session;
+        }
+
+        @Override
+        public void saveAsync(TripSession session) {
+            this.session = session;
+        }
+
+        @Override
+        public boolean saveSync(TripSession session) {
+            this.session = session;
+            return true;
+        }
+
+        @Override
+        public void clearAsync() {
+            session = null;
+        }
+
+        @Override
+        public boolean clearSync() {
+            session = null;
+            return true;
         }
     }
 }
