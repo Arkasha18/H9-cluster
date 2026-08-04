@@ -40,6 +40,8 @@ public final class PreviewActivity extends Activity {
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
     public static final String EXTRA_DEMO_INVALID_CONSUMPTION =
             "demo_invalid_consumption";
+    private static final String STATE_USER_REQUEST_CONSUMED =
+            "user_requested_consumed";
     private static final String TAG = "H9Cluster";
     private static final String TRIP_TELEMETRY_TAG = "H9TripTelemetry";
     private static final long TRIP_HEARTBEAT_MS = 500L;
@@ -61,6 +63,7 @@ public final class PreviewActivity extends Activity {
     private SkinSettingsSession.Snapshot activeSnapshot;
     private ClusterDataSource dataSource;
     private TripSummaryCoordinator tripCoordinator;
+    private UserRequestedRendererEvent userRequestedRendererEvent;
     private ClusterState lastState = ClusterState.empty();
     private long lastTripTelemetryLogAtMs = -1L;
     private final Runnable tripHeartbeat = new Runnable() {
@@ -77,6 +80,11 @@ public final class PreviewActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        userRequestedRendererEvent = new UserRequestedRendererEvent(
+                savedInstanceState != null
+                        && savedInstanceState.getBoolean(
+                                STATE_USER_REQUEST_CONSUMED,
+                                false));
         Log.i(TAG, "Starting build "
                 + BuildConfig.VERSION_NAME
                 + "-display2-api28");
@@ -154,6 +162,7 @@ public final class PreviewActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        userRequestedRendererEvent.onNewIntent();
         boolean forceReload = intent != null
                 && intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false);
         clearSuppressionIfUserRequested(intent);
@@ -162,14 +171,16 @@ public final class PreviewActivity extends Activity {
 
     /**
      * Applying or previewing a skin from the settings screen is an explicit
-     * request to look at it, so it outlives the hiding an engine stop left
-     * behind — including across a later restart of this activity.
+     * request to look at it. The request is consumed once so a later
+     * recreation cannot override a newer engine-stop suppression.
      */
     private void clearSuppressionIfUserRequested(Intent intent) {
-        if (intent == null
-                || !intent.getBooleanExtra(EXTRA_USER_REQUESTED, false)) {
+        boolean userRequested = intent != null
+                && intent.getBooleanExtra(EXTRA_USER_REQUESTED, false);
+        if (!userRequestedRendererEvent.consume(userRequested)) {
             return;
         }
+        intent.removeExtra(EXTRA_USER_REQUESTED);
         tripSummaryLayerStore.setRendererSuppressed(false);
         tripSummaryLayers.onUserRequestedRenderer();
         removeTripSummary();
@@ -345,6 +356,14 @@ public final class PreviewActivity extends Activity {
             dataSource.stop();
         }
         super.onDestroy();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(
+                STATE_USER_REQUEST_CONSUMED,
+                userRequestedRendererEvent.isConsumed());
+        super.onSaveInstanceState(outState);
     }
 
     @Override
