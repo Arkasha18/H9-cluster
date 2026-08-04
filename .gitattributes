@@ -1,0 +1,14 @@
+# Текстовые файлы всегда выгружаются с переводами строк LF.
+# Без этого правила Git на Windows с core.autocrlf=true портит gradlew,
+# и сборка в Docker и на Linux падает с ошибкой "/usr/bin/env: 'sh\r'".
+* text=auto eol=lf
+
+# Командные файлы Windows требуют переводов строк CRLF.
+*.bat text eol=crlf
+
+# Двоичные файлы не преобразуются.
+*.jar binary
+*.png binary
+*.so binary
+*.ttf binary
+*.zip binary
