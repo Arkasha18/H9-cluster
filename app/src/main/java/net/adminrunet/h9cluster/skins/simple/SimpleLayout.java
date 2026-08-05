@@ -427,12 +427,6 @@ final class SimpleLayout {
                         * span / SCALE_TOTAL_LENGTH));
     }
 
-    static String formatGear(int gear) {
-        return gear >= 1 && gear <= 8
-                ? Integer.toString(gear)
-                : "";
-    }
-
     static String formatConsumption(float litersPer100Km) {
         return isPositiveFinite(litersPer100Km)
                 ? String.format(Locale.US, "%.1f L", litersPer100Km)

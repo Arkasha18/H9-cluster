@@ -72,6 +72,7 @@ final class DemoScenario {
                 Math.round(speed),
                 rpm,
                 gear,
+                selectorFor(gear),
                 coolantC,
                 transmissionTemperatureC,
                 fuelLiters,
@@ -115,6 +116,7 @@ final class DemoScenario {
                 0,
                 0,
                 0,
+                GearSelector.PARK,
                 frozen.coolantC,
                 frozen.transmissionTemperatureC,
                 frozen.fuelLiters,
@@ -180,6 +182,10 @@ final class DemoScenario {
             return 5;
         }
         return 6;
+    }
+
+    private static String selectorFor(int gear) {
+        return gear > 0 ? GearSelector.DRIVE : GearSelector.PARK;
     }
 
     private static String driveModeAt(float seconds) {

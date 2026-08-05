@@ -112,6 +112,7 @@ public final class TripTelemetryTest {
                 speedKph,
                 800,
                 1,
+                "D",
                 80,
                 Float.NaN,
                 50.0f,

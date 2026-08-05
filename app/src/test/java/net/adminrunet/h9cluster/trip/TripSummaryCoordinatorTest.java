@@ -353,6 +353,7 @@ public final class TripSummaryCoordinatorTest {
                 speedKph,
                 rpm,
                 speedKph == 0 ? 0 : 3,
+                speedKph == 0 ? "P" : "D",
                 80,
                 Float.NaN,
                 50.0f,

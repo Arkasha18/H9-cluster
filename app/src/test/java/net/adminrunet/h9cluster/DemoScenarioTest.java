@@ -70,6 +70,8 @@ public final class DemoScenarioTest {
         assertEquals(4, scenario.snapshot(8_000L, 9_000L).currentGear);
         assertEquals(6, scenario.snapshot(15_000L, 16_000L).currentGear);
         assertEquals(0, scenario.snapshot(28_000L, 29_000L).currentGear);
+        assertEquals("D", scenario.snapshot(8_000L, 9_000L).gearSelector);
+        assertEquals("P", scenario.snapshot(28_000L, 29_000L).gearSelector);
         assertEquals("SPORT", scenario.snapshot(4_000L, 5_000L).driveMode);
         assertEquals("NORMAL", scenario.snapshot(12_000L, 13_000L).driveMode);
         assertEquals("ECO", scenario.snapshot(24_000L, 25_000L).driveMode);
