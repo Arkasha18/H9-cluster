@@ -14,12 +14,13 @@ public final class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(final Context context, final Intent intent) {
         final String action = intent == null ? null : intent.getAction();
-        if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
-                && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+        final Context applicationContext = context.getApplicationContext();
+        if (!BootStartPolicy.shouldStart(
+                action,
+                AutostartPreferences.isAutostartSuspended(applicationContext))) {
             return;
         }
 
-        final Context applicationContext = context.getApplicationContext();
         final PendingResult pendingResult = goAsync();
         final Handler handler = new Handler(Looper.getMainLooper());
 

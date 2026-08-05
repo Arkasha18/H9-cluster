@@ -7,7 +7,7 @@ import android.content.SharedPreferences;
 
 /** Persists the skin used by manual launches and boot-time display startup. */
 public final class SkinPreferences {
-    private static final String PREFERENCES_NAME = "cluster_settings";
+    static final String PREFERENCES_NAME = "cluster_settings";
     private static final String KEY_SELECTED_SKIN = "selected_skin";
 
     private SkinPreferences() {

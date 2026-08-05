@@ -24,6 +24,7 @@ public final class SettingsView extends View {
     private static final int COLOR_TEXT = 0xFFF2F5F7;
     private static final int COLOR_MUTED = 0xFF98A7AE;
     private static final int COLOR_ACCENT = 0xFF31D7C5;
+    private static final int COLOR_DANGER = 0xFFE2574C;
     private static final SkinRegistry.Definition[] SKINS =
             SkinRegistry.getDefinitions();
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
@@ -33,6 +34,7 @@ public final class SettingsView extends View {
     private static final float SAVE_BOTTOM_DEFAULT = 398.0f;
     private static final float SAVE_TOP_WITH_SETTINGS = 365.0f;
     private static final float SAVE_BOTTOM_WITH_SETTINGS = 423.0f;
+    private static final float STATUS_BASELINE = 445.0f;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final SkinSettingsSession session;
@@ -46,6 +48,8 @@ public final class SettingsView extends View {
         void onDraftChanged(SkinSettingsSession.Snapshot draft);
 
         void onSaveRequested(SkinSettingsSession.Snapshot draft);
+
+        void onExitRequested();
     }
 
     SettingsView(
@@ -116,9 +120,7 @@ public final class SettingsView extends View {
                 paint);
         drawCenteredText(
                 canvas,
-                BuildConfig.DEMO_MODE
-                        ? "Сохранить и запустить"
-                        : "Сохранить и запустить на дисплее 2",
+                saveButtonTitle(),
                 480.0f,
                 saveTop + 36.0f,
                 19.0f,
@@ -133,12 +135,45 @@ public final class SettingsView extends View {
                                 : "При автозапуске основной дисплей остаётся свободным"
                         : status,
                 480.0f,
-                455.0f,
+                STATUS_BASELINE,
                 16.0f,
                 status.length() == 0 ? COLOR_MUTED : COLOR_ACCENT,
                 false);
 
+        drawExitButton(canvas);
+
         canvas.restoreToCount(save);
+    }
+
+    private String saveButtonTitle() {
+        if (!selectedDefinition().hasRenderer()) {
+            return "Сохранить и показать штатную панель";
+        }
+        return BuildConfig.DEMO_MODE
+                ? "Сохранить и запустить"
+                : "Сохранить и запустить на дисплее 2";
+    }
+
+    private void drawExitButton(Canvas canvas) {
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(COLOR_DANGER);
+        canvas.drawRoundRect(
+                SettingsExitButton.LEFT,
+                SettingsExitButton.TOP,
+                SettingsExitButton.RIGHT,
+                SettingsExitButton.BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        drawCenteredText(
+                canvas,
+                "Выйти из приложения",
+                480.0f,
+                SettingsExitButton.TOP + 29.0f,
+                17.0f,
+                COLOR_DANGER,
+                true);
     }
 
     private void drawConfigureButton(Canvas canvas) {
@@ -235,7 +270,31 @@ public final class SettingsView extends View {
             listener.onSaveRequested(session.snapshot());
             return true;
         }
+        if (SettingsExitButton.contains(x, y)) {
+            confirmExit();
+            return true;
+        }
         return true;
+    }
+
+    private void confirmExit() {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Выйти из приложения?")
+                .setMessage(
+                        "Приборная панель закроется, чтение данных автомобиля"
+                                + " прекратится. Выбранная тема и её настройки"
+                                + " сохранятся.")
+                .setPositiveButton(
+                        "Выйти",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                listener.onExitRequested();
+                            }
+                        })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     @Override
@@ -303,6 +362,11 @@ public final class SettingsView extends View {
     }
 
     void showSaveResult(boolean launched) {
+        if (!selectedDefinition().hasRenderer()) {
+            status = "Настройки сохранены. Показана штатная панель";
+            invalidate();
+            return;
+        }
         status = launched
                 ? BuildConfig.DEMO_MODE
                         ? "Настройки сохранены и запущены"

@@ -23,6 +23,7 @@ public final class SkinRegistry {
     public static final String HORIZON = "horizon";
     public static final String SIMPLE = "simple";
     public static final String SPORT = "sport";
+    public static final String STOCK = "stock";
 
     private interface RendererFactory {
         View create(Context context, SkinSettings settings);
@@ -50,6 +51,11 @@ public final class SkinRegistry {
 
         public boolean hasSettings() {
             return settingsProvider != null;
+        }
+
+        /** The stock option draws nothing, so no cluster window is opened. */
+        public boolean hasRenderer() {
+            return factory != null;
         }
 
         public SkinSettings getDefaultSettings() {
@@ -92,6 +98,10 @@ public final class SkinRegistry {
         private View createRenderer(
                 Context context,
                 SkinSettings settings) {
+            if (factory == null) {
+                throw new IllegalStateException(
+                        "Skin draws nothing and has no renderer: " + id);
+            }
             return factory.create(context, normalizeSettings(settings));
         }
     }
@@ -151,7 +161,13 @@ public final class SkinRegistry {
                         return new HorizonClusterView(context, settings);
                     }
                 },
-                new HorizonSettingsProvider())
+                new HorizonSettingsProvider()),
+        new Definition(
+                STOCK,
+                "Штатная панель — без наложения",
+                "Приложение ничего не рисует: на дисплее 2 остаётся заводская панель",
+                null,
+                null)
     };
 
     private SkinRegistry() {
@@ -192,6 +208,10 @@ public final class SkinRegistry {
             String id,
             SkinSettings settings) {
         return getDefinition(id).normalizeSettings(settings);
+    }
+
+    public static boolean hasRenderer(String id) {
+        return getDefinition(id).hasRenderer();
     }
 
     public static View createRenderer(Context context, String id) {

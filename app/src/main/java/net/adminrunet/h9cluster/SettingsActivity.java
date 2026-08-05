@@ -22,6 +22,7 @@ public final class SettingsActivity extends Activity {
         getWindow().setStatusBarColor(0xFF071014);
         getWindow().setNavigationBarColor(0xFF071014);
         getWindow().getDecorView().setBackgroundColor(Color.BLACK);
+        AutostartPreferences.setAutostartSuspended(this, false);
         session = new SkinSettingsSession(
                 SkinPreferences.getSelectedSkin(this),
                 new SkinSettingsSession.Loader() {
@@ -65,6 +66,11 @@ public final class SettingsActivity extends Activity {
                                         SettingsActivity.this);
                         settingsView.showSaveResult(launched);
                     }
+
+                    @Override
+                    public void onExitRequested() {
+                        exitApplication();
+                    }
                 });
         setContentView(settingsView);
     }
@@ -88,5 +94,17 @@ public final class SettingsActivity extends Activity {
             unsavedPreviewActive = false;
             ClusterLauncher.applyOnClusterDisplay(this);
         }
+    }
+
+    /**
+     * Closes the cluster window on Display 2 first, otherwise it would keep
+     * reading vehicle data after the settings window is gone. The unsaved
+     * preview is dropped so leaving the screen cannot restart the cluster.
+     */
+    private void exitApplication() {
+        unsavedPreviewActive = false;
+        AutostartPreferences.setAutostartSuspended(this, true);
+        ClusterWindowRegistry.closeAll();
+        finishAndRemoveTask();
     }
 }
