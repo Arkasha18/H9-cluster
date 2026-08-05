@@ -50,7 +50,7 @@ public final class GearSelector {
      * bare ratio, which is what the cluster showed before positions were read.
      */
     public static String label(String selector, int gear) {
-        String ratio = gear >= 1 && gear <= 8 ? Integer.toString(gear) : "";
+        String ratio = ratio(gear);
         if (DRIVE.equals(selector) || MANUAL.equals(selector)) {
             return selector + ratio;
         }
@@ -60,5 +60,14 @@ public final class GearSelector {
             return selector;
         }
         return ratio;
+    }
+
+    /**
+     * Ratio number on its own, for skins that leave the factory panel
+     * visible: the panel already spells the position out, so a letter here
+     * would be printed twice side by side.
+     */
+    public static String ratio(int gear) {
+        return gear >= 1 && gear <= 8 ? Integer.toString(gear) : "";
     }
 }

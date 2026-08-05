@@ -43,6 +43,14 @@ public class GearSelectorTest {
     }
 
     @Test
+    public void bareRatioSkipsCodesThatAreNotForwardRatios() {
+        assertEquals("", GearSelector.ratio(0));
+        assertEquals("1", GearSelector.ratio(1));
+        assertEquals("8", GearSelector.ratio(8));
+        assertEquals("", GearSelector.ratio(9));
+    }
+
+    @Test
     public void unknownPositionKeepsTheBareRatio() {
         assertEquals("3", GearSelector.label(GearSelector.UNKNOWN, 3));
         assertEquals("", GearSelector.label(GearSelector.UNKNOWN, 0));
