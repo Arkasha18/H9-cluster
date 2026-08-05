@@ -12,25 +12,37 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(3, definitions.length);
+        assertEquals(4, definitions.length);
         assertEquals(SkinRegistry.CLASSIC, definitions[0].id);
         assertEquals(SkinRegistry.SPORT, definitions[1].id);
-        assertEquals(SkinRegistry.HORIZON, definitions[2].id);
+        assertEquals(SkinRegistry.SIMPLE, definitions[2].id);
+        assertEquals(SkinRegistry.HORIZON, definitions[3].id);
     }
 
     @Test
-    public void classicAndSportDoNotExposeSettings() {
-        SkinRegistry.Definition[] definitions =
-                SkinRegistry.getDefinitions();
-        for (int index = 0; index < 2; index++) {
-            SkinRegistry.Definition definition = definitions[index];
-            assertFalse(definition.hasSettings());
-            assertTrue(definition.getDefaultSettings().isEmpty());
-            assertTrue(definition.normalizeSettings(
-                    SkinSettings.builder()
-                            .putBoolean("foreign.option", true)
-                            .build())
-                    .isEmpty());
+    public void builtInSkinsDoNotExposeUnrelatedSettings() {
+        SkinSettings foreign = SkinSettings.builder()
+                .putBoolean("foreign.option", true)
+                .build();
+        for (SkinRegistry.Definition definition
+                : SkinRegistry.getDefinitions()) {
+            SkinSettings normalized = definition.normalizeSettings(foreign);
+            assertFalse(
+                    "no skin may carry another's key: " + definition.id,
+                    normalized.contains("foreign.option"));
+            if (definition.hasSettings()) {
+                // A configurable skin answers with its own complete
+                // configuration rather than with nothing.
+                assertFalse(
+                        definition.id + " must offer its defaults",
+                        definition.getDefaultSettings().isEmpty());
+                assertFalse(
+                        definition.id + " must fill in what it needs",
+                        normalized.isEmpty());
+            } else {
+                assertTrue(definition.getDefaultSettings().isEmpty());
+                assertTrue(normalized.isEmpty());
+            }
         }
     }
 
