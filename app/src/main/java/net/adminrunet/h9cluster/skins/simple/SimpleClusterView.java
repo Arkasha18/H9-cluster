@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster.skins.simple;
 import net.adminrunet.h9cluster.BuildConfig;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
@@ -490,7 +491,7 @@ public final class SimpleClusterView extends View
                 0xFFF7F7F5,
                 true);
         canvas.drawText(
-                SimpleLayout.formatGear(state.currentGear),
+                GearSelector.label(state.gearSelector, state.currentGear),
                 SimpleLayout.GEAR_NUMBER_X,
                 SimpleLayout.GEAR_NUMBER_BASELINE,
                 textPaint);

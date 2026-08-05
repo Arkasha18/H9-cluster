@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster.skins.sport;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 
@@ -610,7 +611,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
         configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
         canvas.drawText(
-                state.currentGear > 0 ? Integer.toString(state.currentGear) : "",
+                GearSelector.label(state.gearSelector, state.currentGear),
                 bounds.centerX(),
                 130.0f,
                 textPaint);

@@ -54,6 +54,7 @@ public final class GwmClusterDataSource
     private static final int INDEX_RANGE = 6;
     private static final int INDEX_COOLANT = 7;
     private static final int INDEX_OUTSIDE_TEMP = 8;
+    private static final int INDEX_GEAR_STATUS = 9;
     private static final int INDEX_CURRENT_GEAR = 10;
     private static final int INDEX_TPMS = 11;
     private static final int INDEX_TPMS_UNITS = 12;
@@ -424,11 +425,16 @@ public final class GwmClusterDataSource
                         lastState.dayKm);
         int currentGear = normalizeCurrentGear(
                 parseInt(values[INDEX_CURRENT_GEAR], -1));
+        String gearSelector = values[INDEX_GEAR_STATUS] == null
+                ? lastState.gearSelector
+                : GearSelector.fromVehicleCode(
+                        parseInt(values[INDEX_GEAR_STATUS], -1));
 
         ClusterState state = new ClusterState(
                 clamp(parseInt(values[INDEX_SPEED], lastState.speedKph), 0, 220),
                 rpmSample.rpm,
                 currentGear,
+                gearSelector,
                 clamp(parseInt(values[INDEX_COOLANT], lastState.coolantC), 40, 130),
                 transmissionTemperatureC,
                 clamp(fuelLiters, 0.0f, TANK_CAPACITY_LITERS),
@@ -646,8 +652,8 @@ public final class GwmClusterDataSource
             return rawGear;
         }
         // Codes are not contiguous: 8 is reverse and the eighth forward ratio
-        // arrives as code 9. Reverse stays hidden because the direction is
-        // already shown by the factory selector.
+        // arrives as code 9. Reverse carries no ratio to show because the card
+        // already spells the selector position out as "R".
         return rawGear == 9 ? 8 : 0;
     }
 

@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster.skins.horizon;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.SkinSettings;
 
@@ -400,7 +401,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
         configureText(29.0f, Paint.Align.CENTER, COLOR_TEXT, true);
         canvas.drawText(
-                state.currentGear > 0 ? Integer.toString(state.currentGear) : "",
+                GearSelector.label(state.gearSelector, state.currentGear),
                 bounds.centerX(),
                 130.0f,
                 textPaint);

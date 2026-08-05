@@ -5,6 +5,7 @@ public final class ClusterState {
     public final int speedKph;
     public final int rpm;
     public final int currentGear;
+    public final String gearSelector;
     public final int coolantC;
     public final float transmissionTemperatureC;
     public final float fuelLiters;
@@ -37,6 +38,7 @@ public final class ClusterState {
             int speedKph,
             int rpm,
             int currentGear,
+            String gearSelector,
             int coolantC,
             float transmissionTemperatureC,
             float fuelLiters,
@@ -67,6 +69,9 @@ public final class ClusterState {
         this.speedKph = speedKph;
         this.rpm = rpm;
         this.currentGear = currentGear;
+        this.gearSelector = gearSelector == null
+                ? GearSelector.UNKNOWN
+                : gearSelector;
         this.coolantC = coolantC;
         this.transmissionTemperatureC = transmissionTemperatureC;
         this.fuelLiters = fuelLiters;
@@ -108,6 +113,7 @@ public final class ClusterState {
                 0,
                 0,
                 0,
+                GearSelector.UNKNOWN,
                 40,
                 Float.NaN,
                 0.0f,

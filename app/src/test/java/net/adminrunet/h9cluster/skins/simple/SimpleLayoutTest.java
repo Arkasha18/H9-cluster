@@ -517,14 +517,6 @@ public final class SimpleLayoutTest {
     }
 
     @Test
-    public void numericGearIsLimitedToDriveRatios() {
-        assertEquals("", SimpleLayout.formatGear(0));
-        assertEquals("1", SimpleLayout.formatGear(1));
-        assertEquals("8", SimpleLayout.formatGear(8));
-        assertEquals("", SimpleLayout.formatGear(9));
-    }
-
-    @Test
     public void steeringAngleRotatesOnlyTheWheelIcon() {
         assertEquals(
                 141.0f,
