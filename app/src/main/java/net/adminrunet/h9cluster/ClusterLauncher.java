@@ -1,5 +1,7 @@
 package net.adminrunet.h9cluster;
 
+import net.adminrunet.h9cluster.skins.SkinRegistry;
+
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.Context;
@@ -35,6 +37,14 @@ public final class ClusterLauncher {
             Context context,
             SkinSettingsSession.Snapshot draft,
             boolean userRequested) {
+        String skinId = draft == null
+                ? SkinPreferences.getSelectedSkin(context)
+                : draft.skinId;
+        if (!SkinRegistry.hasRenderer(skinId)) {
+            ClusterWindowRegistry.closeAll();
+            return true;
+        }
+
         DisplayManager displayManager =
                 (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
         boolean clusterDisplayAvailable =

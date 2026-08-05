@@ -6,11 +6,17 @@ Each skin owns its complete rendering code and design assets:
 | --- | --- | --- |
 | Classic | `classic/ClassicClusterView.java` | `assets/dashboard/skins/classic/` |
 | Horizon | `horizon/HorizonClusterView.java` | Asset-free Canvas renderer |
+| Simple | `simple/SimpleClusterView.java` | Asset-free Canvas renderer |
 | Sport | `sport/SportClusterView.java` | `assets/dashboard/skins/sport/` |
+| Stock | none, the factory is `null` | Nothing is drawn |
 
 All renderers receive the same immutable `ClusterState` through the shared
 `ClusterRenderer` interface. Vehicle services, polling and decoding stay outside
 the skin folders.
+
+`Stock` is the one entry without a renderer factory. `SkinRegistry.hasRenderer`
+reports it, `ClusterLauncher` then closes any open cluster window instead of
+starting one, and the factory instrument panel of the vehicle stays visible.
 
 ## Optional per-skin settings
 

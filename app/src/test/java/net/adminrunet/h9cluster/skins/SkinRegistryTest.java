@@ -12,11 +12,34 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(4, definitions.length);
+        assertEquals(5, definitions.length);
         assertEquals(SkinRegistry.CLASSIC, definitions[0].id);
         assertEquals(SkinRegistry.SPORT, definitions[1].id);
         assertEquals(SkinRegistry.SIMPLE, definitions[2].id);
         assertEquals(SkinRegistry.HORIZON, definitions[3].id);
+        assertEquals(SkinRegistry.STOCK, definitions[4].id);
+    }
+
+    @Test
+    public void onlyTheStockOptionSkipsTheClusterWindow() {
+        for (SkinRegistry.Definition definition
+                : SkinRegistry.getDefinitions()) {
+            assertEquals(
+                    definition.id + " renderer availability",
+                    !SkinRegistry.STOCK.equals(definition.id),
+                    definition.hasRenderer());
+        }
+        assertFalse(SkinRegistry.hasRenderer(SkinRegistry.STOCK));
+        assertTrue(SkinRegistry.hasRenderer(SkinRegistry.CLASSIC));
+    }
+
+    @Test
+    public void stockOptionHasNoSettingsOfItsOwn() {
+        SkinRegistry.Definition definition =
+                SkinRegistry.getDefinition(SkinRegistry.STOCK);
+
+        assertFalse(definition.hasSettings());
+        assertTrue(definition.getDefaultSettings().isEmpty());
     }
 
     @Test

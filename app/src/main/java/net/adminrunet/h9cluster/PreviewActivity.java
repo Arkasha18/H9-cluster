@@ -31,7 +31,8 @@ import android.widget.FrameLayout;
 
 /** Full-screen host for the live cluster renderer. */
 @SuppressWarnings("deprecation")
-public final class PreviewActivity extends Activity {
+public final class PreviewActivity extends Activity
+        implements ClusterWindowRegistry.Window {
     public static final String EXTRA_RELOAD_SKIN = "reload_skin";
     public static final String EXTRA_SINGLE_DISPLAY_FALLBACK = "single_display_fallback";
     public static final String EXTRA_USER_REQUESTED = "user_requested";
@@ -66,6 +67,7 @@ public final class PreviewActivity extends Activity {
     private UserRequestedRendererEvent userRequestedRendererEvent;
     private ClusterState lastState = ClusterState.empty();
     private long lastTripTelemetryLogAtMs = -1L;
+    private boolean clusterWorkStopped;
     private final Runnable tripHeartbeat = new Runnable() {
         @Override
         public void run() {
@@ -89,6 +91,13 @@ public final class PreviewActivity extends Activity {
                 + BuildConfig.VERSION_NAME
                 + "-display2-api28");
 
+        SkinSettingsSession.Snapshot requestedSnapshot = resolveSnapshot(getIntent());
+        if (!SkinRegistry.hasRenderer(requestedSnapshot.skinId)) {
+            Log.i(TAG, "Stock cluster selected, no overlay window is needed");
+            finish();
+            return;
+        }
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -111,7 +120,7 @@ public final class PreviewActivity extends Activity {
         tripSummaryLayers = new TripSummaryLayerState(
                 tripSummaryLayerStore.isRendererSuppressed());
         clearSuppressionIfUserRequested(getIntent());
-        applySnapshot(resolveSnapshot(getIntent()), true);
+        applySnapshot(requestedSnapshot, true);
 
         tripCoordinator = new TripSummaryCoordinator(
                 new TripSessionStore(this),
@@ -156,17 +165,48 @@ public final class PreviewActivity extends Activity {
         });
         mainHandler.postDelayed(tripHeartbeat, TRIP_HEARTBEAT_MS);
         hideSystemUi();
+        ClusterWindowRegistry.register(this);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        SkinSettingsSession.Snapshot snapshot = resolveSnapshot(intent);
+        if (!SkinRegistry.hasRenderer(snapshot.skinId)) {
+            closeClusterWindow();
+            return;
+        }
         userRequestedRendererEvent.onNewIntent();
         boolean forceReload = intent != null
                 && intent.getBooleanExtra(EXTRA_RELOAD_SKIN, false);
         clearSuppressionIfUserRequested(intent);
-        applySnapshot(resolveSnapshot(intent), forceReload);
+        applySnapshot(snapshot, forceReload);
+    }
+
+    /**
+     * Closes the cluster from the settings screen. The vehicle readers are
+     * stopped right away instead of waiting for the system to destroy the
+     * activity.
+     */
+    @Override
+    public void closeClusterWindow() {
+        stopClusterWork();
+        finish();
+    }
+
+    private void stopClusterWork() {
+        if (clusterWorkStopped) {
+            return;
+        }
+        clusterWorkStopped = true;
+        mainHandler.removeCallbacks(tripHeartbeat);
+        if (tripCoordinator != null) {
+            tripCoordinator.flush();
+        }
+        if (dataSource != null) {
+            dataSource.stop();
+        }
     }
 
     /**
@@ -348,13 +388,8 @@ public final class PreviewActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        mainHandler.removeCallbacks(tripHeartbeat);
-        if (tripCoordinator != null) {
-            tripCoordinator.flush();
-        }
-        if (dataSource != null) {
-            dataSource.stop();
-        }
+        ClusterWindowRegistry.unregister(this);
+        stopClusterWork();
         super.onDestroy();
     }
 
