@@ -642,10 +642,12 @@ public final class GwmClusterDataSource
     }
 
     static int normalizeCurrentGear(int rawGear) {
-        if (rawGear >= 1 && rawGear <= 8) {
+        if (rawGear >= 1 && rawGear <= 7) {
             return rawGear;
         }
-        // The vehicle reports the eighth forward ratio as code 9.
+        // Codes are not contiguous: 8 is reverse and the eighth forward ratio
+        // arrives as code 9. Reverse stays hidden because the direction is
+        // already shown by the factory selector.
         return rawGear == 9 ? 8 : 0;
     }
 

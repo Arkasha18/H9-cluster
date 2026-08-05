@@ -155,8 +155,8 @@ public final class GwmClusterDataSourceTest {
     }
 
     @Test
-    public void forwardGearsOneThroughEightRemainUnchanged() {
-        for (int gear = 1; gear <= 8; gear++) {
+    public void forwardGearsOneThroughSevenRemainUnchanged() {
+        for (int gear = 1; gear <= 7; gear++) {
             assertEquals(gear, GwmClusterDataSource.normalizeCurrentGear(gear));
         }
     }
@@ -164,6 +164,11 @@ public final class GwmClusterDataSourceTest {
     @Test
     public void vehicleCodeNineIsDisplayedAsEighthGear() {
         assertEquals(8, GwmClusterDataSource.normalizeCurrentGear(9));
+    }
+
+    @Test
+    public void reverseGearCodeEightIsHidden() {
+        assertEquals(0, GwmClusterDataSource.normalizeCurrentGear(8));
     }
 
     @Test
