@@ -491,10 +491,16 @@ public final class SimpleClusterView extends View
                 0xFFF7F7F5,
                 true);
         canvas.drawText(
-                GearSelector.ratio(state.currentGear),
+                currentGearLabel(state.gearSelector, state.currentGear),
                 SimpleLayout.GEAR_NUMBER_X,
                 SimpleLayout.GEAR_NUMBER_BASELINE,
                 textPaint);
+    }
+
+    static String currentGearLabel(String selector, int gear) {
+        return GearSelector.DRIVE.equals(selector)
+                ? GearSelector.ratio(gear)
+                : "";
     }
 
     private void drawTyrePressures(Canvas canvas, ClusterState state) {
