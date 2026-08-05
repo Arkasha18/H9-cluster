@@ -491,7 +491,7 @@ public final class SimpleClusterView extends View
                 0xFFF7F7F5,
                 true);
         canvas.drawText(
-                GearSelector.label(state.gearSelector, state.currentGear),
+                GearSelector.ratio(state.currentGear),
                 SimpleLayout.GEAR_NUMBER_X,
                 SimpleLayout.GEAR_NUMBER_BASELINE,
                 textPaint);
