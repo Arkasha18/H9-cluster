@@ -64,7 +64,7 @@ app/build/outputs/apk/release/H9_Cluster_v9.4.0_adminrunet_release.apk
 SHA-256:
 
 ```text
-a1a57ec57ba1aa3ebcb76b86c99d1c0db7330261f6f794553dafb2e1f16b00c0
+95dc7c4cf946522ac33adbeff0fb38b8637dcc4bc4b02139db11da5802525a4a
 ```
 
 Текущий настоящий полноразмерный скриншот с Display ID 2:
