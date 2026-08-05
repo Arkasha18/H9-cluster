@@ -1,4 +1,4 @@
-# H9 Cluster 9.3.2
+# H9 Cluster 9.4.0
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -138,9 +138,9 @@ VIN, координатами или служебными данными авт�
 получен, остаётся одна буква. Числовые коды положений, которые отдаёт штатный
 адаптер, сняты на автомобиле и перечислены в `GearSelector`.
 
-Исключение — тема `Simple`: она показывает только номер ступени. Рядом с этим
-местом остаётся видна заводская панель, которая сама выводит положение
-селектора, поэтому буква печаталась бы дважды подряд.
+Исключение — тема `Simple`: она рисует номер ступени только в положении `D`.
+В остальных положениях поле пустое, чтобы не дублировать заводскую надпись
+рядом с этим местом.
 
 ## Сборка
 
