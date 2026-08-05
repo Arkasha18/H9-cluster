@@ -46,7 +46,7 @@ https://4pda.to/forum/index.php?act=post&do=new_post&f=212
    сайтов использовать нельзя.
 4. Рабочий APK нужно прикрепить к сообщению на сервере 4PDA. Одной ссылки на
    GitHub недостаточно.
-5. Версия должна совпадать с Manifest: `9.3.2`.
+5. Версия должна совпадать с Manifest: `9.4.0`.
 6. Для APK нужно указать архитектуру: `arm64-v8a`.
 7. В сообщении нельзя использовать разноцветный текст и увеличенный шрифт.
 8. Для последующих обновлений нужно публиковать новый пост с APK, точной
@@ -58,13 +58,13 @@ https://4pda.to/forum/index.php?act=post&do=new_post&f=212
 APK:
 
 ```text
-app/build/outputs/apk/release/H9_Cluster_v9.3.2_adminrunet_release.apk
+app/build/outputs/apk/release/H9_Cluster_v9.4.0_adminrunet_release.apk
 ```
 
 SHA-256:
 
 ```text
-9f541017694b537ffaa872e1981370c3435a5f30486fa296e1ea2ca072f6435d
+a1a57ec57ba1aa3ebcb76b86c99d1c0db7330261f6f794553dafb2e1f16b00c0
 ```
 
 Текущий настоящий полноразмерный скриншот с Display ID 2:
@@ -96,7 +96,7 @@ docs/images/h9-cluster-icon-192.png
 | Название программы | `H9 Cluster` |
 | Описание программы | `Неофициальная приборная панель для Haval H9` |
 | Краткое описание возможностей | `Три темы, штатная карта, данные автомобиля, температура ATF, Display ID 2 и автозапуск` |
-| Версия | `9.3.2` |
+| Версия | `9.4.0` |
 | Требуемая версия Android | выбрать `9 (API 28)` |
 | Иконка приложения | загрузить `docs/images/h9-cluster-icon-192.png` |
 | Скриншоты | загрузить `docs/images/h9-cluster-display-2.png` и `docs/H9_Cluster_Sport_Final_Real_1920x720.png` |
@@ -114,8 +114,8 @@ docs/images/h9-cluster-icon-192.png
 | Имя пакета | `net.adminrunet.h9cluster` |
 | YouTube | оставить пустым |
 | RUTUBE | оставить пустым |
-| Файлы | загрузить `H9_Cluster_v9.3.2_adminrunet_release.apk` |
-| Ссылка на APK | `https://github.com/Arkasha18/H9-cluster/releases/download/v9.3.2/H9_Cluster_v9.3.2_adminrunet_release.apk` |
+| Файлы | загрузить `H9_Cluster_v9.4.0_adminrunet_release.apk` |
+| Ссылка на APK | `https://github.com/Arkasha18/H9-cluster/releases/download/v9.4.0/H9_Cluster_v9.4.0_adminrunet_release.apk` |
 
 APK является одним монолитным файлом, а не набором split APK. В большом поле
 описания отдельно указана архитектура `arm64-v8a`.
@@ -147,7 +147,7 @@ APK является одним монолитным файлом, а не на�
     - Мастер тем поместил картинку под спойлер;
     - APK действительно прикреплён к сообщению;
     - нет тегов `color` и `size`;
-    - версия указана как `9.3.2`;
+    - версия указана как `9.4.0`;
     - архитектура указана как `arm64-v8a`;
     - ссылки ведут на публичный GitHub;
     - в тексте и вложениях нет ключей подписи, паролей, приватных дампов,
