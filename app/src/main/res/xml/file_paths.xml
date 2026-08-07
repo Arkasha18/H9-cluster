@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Разрешаем доступ к папке внешнего кэша приложения, куда мы скачиваем h9cluster-update.apk -->
+    <external-cache-path name="h9cluster-update.apk" path="." />
+</paths>

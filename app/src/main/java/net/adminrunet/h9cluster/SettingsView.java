@@ -78,7 +78,7 @@ public final class SettingsView extends View {
         drawCenteredText(canvas, "H9 Cluster", 480.0f, 54.0f, 34.0f, COLOR_TEXT, true);
         drawCenteredText(
                 canvas,
-                "Разработчик: admin.ru.net",
+                "Доработка: aevdokimov1976-alex",
                 480.0f,
                 84.0f,
                 18.0f,
