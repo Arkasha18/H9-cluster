@@ -14,6 +14,8 @@ public final class SettingsActivity extends Activity {
     private SkinSettingsSession session;
     private SettingsView settingsView;
     private boolean unsavedPreviewActive;
+    private UpdateManager updateManager;
+    private final String currentVersion = "v" + BuildConfig.VERSION_NAME;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +75,11 @@ public final class SettingsActivity extends Activity {
                     }
                 });
         setContentView(settingsView);
+
+        updateManager = new UpdateManager(this, currentVersion);
+
+        // Проверяем обновления при старте приложения
+        updateManager.checkForUpdates();
     }
 
     @Override

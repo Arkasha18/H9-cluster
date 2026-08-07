@@ -135,6 +135,13 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core:1.13.0")
     implementation("com.jcraft:jsch:0.1.55")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("io.noties.markwon:core:4.6.2")
     testImplementation("junit:junit:4.13.2")
+    // Robolectric для работы с Context без эмулятора
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    // Mockito для создания заглушек (mock-объектов)
+    testImplementation("org.mockito:mockito-core:5.12.0")
 }
