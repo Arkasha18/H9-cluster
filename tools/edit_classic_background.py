@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the production geometry and alpha mask to the Classic dashboard background."""
+"""Apply the production geometry and alpha masks to the Classic dashboard artwork."""
 
 from __future__ import annotations
 
@@ -12,6 +12,11 @@ from PIL import Image, ImageFilter
 
 CANVAS_WIDTH = 1920
 CANVAS_HEIGHT = 720
+DEFAULT_TRANSPARENCY_MASK = (
+    Path(__file__).resolve().parent
+    / "assets"
+    / "dashboard_transparency_mask_1920x720.png"
+)
 
 # Five millimetres at the project's 160 dpi reference density is about 32 px.
 # The original main-dial ellipse spans Y=164..656. Its bottom remains fixed.
@@ -40,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--overlay-output", required=True, type=Path)
+    parser.add_argument(
+        "--transparency-mask",
+        type=Path,
+        default=DEFAULT_TRANSPARENCY_MASK,
+    )
     return parser.parse_args()
 
 
@@ -360,6 +370,20 @@ def split_center_layers(source: Image.Image) -> tuple[Image.Image, Image.Image]:
     )
 
 
+def apply_transparency_mask(source: Image.Image, mask: Image.Image) -> Image.Image:
+    """Remove the mask's opaque white windows from one Classic artwork layer."""
+    if mask.size != source.size:
+        raise ValueError(
+            f"Transparency mask must be {source.width}x{source.height}, "
+            f"got {mask.width}x{mask.height}"
+        )
+
+    pixels = np.asarray(source.convert("RGBA"), dtype=np.float32).copy()
+    mask_alpha = np.asarray(mask.convert("RGBA"), dtype=np.float32)[..., 3]
+    pixels[..., 3] *= 1.0 - mask_alpha / 255.0
+    return Image.fromarray(np.clip(pixels, 0.0, 255.0).astype(np.uint8), "RGBA")
+
+
 def main() -> None:
     args = parse_args()
     source = Image.open(args.input).convert("RGBA")
@@ -372,6 +396,9 @@ def main() -> None:
     edited = remove_bottom_light_streaks(edited)
     edited = correct_speedometer_160(edited)
     background, overlay = split_center_layers(edited)
+    transparency_mask = Image.open(args.transparency_mask).convert("RGBA")
+    background = apply_transparency_mask(background, transparency_mask)
+    overlay = apply_transparency_mask(overlay, transparency_mask)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.overlay_output.parent.mkdir(parents=True, exist_ok=True)
     background.save(args.output, "PNG", optimize=True)
