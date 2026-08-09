@@ -35,11 +35,33 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+    private static final float CLOCK_CARD_LEFT = 11.0f;
+    private static final float CLOCK_CARD_TOP = 88.0f;
+    private static final float CLOCK_CARD_RIGHT = 175.0f;
+    private static final float CLOCK_CARD_BOTTOM = 152.0f;
+    private static final float CLOCK_CENTER_X = 93.0f;
+    private static final float CLOCK_BASELINE = 132.0f;
+    private static final float ATF_CARD_LEFT = 1757.0f;
+    private static final float ATF_CARD_TOP = 15.0f;
+    private static final float ATF_CARD_RIGHT = 1905.0f;
+    private static final float ATF_CARD_BOTTOM = 79.0f;
+    private static final float ATF_CENTER_X = 1831.0f;
+    private static final float ATF_LABEL_BASELINE = 35.0f;
+    private static final float ATF_VALUE_BASELINE = 64.0f;
+    private static final float ODOMETER_LABEL_X = 276.0f;
+    private static final float ODOMETER_VALUE_X = 355.0f;
+    private static final float ODOMETER_BASELINE = 298.0f;
+    private static final float DAY_ODOMETER_BASELINE = 334.0f;
+    private static final float TRIP_ODOMETER_BASELINE = 370.0f;
     private static final float REFERENCE_PIXELS_PER_MM = 160.0f / 25.4f;
-    private static final float TOP_PANEL_SHIFT_4_MM = 4.0f * REFERENCE_PIXELS_PER_MM;
-    private static final float ATF_CARD_LEFT = 1330.0f + TOP_PANEL_SHIFT_4_MM;
-    private static final float ATF_CARD_RIGHT = 1478.0f + TOP_PANEL_SHIFT_4_MM;
-    private static final float ATF_CENTER_X = 1404.0f + TOP_PANEL_SHIFT_4_MM;
+    private static final float OUTSIDE_TEMPERATURE_SHIFT =
+            4.0f * REFERENCE_PIXELS_PER_MM;
+    private static final float OUTSIDE_TEMPERATURE_CARD_LEFT =
+            1038.0f + OUTSIDE_TEMPERATURE_SHIFT;
+    private static final float OUTSIDE_TEMPERATURE_CARD_RIGHT =
+            1186.0f + OUTSIDE_TEMPERATURE_SHIFT;
+    private static final float OUTSIDE_TEMPERATURE_X =
+            1112.0f + OUTSIDE_TEMPERATURE_SHIFT;
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
     private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
@@ -152,19 +174,34 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         // card, border or text is drawn in those protected zones.
         drawTopCard(canvas, 12.0f, 276.0f);
         drawTopCard(canvas, 286.0f, 394.0f);
-        drawTopCard(canvas, 404.0f, 568.0f);
+        drawTopCard(
+                canvas,
+                CLOCK_CARD_LEFT,
+                CLOCK_CARD_TOP,
+                CLOCK_CARD_RIGHT,
+                CLOCK_CARD_BOTTOM,
+                COLOR_CARD_BORDER);
         drawTopCard(canvas, 706.0f, 882.0f);
-        drawTopCard(canvas, 1038.0f, 1186.0f);
+        drawTopCard(
+                canvas,
+                OUTSIDE_TEMPERATURE_CARD_LEFT,
+                OUTSIDE_TEMPERATURE_CARD_RIGHT);
         drawTopCard(
                 canvas,
                 ATF_CARD_LEFT,
+                ATF_CARD_TOP,
                 ATF_CARD_RIGHT,
+                ATF_CARD_BOTTOM,
                 transmissionTemperatureColor(
                         transmissionTemperatureLevel,
                         COLOR_CARD_BORDER));
 
         configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
-        canvas.drawText(cachedClockText, 486.0f, 55.0f, textPaint);
+        canvas.drawText(
+                cachedClockText,
+                CLOCK_CENTER_X,
+                CLOCK_BASELINE,
+                textPaint);
     }
 
     private void drawNeedleLayer(Canvas canvas) {
@@ -328,16 +365,16 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
 
         // Three odometer values from the reference layout.
         configureText(dataTypeface, 20.0f, Paint.Align.LEFT, 0xFFF0F0EE, false, 0.0f);
-        canvas.drawText("ODO:", 407.0f, 555.0f, textPaint);
-        canvas.drawText("Day:", 407.0f, 591.0f, textPaint);
-        canvas.drawText("Trip:", 407.0f, 627.0f, textPaint);
+        canvas.drawText("ODO:", ODOMETER_LABEL_X, ODOMETER_BASELINE, textPaint);
+        canvas.drawText("Day:", ODOMETER_LABEL_X, DAY_ODOMETER_BASELINE, textPaint);
+        canvas.drawText("Trip:", ODOMETER_LABEL_X, TRIP_ODOMETER_BASELINE, textPaint);
         configureText(gaugeTypeface, 23.0f, Paint.Align.LEFT, 0xFFF8F8F7, false, -0.05f);
         canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
-                485.0f, 555.0f, textPaint);
+                ODOMETER_VALUE_X, ODOMETER_BASELINE, textPaint);
         canvas.drawText(String.format(Locale.US, "%.1f  km", state.dayKm),
-                485.0f, 591.0f, textPaint);
+                ODOMETER_VALUE_X, DAY_ODOMETER_BASELINE, textPaint);
         canvas.drawText(String.format(Locale.US, "%.1f  km", state.tripKm),
-                485.0f, 627.0f, textPaint);
+                ODOMETER_VALUE_X, TRIP_ODOMETER_BASELINE, textPaint);
 
         // The baked car is centered at (1397, 544). Columns and row centers are
         // perfectly mirrored around that point, including their measured text boxes.
@@ -382,11 +419,11 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
         canvas.drawText(
                 formatOutside(state.outsideTemperatureC),
-                1112.0f,
+                OUTSIDE_TEMPERATURE_X,
                 55.0f,
                 textPaint);
         configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("ATF", ATF_CENTER_X, 32.0f, textPaint);
+        canvas.drawText("ATF", ATF_CENTER_X, ATF_LABEL_BASELINE, textPaint);
         configureText(
                 gaugeTypeface,
                 26.0f,
@@ -399,7 +436,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         canvas.drawText(
                 formatTransmissionTemperature(state, frameAtMs),
                 ATF_CENTER_X,
-                61.0f,
+                ATF_VALUE_BASELINE,
                 textPaint);
 
         // Bottom live metrics.
@@ -510,17 +547,23 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawTopCard(Canvas canvas, float left, float right) {
-        drawTopCard(canvas, left, right, COLOR_CARD_BORDER);
+        drawTopCard(canvas, left, 12.0f, right, 76.0f, COLOR_CARD_BORDER);
     }
 
-    private void drawTopCard(Canvas canvas, float left, float right, int borderColor) {
+    private void drawTopCard(
+            Canvas canvas,
+            float left,
+            float top,
+            float right,
+            float bottom,
+            int borderColor) {
         shapePaint.setStyle(Paint.Style.FILL);
         shapePaint.setColor(0xFF080B0E);
-        canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
+        canvas.drawRoundRect(left, top, right, bottom, 19.0f, 19.0f, shapePaint);
         shapePaint.setStyle(Paint.Style.STROKE);
         shapePaint.setStrokeWidth(2.0f);
         shapePaint.setColor(borderColor);
-        canvas.drawRoundRect(left, 12.0f, right, 76.0f, 19.0f, 19.0f, shapePaint);
+        canvas.drawRoundRect(left, top, right, bottom, 19.0f, 19.0f, shapePaint);
         shapePaint.setStyle(Paint.Style.FILL);
     }
 
