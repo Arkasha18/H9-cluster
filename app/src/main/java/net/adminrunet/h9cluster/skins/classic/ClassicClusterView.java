@@ -54,8 +54,14 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float DAY_ODOMETER_BASELINE = 334.0f;
     private static final float TRIP_ODOMETER_BASELINE = 370.0f;
     private static final float REFERENCE_PIXELS_PER_MM = 160.0f / 25.4f;
+    private static final float OUTSIDE_TEMPERATURE_SHIFT =
+            4.0f * REFERENCE_PIXELS_PER_MM;
+    private static final float OUTSIDE_TEMPERATURE_CARD_LEFT =
+            1038.0f + OUTSIDE_TEMPERATURE_SHIFT;
+    private static final float OUTSIDE_TEMPERATURE_CARD_RIGHT =
+            1186.0f + OUTSIDE_TEMPERATURE_SHIFT;
     private static final float OUTSIDE_TEMPERATURE_X =
-            1112.0f + 4.0f * REFERENCE_PIXELS_PER_MM;
+            1112.0f + OUTSIDE_TEMPERATURE_SHIFT;
     private static final long TRANSMISSION_TEMPERATURE_STALE_AFTER_MS = 15000L;
     private static final int COLOR_ATF_NORMAL = 0xFFF9F9F7;
     private static final int COLOR_ATF_ELEVATED = 0xFFFFD54F;
@@ -176,7 +182,10 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 CLOCK_CARD_BOTTOM,
                 COLOR_CARD_BORDER);
         drawTopCard(canvas, 706.0f, 882.0f);
-        drawTopCard(canvas, 1038.0f, 1186.0f);
+        drawTopCard(
+                canvas,
+                OUTSIDE_TEMPERATURE_CARD_LEFT,
+                OUTSIDE_TEMPERATURE_CARD_RIGHT);
         drawTopCard(
                 canvas,
                 ATF_CARD_LEFT,
