@@ -14,6 +14,9 @@ All renderers receive the same immutable `ClusterState` through the shared
 `ClusterRenderer` interface. Vehicle services, polling and decoding stay outside
 the skin folders.
 
+Real-device screenshots of all four renderers are available in the
+[skin gallery](../../../../../../../../docs/SKINS_RU.md).
+
 `Stock` is the one entry without a renderer factory. `SkinRegistry.hasRenderer`
 reports it, `ClusterLauncher` then closes any open cluster window instead of
 starting one, and the factory instrument panel of the vehicle stays visible.
