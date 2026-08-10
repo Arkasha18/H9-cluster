@@ -135,6 +135,9 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core:1.13.0")
     implementation("com.jcraft:jsch:0.1.55")
+    implementation("io.noties.markwon:core:4.6.2")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

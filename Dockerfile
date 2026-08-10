@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:17-jdk-jammy@sha256:29467857e8bde40ab1f7befecbda0ea764b95afec1cc7f89aa90f7a766577e19
+FROM eclipse-temurin:17-jdk-jammy@sha256:723151f3fc88ca2060153ee08ab8dbbea7983d6ed6f2622fe440acf178737c94
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG ANDROID_COMMAND_LINE_TOOLS_VERSION=13114758
