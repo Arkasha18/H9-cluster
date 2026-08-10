@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.widget.FrameLayout;
@@ -12,13 +13,16 @@ final class FactoryNotificationRootView extends FrameLayout {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
 
-    // Measured from the factory door-warning card attached to issue #37.
-    private static final float ALERT_LEFT = 1320.0f;
-    private static final float ALERT_TOP = 90.0f;
-    private static final float ALERT_RIGHT = 1800.0f;
-    private static final float ALERT_BOTTOM = 560.0f;
+    // Calibrated on the vehicle with H9 Frame Calibrator 2.5.
+    private static final float[][] ALERT_POINTS = {
+            {1414.49f, 217.56f},
+            {1790.55f, 217.56f},
+            {1795.28f, 593.07f},
+            {1414.49f, 588.35f}
+    };
 
     private final Paint clearPaint = new Paint();
+    private final Path clearPath = new Path();
     private boolean factoryNotificationVisible;
 
     FactoryNotificationRootView(Context context) {
@@ -42,11 +46,17 @@ final class FactoryNotificationRootView extends FrameLayout {
         }
         float scaleX = getWidth() / LOGICAL_WIDTH;
         float scaleY = getHeight() / LOGICAL_HEIGHT;
-        canvas.drawRect(
-                ALERT_LEFT * scaleX,
-                ALERT_TOP * scaleY,
-                ALERT_RIGHT * scaleX,
-                ALERT_BOTTOM * scaleY,
-                clearPaint);
+        clearPath.rewind();
+        for (int index = 0; index < ALERT_POINTS.length; index++) {
+            float x = ALERT_POINTS[index][0] * scaleX;
+            float y = ALERT_POINTS[index][1] * scaleY;
+            if (index == 0) {
+                clearPath.moveTo(x, y);
+            } else {
+                clearPath.lineTo(x, y);
+            }
+        }
+        clearPath.close();
+        canvas.drawPath(clearPath, clearPaint);
     }
 }
