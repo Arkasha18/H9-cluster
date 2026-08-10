@@ -32,7 +32,9 @@ public final class HorizonSettingsProviderTest {
 
         assertTrue(HorizonSettingsProvider.shouldSwapPrimaryGauges(normalized));
         assertFalse(normalized.contains("foreign_option"));
-        assertEquals("", NavigationSettings.selectedComponent(normalized));
+        assertEquals(
+                NavigationSettings.MODE_NONE,
+                NavigationSettings.selectedMode(normalized));
         assertEquals(2, normalized.asMap().size());
     }
 
@@ -49,16 +51,16 @@ public final class HorizonSettingsProviderTest {
     }
 
     @Test
-    public void normalizationPreservesNavigationComponent() {
-        String component = "ru.yandex.yandexnavi/.MainActivity";
+    public void normalizationPreservesFactoryYandexMode() {
+        String mode = NavigationSettings.MODE_FACTORY_YANDEX;
 
         SkinSettings normalized = provider.normalize(
                 SkinSettings.builder()
-                        .putString(NavigationSettings.KEY_COMPONENT, component)
+                        .putString(NavigationSettings.KEY_MODE, mode)
                         .build());
 
         assertEquals(
-                component,
-                NavigationSettings.selectedComponent(normalized));
+                mode,
+                NavigationSettings.selectedMode(normalized));
     }
 }

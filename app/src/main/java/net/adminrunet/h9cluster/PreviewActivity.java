@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.navigation.NavigationSettings;
 import net.adminrunet.h9cluster.trip.DemoSpeedometerHotspot;
 import net.adminrunet.h9cluster.trip.TripSessionStore;
 import net.adminrunet.h9cluster.trip.TripSummary;
@@ -263,8 +264,11 @@ public final class PreviewActivity extends Activity
     private void applySnapshot(
             SkinSettingsSession.Snapshot snapshot,
             boolean forceReload) {
+        boolean showFactoryYandexMap = NavigationSettings
+                .showsFactoryYandexMap(snapshot.settings);
         boolean hideFactoryCluster = !BuildConfig.DEMO_MODE
-                && SkinRegistry.hidesFactoryCluster(snapshot.skinId);
+                && SkinRegistry.hidesFactoryCluster(snapshot.skinId)
+                && !showFactoryYandexMap;
         if (!forceReload && snapshot.equals(activeSnapshot)) {
             setFactoryClusterHidden(hideFactoryCluster);
             return;

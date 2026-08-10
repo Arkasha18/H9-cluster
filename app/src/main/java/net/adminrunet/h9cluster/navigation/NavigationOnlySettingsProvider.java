@@ -17,7 +17,7 @@ public final class NavigationOnlySettingsProvider
     @Override
     public SkinSettings normalize(SkinSettings settings) {
         return NavigationSettings.navigationOnly(
-                NavigationSettings.selectedComponent(settings));
+                NavigationSettings.selectedMode(settings));
     }
 
     @Override
@@ -27,12 +27,12 @@ public final class NavigationOnlySettingsProvider
             final Listener listener) {
         return new NavigationAppPickerView(
                 context,
-                NavigationSettings.selectedComponent(initialSettings),
+                NavigationSettings.selectedMode(initialSettings),
                 new NavigationAppPickerView.Listener() {
                     @Override
-                    public void onNavigationAppChanged(String component) {
+                    public void onNavigationAppChanged(String mode) {
                         listener.onSettingsChanged(
-                                NavigationSettings.navigationOnly(component));
+                                NavigationSettings.navigationOnly(mode));
                     }
                 });
     }

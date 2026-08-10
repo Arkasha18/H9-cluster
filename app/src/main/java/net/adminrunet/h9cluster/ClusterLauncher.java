@@ -1,9 +1,6 @@
 package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
-import net.adminrunet.h9cluster.skins.SkinSettings;
-import net.adminrunet.h9cluster.navigation.NavigationAppLauncher;
-import net.adminrunet.h9cluster.navigation.NavigationSettings;
 
 import android.app.Activity;
 import android.app.ActivityOptions;
@@ -60,22 +57,6 @@ public final class ClusterLauncher {
         if (targetDisplayId == ClusterDisplayPolicy.NO_DISPLAY) {
             Log.w(TAG, "Display 2 is not ready");
             return false;
-        }
-
-        SkinSettings selectedSettings = draft == null
-                ? SkinSettingsStore.load(context, skinId)
-                : draft.settings;
-        if (!BuildConfig.DEMO_MODE
-                && SkinRegistry.hidesFactoryCluster(skinId)) {
-            String navigationComponent = NavigationSettings.selectedComponent(
-                    selectedSettings);
-            if (navigationComponent.length() > 0
-                    && !NavigationAppLauncher.launch(
-                            context,
-                            navigationComponent,
-                            targetDisplayId)) {
-                Log.w(TAG, "Selected background app was not launched");
-            }
         }
 
         Intent intent = new Intent(context, PreviewActivity.class);

@@ -9,21 +9,26 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /** Reusable editor embedded into the independent settings dialog of a skin. */
 public final class NavigationAppPickerView extends LinearLayout {
     public interface Listener {
-        void onNavigationAppChanged(String component);
+        void onNavigationAppChanged(String mode);
     }
 
-    private final List<NavigationAppOption> options;
-    private String selectedComponent;
+    private static final String[] MODES = {
+        NavigationSettings.MODE_NONE,
+        NavigationSettings.MODE_FACTORY_YANDEX
+    };
+    private static final String[] LABELS = {
+        "Не показывать карту",
+        "Штатный Яндекс Навигатор"
+    };
+
+    private String selectedMode;
 
     public NavigationAppPickerView(
             Context context,
-            String initialComponent,
+            String initialMode,
             final Listener listener) {
         super(context);
         setOrientation(VERTICAL);
@@ -31,7 +36,7 @@ public final class NavigationAppPickerView extends LinearLayout {
         setPadding(padding, dp(context, 14), padding, dp(context, 18));
 
         TextView title = new TextView(context);
-        title.setText("Навигация или приложение на дисплее 2");
+        title.setText("Карта под скином");
         title.setTextColor(Color.BLACK);
         title.setTextSize(16.0f);
         title.setPadding(0, 0, 0, dp(context, 8));
@@ -41,8 +46,9 @@ public final class NavigationAppPickerView extends LinearLayout {
 
         TextView description = new TextView(context);
         description.setText(
-                "Приложение запускается под прозрачным скином. "
-                        + "Если оно запрещает второй дисплей, H9 Cluster продолжит работу без него.");
+                "Штатный Яндекс Навигатор показывает заводской слой карты под скином. "
+                        + "Отдельное окно приложения не запускается, поэтому скин и "
+                        + "системные индикаторы остаются видимыми.");
         description.setTextColor(0xFF526169);
         description.setTextSize(13.0f);
         description.setPadding(0, 0, 0, dp(context, 10));
@@ -50,23 +56,15 @@ public final class NavigationAppPickerView extends LinearLayout {
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.WRAP_CONTENT));
 
-        selectedComponent = NavigationSettings.normalizeComponent(initialComponent);
-        options = NavigationAppCatalog.load(context, selectedComponent);
-        List<String> labels = new ArrayList<>();
-        int selectedIndex = 0;
-        for (int index = 0; index < options.size(); index++) {
-            NavigationAppOption option = options.get(index);
-            labels.add(option.title);
-            if (option.component.equals(selectedComponent)) {
-                selectedIndex = index;
-            }
-        }
+        selectedMode = NavigationSettings.normalizeMode(initialMode);
+        int selectedIndex = NavigationSettings.MODE_FACTORY_YANDEX.equals(
+                selectedMode) ? 1 : 0;
 
         Spinner spinner = new Spinner(context);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 context,
                 android.R.layout.simple_spinner_item,
-                labels);
+                LABELS);
         adapter.setDropDownViewResource(
                 android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
@@ -78,13 +76,13 @@ public final class NavigationAppPickerView extends LinearLayout {
                     View view,
                     int position,
                     long id) {
-                String component = options.get(position).component;
-                if (component.equals(selectedComponent)) {
+                String mode = MODES[position];
+                if (mode.equals(selectedMode)) {
                     return;
                 }
-                selectedComponent = component;
+                selectedMode = mode;
                 if (listener != null) {
-                    listener.onNavigationAppChanged(component);
+                    listener.onNavigationAppChanged(mode);
                 }
             }
 

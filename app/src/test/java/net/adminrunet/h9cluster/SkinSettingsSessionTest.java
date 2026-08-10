@@ -72,8 +72,8 @@ public final class SkinSettingsSessionTest {
                 .build());
         session.selectSkin(SkinRegistry.CLASSIC);
         assertEquals(
-                "",
-                NavigationSettings.selectedComponent(
+                NavigationSettings.MODE_NONE,
+                NavigationSettings.selectedMode(
                         session.snapshot().settings));
 
         session.selectSkin(SkinRegistry.HORIZON);

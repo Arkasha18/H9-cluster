@@ -31,7 +31,7 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
                 source.getBoolean(
                         SWAP_PRIMARY_GAUGES,
                         DEFAULT_SWAP_PRIMARY_GAUGES),
-                NavigationSettings.selectedComponent(source));
+                NavigationSettings.selectedMode(source));
     }
 
     @Override
@@ -43,8 +43,8 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
         final boolean[] swapEnabled = {
             shouldSwapPrimaryGauges(normalized)
         };
-        final String[] navigationComponent = {
-            NavigationSettings.selectedComponent(normalized)
+        final String[] navigationMode = {
+            NavigationSettings.selectedMode(normalized)
         };
 
         LinearLayout editor = new LinearLayout(context);
@@ -64,7 +64,7 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
             swapEnabled[0] = isChecked;
             listener.onSettingsChanged(createSettings(
                     swapEnabled[0],
-                    navigationComponent[0]));
+                    navigationMode[0]));
         });
         editor.addView(swapGauges, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -73,14 +73,14 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
         NavigationAppPickerView navigationPicker =
                 new NavigationAppPickerView(
                         context,
-                        navigationComponent[0],
+                        navigationMode[0],
                         new NavigationAppPickerView.Listener() {
                             @Override
-                            public void onNavigationAppChanged(String component) {
-                                navigationComponent[0] = component;
+                            public void onNavigationAppChanged(String mode) {
+                                navigationMode[0] = mode;
                                 listener.onSettingsChanged(createSettings(
                                         swapEnabled[0],
-                                        navigationComponent[0]));
+                                        navigationMode[0]));
                             }
                         });
         editor.addView(navigationPicker, new LinearLayout.LayoutParams(
@@ -97,13 +97,12 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
 
     private static SkinSettings createSettings(
             boolean swapPrimaryGauges,
-            String navigationComponent) {
+            String navigationMode) {
         return SkinSettings.builder()
                 .putBoolean(SWAP_PRIMARY_GAUGES, swapPrimaryGauges)
                 .putString(
-                        NavigationSettings.KEY_COMPONENT,
-                        NavigationSettings.normalizeComponent(
-                                navigationComponent))
+                        NavigationSettings.KEY_MODE,
+                        NavigationSettings.normalizeMode(navigationMode))
                 .build();
     }
 
