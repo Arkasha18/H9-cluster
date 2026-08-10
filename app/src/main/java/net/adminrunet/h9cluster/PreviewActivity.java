@@ -60,7 +60,7 @@ public final class PreviewActivity extends Activity
     private TripSummaryView tripSummaryView;
     private TripSummaryLayerState tripSummaryLayers;
     private TripSummaryLayerStore tripSummaryLayerStore;
-    private FactoryNotificationRootView rootView;
+    private FrameLayout rootView;
     private SkinSettingsSession.Snapshot activeSnapshot;
     private ClusterDataSource dataSource;
     private TripSummaryCoordinator tripCoordinator;
@@ -113,7 +113,7 @@ public final class PreviewActivity extends Activity
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
-        rootView = new FactoryNotificationRootView(this);
+        rootView = new FrameLayout(this);
         rootView.setBackgroundColor(backgroundColor);
         setContentView(rootView);
         tripSummaryLayerStore = new TripSummaryLayerStore(this);
@@ -161,11 +161,6 @@ public final class PreviewActivity extends Activity
                 clusterRenderer.setClusterState(state);
                 logTripTelemetryIfDue(state);
                 tripCoordinator.onClusterState(state);
-            }
-
-            @Override
-            public void onFactoryNotificationVisibilityChanged(boolean visible) {
-                rootView.setFactoryNotificationVisible(visible);
             }
         });
         mainHandler.postDelayed(tripHeartbeat, TRIP_HEARTBEAT_MS);

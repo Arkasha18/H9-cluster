@@ -16,25 +16,11 @@
 устройства и не одобрен ими. Названия и товарные знаки принадлежат их
 правообладателям.
 
-## Скины
-
-Все четыре темы сняты на реальном `Display ID 2` в разрешении `1920×720`.
-Изображения открываются в полном размере по клику.
-
-| Classic | Sport |
-| --- | --- |
-| [![H9 Cluster Classic](docs/images/skins/classic-1920x720.png)](docs/images/skins/classic-1920x720.png) | [![H9 Cluster Sport](docs/images/skins/sport-1920x720.png)](docs/images/skins/sport-1920x720.png) |
-
-| Horizon | Simple |
-| --- | --- |
-| [![H9 Cluster Horizon](docs/images/skins/horizon-1920x720.png)](docs/images/skins/horizon-1920x720.png) | [![H9 Cluster Simple](docs/images/skins/simple-1920x720.png)](docs/images/skins/simple-1920x720.png) |
-
-Описание особенностей каждой темы и полноразмерная галерея приведены в
-[документации по скинам](docs/SKINS_RU.md).
+![H9 Cluster Classic на Display ID 2](docs/images/h9-cluster-display-2.png)
 
 ## Возможности
 
-- независимые темы `Classic`, `Sport`, `Horizon` и `Simple`;
+- независимые темы `Classic`, `Sport` и `Horizon`;
 - отдельно откалиброванные по печатным делениям стрелки спидометра и
   тахометра в темах `Classic` и `Sport`;
 - скорость, обороты, пробег, топливо и запас хода;
