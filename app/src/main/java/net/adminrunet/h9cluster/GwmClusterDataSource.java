@@ -67,6 +67,8 @@ public final class GwmClusterDataSource
     private static final int INDEX_WHEEL_REAR_LEFT = 20;
     private static final int INDEX_WHEEL_REAR_RIGHT = 21;
     private static final int INDEX_ENGINE_FLYWHEEL_TORQUE = 22;
+    private static final int INDEX_DOOR_STATUS = 23;
+    private static final int INDEX_IPK_WARNING = 24;
 
     private static final String[] DATA_IDS = new String[] {
             "car.basic.vehicle_speed",
@@ -91,7 +93,9 @@ public final class GwmClusterDataSource
             "car.basic.fr_wheel_speed",
             "car.basic.rl_wheel_speed",
             "car.basic.rr_wheel_speed",
-            "car.off_road_info.engine_flywheel_torque"
+            "car.off_road_info.engine_flywheel_torque",
+            "car.basic.door_status",
+            "car.ipk_info.tts_contents"
     };
 
     private static final Pattern NUMBER_PATTERN =
@@ -103,6 +107,8 @@ public final class GwmClusterDataSource
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
     private final TransmissionTemperatureReader transmissionTemperatureReader;
+    private final FactoryNotificationMonitor factoryNotificationMonitor =
+            new FactoryNotificationMonitor();
 
     private Listener listener;
     private IBinder service;
@@ -118,6 +124,17 @@ public final class GwmClusterDataSource
     private long steeringUpdatedAtMs;
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
+    private boolean factoryNotificationVisible;
+
+    private final Runnable factoryNotificationTimeout = new Runnable() {
+        @Override
+        public void run() {
+            if (!started) {
+                return;
+            }
+            updateFactoryNotificationVisibility(SystemClock.elapsedRealtime());
+        }
+    };
 
     static final class RpmSample {
         final int rpm;
@@ -171,6 +188,7 @@ public final class GwmClusterDataSource
     public void stop() {
         started = false;
         mainHandler.removeCallbacks(rebindTask);
+        mainHandler.removeCallbacks(factoryNotificationTimeout);
         fdbusRpmReader.stop();
         transmissionTemperatureReader.stop();
         unregisterListener();
@@ -259,7 +277,12 @@ public final class GwmClusterDataSource
         for (int index = 0; index < DATA_IDS.length; index++) {
             if (DATA_IDS[index].equals(id)) {
                 String normalized = normalizeValue(value);
-                storeValue(index, normalized, SystemClock.elapsedRealtime());
+                long now = SystemClock.elapsedRealtime();
+                storeValue(index, normalized, now);
+                updateFactoryNotificationSignal(
+                        index,
+                        normalized,
+                        now);
                 publishState();
                 return;
             }
@@ -327,6 +350,14 @@ public final class GwmClusterDataSource
                         storeValue(index, value, now);
                     }
                 }
+                updateFactoryNotificationSignal(
+                        INDEX_DOOR_STATUS,
+                        values[INDEX_DOOR_STATUS],
+                        now);
+                updateFactoryNotificationSignal(
+                        INDEX_IPK_WARNING,
+                        values[INDEX_IPK_WARNING],
+                        now);
             }
             publishState();
         } catch (Throwable error) {
@@ -361,6 +392,41 @@ public final class GwmClusterDataSource
         } finally {
             data.recycle();
             reply.recycle();
+        }
+    }
+
+    private void updateFactoryNotificationSignal(
+            int index,
+            String value,
+            long nowMs) {
+        if (index == INDEX_DOOR_STATUS) {
+            factoryNotificationMonitor.updateDoorStatus(value, nowMs);
+        } else if (index == INDEX_IPK_WARNING) {
+            factoryNotificationMonitor.updateWarning(value, nowMs);
+        } else {
+            return;
+        }
+        updateFactoryNotificationVisibility(nowMs);
+    }
+
+    private void updateFactoryNotificationVisibility(long nowMs) {
+        mainHandler.removeCallbacks(factoryNotificationTimeout);
+        long remainingWarningMs =
+                factoryNotificationMonitor.remainingWarningMs(nowMs);
+        if (started && remainingWarningMs > 0L) {
+            mainHandler.postDelayed(
+                    factoryNotificationTimeout,
+                    remainingWarningMs);
+        }
+
+        boolean visible = factoryNotificationMonitor.isVisibleAt(nowMs);
+        if (factoryNotificationVisible == visible) {
+            return;
+        }
+        factoryNotificationVisible = visible;
+        Listener currentListener = listener;
+        if (currentListener != null) {
+            currentListener.onFactoryNotificationVisibilityChanged(visible);
         }
     }
 
