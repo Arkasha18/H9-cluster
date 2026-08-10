@@ -15,7 +15,6 @@ public final class SettingsActivity extends Activity {
     private SettingsView settingsView;
     private boolean unsavedPreviewActive;
     private UpdateManager updateManager;
-    private final String currentVersion = "v" + BuildConfig.VERSION_NAME;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,10 +75,20 @@ public final class SettingsActivity extends Activity {
                 });
         setContentView(settingsView);
 
-        updateManager = new UpdateManager(this, currentVersion);
-
-        // Проверяем обновления при старте приложения
+        boolean updatesEnabled = !BuildConfig.DEBUG && !BuildConfig.DEMO_MODE;
+        updateManager = new UpdateManager(
+                this,
+                BuildConfig.VERSION_NAME,
+                updatesEnabled);
         updateManager.checkForUpdates();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (updateManager != null) {
+            updateManager.onResume();
+        }
     }
 
     @Override
@@ -94,6 +103,14 @@ public final class SettingsActivity extends Activity {
             restorePersistedPreview();
         }
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (updateManager != null) {
+            updateManager.destroy();
+        }
+        super.onDestroy();
     }
 
     private void restorePersistedPreview() {
