@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.navigation.NavigationSettings;
 
 import org.junit.Test;
 
@@ -31,7 +32,8 @@ public final class HorizonSettingsProviderTest {
 
         assertTrue(HorizonSettingsProvider.shouldSwapPrimaryGauges(normalized));
         assertFalse(normalized.contains("foreign_option"));
-        assertEquals(1, normalized.asMap().size());
+        assertEquals("", NavigationSettings.selectedComponent(normalized));
+        assertEquals(2, normalized.asMap().size());
     }
 
     @Test
@@ -44,5 +46,19 @@ public final class HorizonSettingsProviderTest {
                         .build());
 
         assertFalse(HorizonSettingsProvider.shouldSwapPrimaryGauges(normalized));
+    }
+
+    @Test
+    public void normalizationPreservesNavigationComponent() {
+        String component = "ru.yandex.yandexnavi/.MainActivity";
+
+        SkinSettings normalized = provider.normalize(
+                SkinSettings.builder()
+                        .putString(NavigationSettings.KEY_COMPONENT, component)
+                        .build());
+
+        assertEquals(
+                component,
+                NavigationSettings.selectedComponent(normalized));
     }
 }

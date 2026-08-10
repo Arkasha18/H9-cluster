@@ -1,6 +1,7 @@
 package net.adminrunet.h9cluster.skins;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
+import net.adminrunet.h9cluster.navigation.NavigationOnlySettingsProvider;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
@@ -35,18 +36,21 @@ public final class SkinRegistry {
         public final String description;
         private final RendererFactory factory;
         private final SkinSettingsProvider settingsProvider;
+        private final boolean hidesFactoryCluster;
 
         private Definition(
                 String id,
                 String title,
                 String description,
                 RendererFactory factory,
-                SkinSettingsProvider settingsProvider) {
+                SkinSettingsProvider settingsProvider,
+                boolean hidesFactoryCluster) {
             this.id = id;
             this.title = title;
             this.description = description;
             this.factory = factory;
             this.settingsProvider = settingsProvider;
+            this.hidesFactoryCluster = hidesFactoryCluster;
         }
 
         public boolean hasSettings() {
@@ -56,6 +60,10 @@ public final class SkinRegistry {
         /** The stock option draws nothing, so no cluster window is opened. */
         public boolean hasRenderer() {
             return factory != null;
+        }
+
+        public boolean hidesFactoryCluster() {
+            return hidesFactoryCluster;
         }
 
         public SkinSettings getDefaultSettings() {
@@ -119,7 +127,8 @@ public final class SkinRegistry {
                         return new ClassicClusterView(context);
                     }
                 },
-                null),
+                new NavigationOnlySettingsProvider(),
+                true),
         new Definition(
                 SPORT,
                 "Sport — спортивная тема",
@@ -132,7 +141,8 @@ public final class SkinRegistry {
                         return new SportClusterView(context);
                     }
                 },
-                null),
+                new NavigationOnlySettingsProvider(),
+                true),
         new Definition(
                 SIMPLE,
                 "Simple — простая тема",
@@ -148,7 +158,8 @@ public final class SkinRegistry {
                                         settings));
                     }
                 },
-                new SimpleSettingsProvider()),
+                new SimpleSettingsProvider(),
+                false),
         new Definition(
                 HORIZON,
                 "Horizon — базовый скин",
@@ -161,13 +172,15 @@ public final class SkinRegistry {
                         return new HorizonClusterView(context, settings);
                     }
                 },
-                new HorizonSettingsProvider()),
+                new HorizonSettingsProvider(),
+                true),
         new Definition(
                 STOCK,
                 "Штатная панель — без наложения",
                 "Приложение ничего не рисует: на дисплее 2 остаётся заводская панель",
                 null,
-                null)
+                null,
+                false)
     };
 
     private SkinRegistry() {
@@ -212,6 +225,10 @@ public final class SkinRegistry {
 
     public static boolean hasRenderer(String id) {
         return getDefinition(id).hasRenderer();
+    }
+
+    public static boolean hidesFactoryCluster(String id) {
+        return getDefinition(id).hidesFactoryCluster();
     }
 
     public static View createRenderer(Context context, String id) {

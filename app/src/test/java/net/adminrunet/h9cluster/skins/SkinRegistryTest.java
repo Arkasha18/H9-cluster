@@ -81,6 +81,18 @@ public final class SkinRegistryTest {
     }
 
     @Test
+    public void classicSportAndHorizonHideFactoryClusterAndExposeSettings() {
+        assertTrue(SkinRegistry.getDefinition(SkinRegistry.CLASSIC).hasSettings());
+        assertTrue(SkinRegistry.getDefinition(SkinRegistry.SPORT).hasSettings());
+        assertTrue(SkinRegistry.getDefinition(SkinRegistry.HORIZON).hasSettings());
+        assertTrue(SkinRegistry.hidesFactoryCluster(SkinRegistry.CLASSIC));
+        assertTrue(SkinRegistry.hidesFactoryCluster(SkinRegistry.SPORT));
+        assertTrue(SkinRegistry.hidesFactoryCluster(SkinRegistry.HORIZON));
+        assertFalse(SkinRegistry.hidesFactoryCluster(SkinRegistry.SIMPLE));
+        assertFalse(SkinRegistry.hidesFactoryCluster(SkinRegistry.STOCK));
+    }
+
+    @Test
     public void unknownSkinStillNormalizesToClassic() {
         assertEquals(
                 SkinRegistry.CLASSIC,

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.navigation.NavigationSettings;
 
 import org.junit.Test;
 
@@ -53,7 +54,7 @@ public final class SkinSettingsSessionTest {
     }
 
     @Test
-    public void horizonDraftSurvivesSwitchToSkinWithoutSettings() {
+    public void horizonDraftSurvivesSwitchToClassicNavigationSettings() {
         SkinSettingsSession session = new SkinSettingsSession(
                 SkinRegistry.HORIZON,
                 emptyLoader(),
@@ -70,7 +71,10 @@ public final class SkinSettingsSessionTest {
                 .putBoolean("swap_primary_gauges", true)
                 .build());
         session.selectSkin(SkinRegistry.CLASSIC);
-        assertTrue(session.snapshot().settings.isEmpty());
+        assertEquals(
+                "",
+                NavigationSettings.selectedComponent(
+                        session.snapshot().settings));
 
         session.selectSkin(SkinRegistry.HORIZON);
         assertTrue(session.snapshot().settings.getBoolean(

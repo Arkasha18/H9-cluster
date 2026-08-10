@@ -136,5 +136,8 @@ android {
 
 dependencies {
     implementation("com.jcraft:jsch:0.1.55")
+    compileOnly(files(android.sdkDirectory.resolve(
+        "platforms/android-35/optional/android.car.jar"
+    )))
     testImplementation("junit:junit:4.13.2")
 }

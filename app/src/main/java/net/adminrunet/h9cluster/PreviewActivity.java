@@ -55,6 +55,7 @@ public final class PreviewActivity extends Activity
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
 
     private ClusterRenderer clusterRenderer;
+    private FactoryClusterController clusterFocusController;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private View rendererView;
     private TripSummaryView tripSummaryView;
@@ -96,6 +97,9 @@ public final class PreviewActivity extends Activity
             Log.i(TAG, "Stock cluster selected, no overlay window is needed");
             finish();
             return;
+        }
+        if (!BuildConfig.DEMO_MODE) {
+            clusterFocusController = FactoryClusterControllerFactory.create(this);
         }
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -196,6 +200,9 @@ public final class PreviewActivity extends Activity
      */
     @Override
     public void closeClusterWindow() {
+        if (clusterFocusController != null) {
+            clusterFocusController.setEnabled(false);
+        }
         stopClusterWork();
         finish();
     }
@@ -256,7 +263,10 @@ public final class PreviewActivity extends Activity
     private void applySnapshot(
             SkinSettingsSession.Snapshot snapshot,
             boolean forceReload) {
+        boolean hideFactoryCluster = !BuildConfig.DEMO_MODE
+                && SkinRegistry.hidesFactoryCluster(snapshot.skinId);
         if (!forceReload && snapshot.equals(activeSnapshot)) {
+            setFactoryClusterHidden(hideFactoryCluster);
             return;
         }
         View replacement = SkinRegistry.createRenderer(
@@ -271,8 +281,15 @@ public final class PreviewActivity extends Activity
             rootView.removeView(rendererView);
         }
         rendererView = replacement;
+        setFactoryClusterHidden(hideFactoryCluster);
         syncRendererVisibility();
         clusterRenderer.setClusterState(lastState);
+    }
+
+    private void setFactoryClusterHidden(boolean hidden) {
+        if (clusterFocusController != null) {
+            clusterFocusController.setEnabled(hidden);
+        }
     }
 
     private void addDemoTouchLayer() {
@@ -394,6 +411,9 @@ public final class PreviewActivity extends Activity
     @Override
     protected void onDestroy() {
         ClusterWindowRegistry.unregister(this);
+        if (clusterFocusController != null) {
+            clusterFocusController.destroy();
+        }
         stopClusterWork();
         super.onDestroy();
     }

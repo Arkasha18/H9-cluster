@@ -1,11 +1,14 @@
 package net.adminrunet.h9cluster.skins.horizon;
 
+import net.adminrunet.h9cluster.navigation.NavigationAppPickerView;
+import net.adminrunet.h9cluster.navigation.NavigationSettings;
 import net.adminrunet.h9cluster.skins.SkinSettings;
 import net.adminrunet.h9cluster.skins.SkinSettingsProvider;
 
 import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.Switch;
 
 /** Settings owned exclusively by the Horizon skin. */
@@ -16,7 +19,7 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
 
     @Override
     public SkinSettings getDefaultSettings() {
-        return createSettings(DEFAULT_SWAP_PRIMARY_GAUGES);
+        return createSettings(DEFAULT_SWAP_PRIMARY_GAUGES, "");
     }
 
     @Override
@@ -24,9 +27,11 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
         SkinSettings source = settings == null
                 ? SkinSettings.empty()
                 : settings;
-        return createSettings(source.getBoolean(
-                SWAP_PRIMARY_GAUGES,
-                DEFAULT_SWAP_PRIMARY_GAUGES));
+        return createSettings(
+                source.getBoolean(
+                        SWAP_PRIMARY_GAUGES,
+                        DEFAULT_SWAP_PRIMARY_GAUGES),
+                NavigationSettings.selectedComponent(source));
     }
 
     @Override
@@ -35,19 +40,53 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
             SkinSettings initialSettings,
             final Listener listener) {
         SkinSettings normalized = normalize(initialSettings);
+        final boolean[] swapEnabled = {
+            shouldSwapPrimaryGauges(normalized)
+        };
+        final String[] navigationComponent = {
+            NavigationSettings.selectedComponent(normalized)
+        };
+
+        LinearLayout editor = new LinearLayout(context);
+        editor.setOrientation(LinearLayout.VERTICAL);
+
         Switch swapGauges = createSwitch(
                 context,
                 "Поменять местами спидометр и тахометр",
-                shouldSwapPrimaryGauges(normalized));
+                swapEnabled[0]);
         int padding = dp(context, 20);
         swapGauges.setPadding(
                 padding,
                 dp(context, 18),
                 padding,
                 dp(context, 18));
-        swapGauges.setOnCheckedChangeListener((buttonView, isChecked) ->
-                listener.onSettingsChanged(createSettings(isChecked)));
-        return swapGauges;
+        swapGauges.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            swapEnabled[0] = isChecked;
+            listener.onSettingsChanged(createSettings(
+                    swapEnabled[0],
+                    navigationComponent[0]));
+        });
+        editor.addView(swapGauges, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        NavigationAppPickerView navigationPicker =
+                new NavigationAppPickerView(
+                        context,
+                        navigationComponent[0],
+                        new NavigationAppPickerView.Listener() {
+                            @Override
+                            public void onNavigationAppChanged(String component) {
+                                navigationComponent[0] = component;
+                                listener.onSettingsChanged(createSettings(
+                                        swapEnabled[0],
+                                        navigationComponent[0]));
+                            }
+                        });
+        editor.addView(navigationPicker, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        return editor;
     }
 
     public static boolean shouldSwapPrimaryGauges(SkinSettings settings) {
@@ -56,9 +95,15 @@ public final class HorizonSettingsProvider implements SkinSettingsProvider {
                 DEFAULT_SWAP_PRIMARY_GAUGES);
     }
 
-    private static SkinSettings createSettings(boolean swapPrimaryGauges) {
+    private static SkinSettings createSettings(
+            boolean swapPrimaryGauges,
+            String navigationComponent) {
         return SkinSettings.builder()
                 .putBoolean(SWAP_PRIMARY_GAUGES, swapPrimaryGauges)
+                .putString(
+                        NavigationSettings.KEY_COMPONENT,
+                        NavigationSettings.normalizeComponent(
+                                navigationComponent))
                 .build();
     }
 
