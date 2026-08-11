@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Build the canonical 1920×720 H9 Cluster design template.
 
-The template intentionally defines only two layout constraints:
-the Yandex Navigator aperture and the system-icon collision mask.
+The template packages the vehicle-calibrated black edge background and the
+v2.4 system-icon reserved-area overlay without changing the public filenames.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -16,9 +17,6 @@ from PIL import Image, ImageDraw, ImageFont
 WIDTH = 1920
 HEIGHT = 720
 SIZE = (WIDTH, HEIGHT)
-
-# Confirmed geometry of the Yandex Navigator window.
-MAP_POLYGON = ((745, 105), (1173, 105), (1287, 719), (632, 719))
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_SYSTEM_MASK = (
@@ -60,27 +58,23 @@ def checkerboard() -> Image.Image:
     return image
 
 
-def create_map_transparency_mask() -> Image.Image:
-    image = Image.new("L", SIZE, 0)
-    ImageDraw.Draw(image).polygon(MAP_POLYGON, fill=255)
-    return image
+def create_map_transparency_mask(background: Image.Image) -> Image.Image:
+    """Mark only pixels that are fully transparent in the calibrated layer."""
+    return background.getchannel("A").point(
+        lambda alpha: 255 if alpha == 0 else 0
+    )
 
 
 def create_black_map_gradient(source: Path) -> Image.Image:
-    """Turn the proven Classic alpha envelope into a pure-black RGBA layer."""
-    alpha = checked_image(source, "RGBA").getchannel("A")
-
-    # The binary map mask is the hard rule. Any residual antialiasing inside
-    # the aperture is cleared while the original outer fade remains intact.
-    ImageDraw.Draw(alpha).polygon(MAP_POLYGON, fill=0)
-
-    gradient = Image.new("RGBA", SIZE, (0, 0, 0, 0))
-    gradient.putalpha(alpha)
+    """Validate and return the calibrated pure-black RGBA layer."""
+    gradient = checked_image(source, "RGBA")
+    if any(gradient.getchannel(channel).getextrema()[1] != 0 for channel in "RGB"):
+        raise ValueError(f"{source}: calibrated background RGB must be pure black")
     return gradient
 
 
 def create_guide(
-    system_mask: Image.Image,
+    system_overlay: Image.Image,
     map_mask: Image.Image,
     black_gradient: Image.Image,
 ) -> Image.Image:
@@ -91,16 +85,23 @@ def create_guide(
     map_overlay.putalpha(map_mask.point(lambda value: 82 if value else 0))
     image.alpha_composite(map_overlay)
 
-    system_overlay = Image.new("RGBA", SIZE, (255, 62, 21, 0))
-    system_overlay.putalpha(system_mask.point(lambda value: 205 if value else 0))
-    image.alpha_composite(system_overlay)
+    reserved_overlay = Image.new("RGBA", SIZE, (255, 62, 21, 0))
+    reserved_overlay.putalpha(
+        system_overlay.getchannel("A").point(
+            lambda value: round(value * 205 / 255)
+        )
+    )
+    image.alpha_composite(reserved_overlay)
 
     draw = ImageDraw.Draw(image)
-    draw.line(
-        (*MAP_POLYGON, MAP_POLYGON[0]),
-        fill=(64, 255, 196, 255),
+    map_bbox = map_mask.getbbox()
+    if map_bbox is None:
+        raise ValueError("calibrated background has no fully transparent map area")
+    left, top, right, bottom = map_bbox
+    draw.rectangle(
+        (left, top, right - 1, bottom - 1),
+        outline=(64, 255, 196, 255),
         width=4,
-        joint="curve",
     )
     draw.rectangle(
         (0, 0, WIDTH - 1, HEIGHT - 1),
@@ -129,14 +130,14 @@ def create_guide(
     draw.rectangle((708, 355, 728, 375), fill=(34, 222, 158, 210))
     draw.text(
         (744, 352),
-        "1. Карта: прозрачное окно + чёрный градиент",
+        "1. Карта: откалиброванная чёрная подложка",
         font=label,
         fill=(232, 247, 242, 255),
     )
     draw.rectangle((708, 400, 728, 420), fill=(255, 62, 21, 255))
     draw.text(
         (744, 397),
-        "2. Красные зоны: не размещать графику",
+        "2. Красные зоны: маска системных иконок v2.4",
         font=label,
         fill=(255, 238, 234, 255),
     )
@@ -149,45 +150,44 @@ def create_guide(
     return image
 
 
-def write_readme(destination: Path) -> None:
+def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None:
+    left, top, right, bottom = map_bbox
     destination.write_text(
-        """H9 CLUSTER — АКТУАЛЬНЫЙ ТЕХНИЧЕСКИЙ ШАБЛОН
+        f"""H9 CLUSTER — АКТУАЛЬНЫЙ ТЕХНИЧЕСКИЙ ШАБЛОН
 
 Рабочая система координат всех файлов: 1920×720.
 
-У нового скина есть только два обязательных ограничения по дизайну.
+Шаблон объединяет откалиброванную на реальном автомобиле чёрную подложку и
+маску зарезервированных зон системных иконок v2.4. Имена файлов сохранены для
+совместимости с опубликованными ссылками.
 
-1. ОКНО ЯНДЕКС КАРТЫ
+1. ОТКАЛИБРОВАННАЯ ПОДЛОЖКА И ОКНО КАРТЫ
 
-Карта выводится штатной системой под приложением. Итоговая композиция скина
-обязана иметь alpha=0 во всей белой области файла
-`02_yandex_map_transparency_mask.png`.
+Файл `04_yandex_map_black_gradient_rgba.png` — готовый нижний слой нового
+скина. Он содержит отдельную растушёвку слева и справа, верхнюю полосу,
+раздельные нижние участки и локально осветлённые зоны системных значков.
+Его нужно использовать непосредственно, не рисовать похожий градиент заново.
 
-Координаты окна:
-    верхняя левая точка   (745, 105)
-    верхняя правая точка  (1173, 105)
-    нижняя правая точка   (1287, 719)
-    нижняя левая точка    (632, 719)
+Карта выводится штатной системой под приложением. Полностью прозрачная область
+готовой подложки отмечена белым в `02_yandex_map_transparency_mask.png`:
+    X = {left}..{right - 1}
+    Y = {top}..{bottom - 1}
 
-На границе окна используется чёрный градиент. Готовый технический слой
-`04_yandex_map_black_gradient_rgba.png` извлечён из проверенного alpha-канала
-темы Classic. Его можно положить под оформление нового скина или точно
-воспроизвести его альфа-переход. Внутри маски карты слой полностью прозрачен.
+Полупрозрачная растушёвка вокруг этой области намеренно остаётся частью
+подложки: через неё карта плавно проявляется к центру.
 
 2. ЗОНЫ СИСТЕМНЫХ ЗНАЧКОВ
 
-Файл `03_system_icons_forbidden_mask.png` построен только по красной разметке
-владельца автомобиля. Исходный шаблон 1280×480 перенесён в 1920×720 точным
-масштабом ×1,5. Из изображения исключено красное свечение штатных шкал;
-сохранены шесть крупных областей пользовательской разметки.
+Файл `03_system_icons_forbidden_mask.png` содержит актуальный RGBA-шаблон v2.4.
+Непрозрачные и полупрозрачные чёрные пиксели отмечают области, занятые
+системными иконками. Полностью прозрачные пиксели ограничений не задают.
 
-Белый = запрещено размещать любую графику скина, текст, шкалы, цифры, рамки,
-свечение и динамические показания.
-Чёрный = эта маска ограничений не задаёт.
+При создании скина файл нужно открыть временным верхним слоем и не размещать
+под ним графику, текст, шкалы, цифры, рамки, свечение и динамические показания.
 
-Это collision-маска, а не маска прозрачности. Она не требует вырезать отверстия
-и не должна использоваться для обрезки уже нарисованных приборов. Размер и
-контур белых областей нельзя самовольно увеличивать или уменьшать.
+Это контрольный слой, а не часть итогового оформления. Его нельзя запекать в
+готовый фон и нельзя использовать для вырезания отверстий из уже нарисованного
+скина. Размер, положение и полупрозрачные края шаблона нельзя менять.
 
 ЧТО НЕ ОГРАНИЧЕНО
 
@@ -206,23 +206,22 @@ def write_readme(destination: Path) -> None:
     Контрольная схема двух обязательных зон. Не использовать как фон скина.
 
 02_yandex_map_transparency_mask.png
-    Одноканальная маска: белый = обязательный alpha=0.
+    Одноканальная маска: белый = alpha=0 в готовой подложке.
 
 03_system_icons_forbidden_mask.png
-    Одноканальная collision-маска из красного пользовательского шаблона:
-    белый = не размещать графику.
+    Актуальный RGBA-шаблон системных иконок v2.4. Непрозрачный или
+    полупрозрачный чёрный = зарезервированная область.
 
 04_yandex_map_black_gradient_rgba.png
-    Чистый чёрный RGBA-слой с проверенным градиентом границы карты.
+    Готовая откалиброванная чёрная RGBA-подложка нового скина.
 
 ПРОВЕРКА
 
 1. Все итоговые растровые слои имеют размер 1920×720.
 2. Итоговый alpha равен 0 во всей белой области маски карты.
-3. Ни статические, ни динамические элементы не пересекают белую системную
-   collision-маску.
-4. На границе карты присутствует чёрный градиент из файла 04 либо его точная
-   реализация.
+3. Ни статические, ни динамические элементы не пересекают непрозрачные и
+   полупрозрачные области системного шаблона v2.4.
+4. Файл 04 используется как нижняя подложка без изменения его альфа-канала.
 
 Других обязательных правил компоновки этот шаблон не задаёт.
 """,
@@ -239,39 +238,44 @@ def main() -> None:
         dest="gradient_source",
         required=True,
         type=Path,
-        help="1920×720 RGBA image whose alpha contains the proven map fade",
+        help="calibrated pure-black 1920×720 RGBA background",
     )
     parser.add_argument(
         "--system-mask-source",
         type=Path,
         default=DEFAULT_SYSTEM_MASK,
-        help="canonical 1920×720 binary system-icon mask",
+        help="canonical 1920×720 RGBA system-icon overlay v2.4",
     )
     args = parser.parse_args()
 
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
 
-    system_mask = checked_image(args.system_mask_source, "L")
-    map_mask = create_map_transparency_mask()
+    system_overlay = checked_image(args.system_mask_source, "RGBA")
     black_gradient = create_black_map_gradient(args.gradient_source)
+    map_mask = create_map_transparency_mask(black_gradient)
 
     Image.new("RGBA", SIZE, (0, 0, 0, 0)).save(
         output / "00_blank_1920x720_rgba.png", "PNG", optimize=True
     )
-    create_guide(system_mask, map_mask, black_gradient).save(
+    create_guide(system_overlay, map_mask, black_gradient).save(
         output / "01_technical_guide.png", "PNG", optimize=True
     )
     map_mask.save(
         output / "02_yandex_map_transparency_mask.png", "PNG", optimize=True
     )
-    system_mask.save(
-        output / "03_system_icons_forbidden_mask.png", "PNG", optimize=True
+    shutil.copyfile(
+        args.system_mask_source,
+        output / "03_system_icons_forbidden_mask.png",
     )
-    black_gradient.save(
-        output / "04_yandex_map_black_gradient_rgba.png", "PNG", optimize=True
+    shutil.copyfile(
+        args.gradient_source,
+        output / "04_yandex_map_black_gradient_rgba.png",
     )
-    write_readme(output / "README_RU.txt")
+    map_bbox = map_mask.getbbox()
+    if map_bbox is None:
+        raise ValueError("calibrated background has no fully transparent map area")
+    write_readme(output / "README_RU.txt", map_bbox)
 
 
 if __name__ == "__main__":
