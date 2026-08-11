@@ -30,6 +30,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float TANK_CAPACITY_LITERS = 80.0f;
+    private static final float MAIN_SPEED_CENTER_X = 317.0f;
     private static final float SPORT_TYRE_CAR_X = 1538.0f;
     private static final float SPORT_TYRE_CAR_Y = 285.0f;
     private static final float REFERENCE_PIXELS_PER_MM = 160.0f / 25.4f;
@@ -81,6 +82,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
 
+    private final Bitmap calibratedEdgeBackground;
     private final Bitmap staticBackground;
     private final Bitmap staticScaleOverlay;
     private final Bitmap tyreCar;
@@ -107,6 +109,9 @@ public final class SportClusterView extends View implements ClusterRenderer {
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
+        calibratedEdgeBackground = loadBitmap(
+                context,
+                "dashboard/skins/common/calibrated_edge_background.png");
         staticBackground = loadBitmap(context, "dashboard/skins/sport/background.png");
         staticScaleOverlay = loadBitmap(
                 context,
@@ -169,6 +174,11 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private void drawStaticLayer(
             Canvas canvas,
             TransmissionTemperatureAlert.Level transmissionTemperatureLevel) {
+        canvas.drawBitmap(
+                calibratedEdgeBackground,
+                (Rect) null,
+                logicalBounds,
+                bitmapPaint);
         canvas.drawBitmap(
                 staticBackground,
                 (Rect) null,
@@ -343,7 +353,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         drawFittedText(
                 canvas,
                 Integer.toString(Math.round(displayedSpeed)),
-                349.0f,
+                MAIN_SPEED_CENTER_X,
                 435.0f,
                 168.0f,
                 112.0f,
@@ -360,7 +370,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 92.0f);
 
         configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
-        canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
+        canvas.drawText("km/h", MAIN_SPEED_CENTER_X, 496.0f, textPaint);
 
         // Keep the fuel values inside the user-supplied grey insert and clear
         // of the complete needle sweep.

@@ -35,6 +35,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
+    private static final float MAIN_SPEED_CENTER_X = 317.0f;
     private static final float CLOCK_CARD_LEFT = 11.0f;
     private static final float CLOCK_CARD_TOP = 88.0f;
     private static final float CLOCK_CARD_RIGHT = 175.0f;
@@ -83,6 +84,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
 
+    private final Bitmap calibratedEdgeBackground;
     private final Bitmap staticBackground;
     private final Bitmap staticOverlay;
     private final Bitmap yellowNeedle;
@@ -108,6 +110,9 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
+        calibratedEdgeBackground = loadBitmap(
+                context,
+                "dashboard/skins/common/calibrated_edge_background.png");
         staticBackground = loadBitmap(context, "dashboard/skins/classic/background.png");
         staticOverlay = loadBitmap(context, "dashboard/skins/classic/overlay.png");
         yellowNeedle = loadBitmap(context, "dashboard/skins/classic/needle_main.png");
@@ -167,6 +172,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private void drawStaticLayer(
             Canvas canvas,
             TransmissionTemperatureAlert.Level transmissionTemperatureLevel) {
+        canvas.drawBitmap(calibratedEdgeBackground, (Rect) null, logicalBounds, bitmapPaint);
         canvas.drawBitmap(staticBackground, (Rect) null, logicalBounds, bitmapPaint);
         canvas.drawBitmap(staticOverlay, (Rect) null, logicalBounds, bitmapPaint);
 
@@ -305,7 +311,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         drawFittedText(
                 canvas,
                 Integer.toString(Math.round(displayedSpeed)),
-                349.0f,
+                MAIN_SPEED_CENTER_X,
                 435.0f,
                 168.0f,
                 112.0f,
@@ -320,7 +326,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 92.0f);
 
         configureText(dataTypeface, 20.0f, Paint.Align.CENTER, 0xFFC8CDD1, false, 0.0f);
-        canvas.drawText("km/h", 349.0f, 496.0f, textPaint);
+        canvas.drawText("km/h", MAIN_SPEED_CENTER_X, 496.0f, textPaint);
 
         // Keep the fuel values inside the grey insert and clear of the full needle
         // sweep. Range and fuel fraction are nudged about 1 mm farther right.

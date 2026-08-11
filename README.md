@@ -397,7 +397,10 @@ Connected to read-only TBOX temperature source
 
 - инструкцию подготовки JDK, Android SDK, Python и локального Codex;
 - готовые промпты для трёх этапов разработки темы;
-- нейтральный шаблон `1920×720`, маски прозрачности и системных оверлеев;
+- актуальный шаблон `1920×720` с откалиброванной на автомобиле чёрной
+  подложкой и маской системных иконок v2.4
+  ([каталог](docs/H9_Cluster_Neutral_Design_Template_1920x720),
+  [ZIP](docs/H9_Cluster_Neutral_Design_Template_1920x720.zip));
 - актуальный автономный Demo-проект
   `H9_Cluster_Dashboard_Demo_Base_Source_v3.zip` с тестовыми значениями;
 - `H9_Cluster_Codex_Forum_Kit_v3.zip` для передачи полного комплекта другому
@@ -405,7 +408,8 @@ Connected to read-only TBOX temperature source
 
 Каталог `tools/` содержит воспроизводимые Python-инструменты:
 
-- `build_forum_design_template.py` — создаёт нейтральный комплект масок;
+- `build_forum_design_template.py` — пересобирает актуальный комплект шаблона
+  без изменения публичных имён файлов;
 - `edit_classic_background.py` — формирует подложку и независимый overlay
   Classic с утверждённой геометрией.
 

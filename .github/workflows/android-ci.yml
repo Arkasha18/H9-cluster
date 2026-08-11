@@ -49,7 +49,7 @@ jobs:
               mkdir -p "${smoke_dir}/forum-kit"
               python tools/build_forum_design_template.py \
                 --output-dir "${smoke_dir}/forum-kit" \
-                --opacity-source app/src/main/assets/dashboard/skins/classic/background.png
+                --gradient-source app/src/main/assets/dashboard/skins/common/calibrated_edge_background.png
               python tools/edit_classic_background.py \
                 --input app/src/main/assets/dashboard/skins/classic/background.png \
                 --output "${smoke_dir}/background-classic.png" \
