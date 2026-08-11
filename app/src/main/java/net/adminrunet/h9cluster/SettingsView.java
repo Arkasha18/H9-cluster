@@ -49,6 +49,8 @@ public final class SettingsView extends View {
 
         void onSaveRequested(SkinSettingsSession.Snapshot draft);
 
+        void onCheckForUpdatesRequested();
+
         void onExitRequested();
     }
 
@@ -141,6 +143,9 @@ public final class SettingsView extends View {
                 false);
 
         drawExitButton(canvas);
+        if (updatesEnabled()) {
+            drawUpdateButton(canvas);
+        }
 
         canvas.restoreToCount(save);
     }
@@ -173,6 +178,28 @@ public final class SettingsView extends View {
                 SettingsExitButton.TOP + 29.0f,
                 17.0f,
                 COLOR_DANGER,
+                true);
+    }
+
+    private void drawUpdateButton(Canvas canvas) {
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                SettingsUpdateButton.LEFT,
+                SettingsUpdateButton.TOP,
+                SettingsUpdateButton.RIGHT,
+                SettingsUpdateButton.BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        drawCenteredText(
+                canvas,
+                "Проверить обновление",
+                (SettingsUpdateButton.LEFT + SettingsUpdateButton.RIGHT) * 0.5f,
+                SettingsUpdateButton.TOP + 29.0f,
+                16.0f,
+                COLOR_ACCENT,
                 true);
     }
 
@@ -274,7 +301,15 @@ public final class SettingsView extends View {
             confirmExit();
             return true;
         }
+        if (updatesEnabled() && SettingsUpdateButton.contains(x, y)) {
+            listener.onCheckForUpdatesRequested();
+            return true;
+        }
         return true;
+    }
+
+    private static boolean updatesEnabled() {
+        return !BuildConfig.DEBUG && !BuildConfig.DEMO_MODE;
     }
 
     private void confirmExit() {
