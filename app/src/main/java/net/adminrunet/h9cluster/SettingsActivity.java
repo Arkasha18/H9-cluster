@@ -69,6 +69,13 @@ public final class SettingsActivity extends Activity {
                     }
 
                     @Override
+                    public void onCheckForUpdatesRequested() {
+                        if (updateManager != null) {
+                            updateManager.checkForUpdatesManually();
+                        }
+                    }
+
+                    @Override
                     public void onExitRequested() {
                         exitApplication();
                     }

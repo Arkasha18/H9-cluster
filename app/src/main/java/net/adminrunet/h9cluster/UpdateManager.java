@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -73,6 +74,7 @@ public final class UpdateManager {
     private final boolean updatesEnabled;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final AtomicBoolean updateCheckInProgress = new AtomicBoolean();
 
     private volatile boolean destroyed;
     private boolean waitingForInstallPermission;
@@ -94,12 +96,29 @@ public final class UpdateManager {
     }
 
     public void checkForUpdates() {
+        checkForUpdates(false);
+    }
+
+    public void checkForUpdatesManually() {
+        checkForUpdates(true);
+    }
+
+    private void checkForUpdates(boolean userInitiated) {
         if (!updatesEnabled || destroyed) {
             return;
         }
         if (!isNetworkAvailable()) {
             showToast("Нет подключения к интернету");
             return;
+        }
+        if (!updateCheckInProgress.compareAndSet(false, true)) {
+            if (userInitiated) {
+                showToast("Проверка обновления уже выполняется");
+            }
+            return;
+        }
+        if (userInitiated) {
+            showToast("Проверяем наличие обновления");
         }
 
         executor.execute(() -> {
@@ -116,6 +135,9 @@ public final class UpdateManager {
                 JSONObject release = new JSONObject(readResponse(connection));
                 String latestVersion = release.getString("tag_name");
                 if (!isNewerVersion(currentVersion, latestVersion)) {
+                    if (userInitiated) {
+                        showToast("Установлена актуальная версия");
+                    }
                     return;
                 }
 
@@ -139,6 +161,7 @@ public final class UpdateManager {
                 Log.e(TAG, "Update check failed", error);
                 showToast("Ошибка проверки обновления");
             } finally {
+                updateCheckInProgress.set(false);
                 if (connection != null) {
                     connection.disconnect();
                 }
