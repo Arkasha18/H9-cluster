@@ -1,4 +1,4 @@
-# H9 Cluster 9.5.0
+# H9 Cluster 9.5.1
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -53,6 +53,8 @@
   через откалиброванное прозрачное окно;
 - встроенная проверка новых GitHub Releases в production-сборке с показом
   описания, загрузкой APK и установкой только после подтверждения пользователя;
+- ручная проверка обновления из общего экрана настроек всех тем с явным
+  сообщением, когда установлена актуальная версия;
 - кнопка `Выйти из приложения` на экране настроек: панель на `Display ID 2`
   закрывается, чтение автомобильных данных прекращается;
 - автоматический запуск панели на `Display ID 2`.
