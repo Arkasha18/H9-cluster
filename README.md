@@ -1,4 +1,4 @@
-# H9 Cluster 9.4.0
+# H9 Cluster 9.5.0
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -16,11 +16,25 @@
 устройства и не одобрен ими. Названия и товарные знаки принадлежат их
 правообладателям.
 
-![H9 Cluster Classic на Display ID 2](docs/images/h9-cluster-display-2.png)
+## Скины
+
+Все четыре темы сняты на реальном `Display ID 2` в разрешении `1920×720`.
+Изображения открываются в полном размере по клику.
+
+| Classic | Sport |
+| --- | --- |
+| [![H9 Cluster Classic](docs/images/skins/classic-1920x720.png)](docs/images/skins/classic-1920x720.png) | [![H9 Cluster Sport](docs/images/skins/sport-1920x720.png)](docs/images/skins/sport-1920x720.png) |
+
+| Horizon | Simple |
+| --- | --- |
+| [![H9 Cluster Horizon](docs/images/skins/horizon-1920x720.png)](docs/images/skins/horizon-1920x720.png) | [![H9 Cluster Simple](docs/images/skins/simple-1920x720.png)](docs/images/skins/simple-1920x720.png) |
+
+Описание особенностей каждой темы и полноразмерная галерея приведены в
+[документации по скинам](docs/SKINS_RU.md).
 
 ## Возможности
 
-- независимые темы `Classic`, `Sport` и `Horizon`;
+- независимые темы `Classic`, `Sport`, `Horizon` и `Simple`;
 - отдельно откалиброванные по печатным делениям стрелки спидометра и
   тахометра в темах `Classic` и `Sport`;
 - скорость, обороты, пробег, топливо и запас хода;
@@ -35,6 +49,10 @@
   остаётся заводская приборная панель;
 - независимые настройки конкретной темы, если она предоставляет собственный
   редактор;
+- штатный QNX-блок предупреждений появляется поверх пользовательской панели
+  через откалиброванное прозрачное окно;
+- встроенная проверка новых GitHub Releases в production-сборке с показом
+  описания, загрузкой APK и установкой только после подтверждения пользователя;
 - кнопка `Выйти из приложения` на экране настроек: панель на `Display ID 2`
   закрывается, чтение автомобильных данных прекращается;
 - автоматический запуск панели на `Display ID 2`.
@@ -61,6 +79,12 @@ com.gwm.android.adapter.server.GwmAdapterService
 Если совместимые нативные библиотеки отсутствуют или не загружаются, приложение
 автоматически продолжает работу и получает RPM через Binder; тахометр при этом
 может обновляться реже.
+
+Production-сборка при открытии экрана настроек проверяет последний релиз через
+GitHub API. Новая версия скачивается только после подтверждения пользователя.
+Перед передачей APK системному установщику приложение проверяет ожидаемое имя и
+HTTPS-адрес GitHub, имя пакета, увеличение `versionCode` и совпадение сертификата
+подписи с уже установленной версией. В Debug- и Demo-сборках проверка отключена.
 
 Температура масла АКПП читается без CAN-команд и UDS-запросов из уже
 обновляемого штатным ПО снимка `/dev/shm/can_data_collect` на TBOX. Приложение
