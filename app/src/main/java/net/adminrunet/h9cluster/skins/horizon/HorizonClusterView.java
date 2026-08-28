@@ -429,12 +429,12 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         canvas.drawText(formatTrip(state.tripKm) + " km", 554.0f, 675.0f, textPaint);
 
         configureText(12.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("INST", 104.0f, 599.0f, textPaint);
+        canvas.drawText("INST", 104.0f, 602.0f, textPaint);
         configureText(20.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
         canvas.drawText(
                 FuelConsumptionFormatter.instant(state),
                 150.0f,
-                600.0f,
+                603.0f,
                 textPaint);
         configureText(12.0f, Paint.Align.LEFT, COLOR_MUTED, true);
         canvas.drawText("AVG", 104.0f, 625.0f, textPaint);
@@ -543,7 +543,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         configureText(9.0f, Paint.Align.LEFT, COLOR_MUTED, true);
         canvas.drawText(label, labelX, baseline, textPaint);
         configureText(17.0f, Paint.Align.CENTER, wheelSpeedColor(state, speedKph), true);
-        canvas.drawText(formatWheelSpeed(speedKph), valueX, baseline, textPaint);
+        canvas.drawText(formatWheelSpeed(speedKph), valueX, baseline - 1.0f, textPaint);
     }
 
     private void updateSmoothedValues(long now) {

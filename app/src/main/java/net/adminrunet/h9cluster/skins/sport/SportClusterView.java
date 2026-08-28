@@ -498,13 +498,13 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
         // Instant consumption is above the existing average-consumption row.
         configureText(dataTypeface, 12.0f, Paint.Align.LEFT, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("INST", 18.0f, 629.0f, textPaint);
+        canvas.drawText("INST", 18.0f, 653.0f, textPaint);
         configureText(gaugeTypeface, 25.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.06f);
         drawFittedText(
                 canvas,
                 FuelConsumptionFormatter.instant(state),
                 108.0f,
-                623.0f,
+                647.0f,
                 126.0f,
                 25.0f,
                 19.0f);
@@ -714,7 +714,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 canvas,
                 formatWheelSpeed(speedKph),
                 valueX,
-                valueCenterY,
+                valueCenterY - 1.0f,
                 92.0f,
                 23.0f,
                 18.0f);
