@@ -17,6 +17,7 @@ public final class ClusterState {
     public final float tyreFrontRightBar;
     public final float tyreRearLeftBar;
     public final float tyreRearRightBar;
+    public final float instantFuelConsumption;
     public final float consumptionLitersPer100Km;
     public final float journeyAverageFuelConsumption;
     public final float voltage;
@@ -50,6 +51,7 @@ public final class ClusterState {
             float tyreFrontRightBar,
             float tyreRearLeftBar,
             float tyreRearRightBar,
+            float instantFuelConsumption,
             float consumptionLitersPer100Km,
             float journeyAverageFuelConsumption,
             float voltage,
@@ -83,6 +85,7 @@ public final class ClusterState {
         this.tyreFrontRightBar = tyreFrontRightBar;
         this.tyreRearLeftBar = tyreRearLeftBar;
         this.tyreRearRightBar = tyreRearRightBar;
+        this.instantFuelConsumption = instantFuelConsumption;
         this.consumptionLitersPer100Km = consumptionLitersPer100Km;
         this.journeyAverageFuelConsumption =
                 journeyAverageFuelConsumption;
@@ -125,6 +128,7 @@ public final class ClusterState {
                 0.0f,
                 0.0f,
                 0.0f,
+                Float.NaN,
                 0.0f,
                 Float.NaN,
                 0.0f,

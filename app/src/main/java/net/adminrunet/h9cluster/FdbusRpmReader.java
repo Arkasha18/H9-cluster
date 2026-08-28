@@ -14,21 +14,25 @@ import ipc.fdbus.FdbusMessage;
 import ipc.fdbus.SubscribeItem;
 
 /**
- * Read-only high-rate engine-speed source backed by the MCU FDBus service.
+ * Read-only high-rate vehicle-data source backed by the MCU FDBus service.
  *
  * The service broadcasts protobuf-wrapped raw CAN frames as event 0x0100.
  * Haval H9 engine speed is a big-endian 16-bit value in bytes 5-6 of CAN
- * frame 0x111, scaled at eight counts per RPM.
+ * frame 0x111, scaled at eight counts per RPM. ECM2 frame 0x271 carries the
+ * cumulative fuel counter used to derive live fuel flow.
  */
 final class FdbusRpmReader implements FdbusClientListener {
     interface Listener {
         void onFdbusRpm(int rpm, long receivedAtMs);
+
+        void onFdbusFuelConsumptionCounter(int counter, long receivedAtMs);
     }
 
     private static final String TAG = "FdbusRpmReader";
     private static final String SERVICE_URL = "svc://fdbus_mcu_ipc";
     private static final int MCU_CAN_EVENT = 0x0100;
     private static final int ENGINE_SPEED_CAN_ID = 0x111;
+    private static final int FUEL_CONSUMPTION_CAN_ID = 0x271;
     private static final int MAX_RPM = 8000;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -41,6 +45,9 @@ final class FdbusRpmReader implements FdbusClientListener {
     private boolean deliveryScheduled;
     private int pendingRpm;
     private long pendingReceivedAtMs;
+    private boolean fuelDeliveryScheduled;
+    private int pendingFuelCounter;
+    private long pendingFuelReceivedAtMs;
 
     private final Runnable deliverPendingRpm = new Runnable() {
         @Override
@@ -58,6 +65,22 @@ final class FdbusRpmReader implements FdbusClientListener {
         }
     };
 
+    private final Runnable deliverPendingFuelCounter = new Runnable() {
+        @Override
+        public void run() {
+            int counter;
+            long receivedAtMs;
+            synchronized (pendingLock) {
+                fuelDeliveryScheduled = false;
+                counter = pendingFuelCounter;
+                receivedAtMs = pendingFuelReceivedAtMs;
+            }
+            if (started) {
+                listener.onFdbusFuelConsumptionCounter(counter, receivedAtMs);
+            }
+        }
+    };
+
     FdbusRpmReader(Listener listener) {
         this.listener = listener;
     }
@@ -69,14 +92,14 @@ final class FdbusRpmReader implements FdbusClientListener {
         started = true;
         try {
             runtime = new Fdbus();
-            client = new FdbusClient("h9_cluster_rpm", this);
+            client = new FdbusClient("h9_cluster_vehicle", this);
             boolean accepted = client.connect(SERVICE_URL);
             Log.i(TAG, "Connect accepted=" + accepted);
             if (!accepted) {
                 stop();
             }
         } catch (Throwable error) {
-            Log.e(TAG, "FDBus RPM source unavailable; Binder fallback remains active", error);
+            Log.e(TAG, "FDBus vehicle source unavailable; Binder fallback remains active", error);
             stop();
         }
     }
@@ -84,8 +107,10 @@ final class FdbusRpmReader implements FdbusClientListener {
     void stop() {
         started = false;
         mainHandler.removeCallbacks(deliverPendingRpm);
+        mainHandler.removeCallbacks(deliverPendingFuelCounter);
         synchronized (pendingLock) {
             deliveryScheduled = false;
+            fuelDeliveryScheduled = false;
         }
 
         FdbusClient oldClient = client;
@@ -128,9 +153,19 @@ final class FdbusRpmReader implements FdbusClientListener {
             return;
         }
         McuCanFrame frame = decodeMcuCanFrame(message.byteArray());
-        if (frame == null
-                || frame.id != ENGINE_SPEED_CAN_ID
-                || frame.data.length < 8) {
+        if (frame == null) {
+            return;
+        }
+
+        long receivedAtMs = SystemClock.elapsedRealtime();
+        if (frame.id == FUEL_CONSUMPTION_CAN_ID) {
+            int counter = decodeFuelConsumptionCounter(frame.data);
+            if (counter >= 0) {
+                scheduleFuelDelivery(counter, receivedAtMs);
+            }
+            return;
+        }
+        if (frame.id != ENGINE_SPEED_CAN_ID || frame.data.length < 8) {
             return;
         }
 
@@ -142,7 +177,7 @@ final class FdbusRpmReader implements FdbusClientListener {
         if (rpm < 0 || rpm > MAX_RPM) {
             return;
         }
-        scheduleDelivery(rpm, SystemClock.elapsedRealtime());
+        scheduleDelivery(rpm, receivedAtMs);
     }
 
     @Override
@@ -170,6 +205,31 @@ final class FdbusRpmReader implements FdbusClientListener {
                 deliveryScheduled = false;
             }
         }
+    }
+
+    private void scheduleFuelDelivery(int counter, long receivedAtMs) {
+        boolean shouldPost = false;
+        synchronized (pendingLock) {
+            pendingFuelCounter = counter;
+            pendingFuelReceivedAtMs = receivedAtMs;
+            if (!fuelDeliveryScheduled) {
+                fuelDeliveryScheduled = true;
+                shouldPost = true;
+            }
+        }
+        if (shouldPost && !mainHandler.post(deliverPendingFuelCounter)) {
+            synchronized (pendingLock) {
+                fuelDeliveryScheduled = false;
+            }
+        }
+    }
+
+    /** ECM2 byte 0 is checksum; bytes 1-2 are the unsigned fuel counter. */
+    static int decodeFuelConsumptionCounter(byte[] canData) {
+        if (canData == null || canData.length < 3) {
+            return -1;
+        }
+        return ((canData[1] & 0xff) << 8) | (canData[2] & 0xff);
     }
 
     /**

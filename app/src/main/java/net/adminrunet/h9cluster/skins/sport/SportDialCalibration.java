@@ -9,6 +9,7 @@ package net.adminrunet.h9cluster.skins.sport;
  * stopping around the printed 7 at 8000 rpm.</p>
  */
 final class SportDialCalibration {
+    private static final float REPORTED_SPEED_NEEDLE_OFFSET_KPH = 5.0f;
     private static final float[] SPEED_VALUES_KPH = {
             0.0f, 20.0f, 40.0f, 60.0f, 80.0f,
             100.0f, 120.0f, 140.0f, 180.0f, 220.0f
@@ -40,6 +41,19 @@ final class SportDialCalibration {
 
     static Sample speed(float speedKph) {
         return interpolate(speedKph, SPEED_VALUES_KPH, SPEED_X, SPEED_Y);
+    }
+
+    /**
+     * Compensates the additional roughly 5 km/h under-read reported for the
+     * Sport pointer while leaving zero fixed at the printed scale origin.
+     */
+    static Sample speedNeedle(float speedKph) {
+        float finiteSpeed = Float.isFinite(speedKph)
+                ? Math.max(0.0f, speedKph)
+                : 0.0f;
+        float ramp = clamp(finiteSpeed / 20.0f, 0.0f, 1.0f);
+        return speed(
+                finiteSpeed + REPORTED_SPEED_NEEDLE_OFFSET_KPH * ramp);
     }
 
     static Sample rpm(float rpm) {

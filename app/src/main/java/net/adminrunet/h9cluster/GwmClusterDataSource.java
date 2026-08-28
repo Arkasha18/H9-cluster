@@ -20,9 +20,10 @@ import java.util.regex.Pattern;
  * Read-only source backed by the factory GWM adapter service.
  *
  * On the Binder side only GET_DATA, listener registration and listener
- * removal are used. A separate read-only FDBus reader supplies high-rate RPM;
- * transmission temperature is read from the snapshot already maintained by
- * the stock TBOX. None of these paths sends vehicle commands.
+ * removal are used. A separate read-only FDBus reader supplies high-rate RPM
+ * and the cumulative ECM2 fuel counter; transmission temperature is read from
+ * the snapshot already maintained by the stock TBOX. None of these paths sends
+ * vehicle commands.
  */
 public final class GwmClusterDataSource
         implements ClusterDataSource,
@@ -44,6 +45,7 @@ public final class GwmClusterDataSource
     private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final long REBIND_DELAY_MS = 1500L;
     private static final long FDBUS_RPM_STALE_MS = 500L;
+    private static final long FDBUS_FUEL_STALE_MS = 2000L;
 
     private static final int INDEX_SPEED = 0;
     private static final int INDEX_RPM = 1;
@@ -69,6 +71,7 @@ public final class GwmClusterDataSource
     private static final int INDEX_ENGINE_FLYWHEEL_TORQUE = 22;
     private static final int INDEX_DOOR_STATUS = 23;
     private static final int INDEX_IPK_WARNING = 24;
+    private static final int INDEX_INSTANT_FUEL_CONSUMPTION = 25;
 
     private static final String[] DATA_IDS = new String[] {
             "car.basic.vehicle_speed",
@@ -95,7 +98,8 @@ public final class GwmClusterDataSource
             "car.basic.rr_wheel_speed",
             "car.off_road_info.engine_flywheel_torque",
             "car.basic.door_status",
-            "car.ipk_info.tts_contents"
+            "car.ipk_info.tts_contents",
+            "car.basic.instant_fuel_consumption"
     };
 
     private static final Pattern NUMBER_PATTERN =
@@ -106,6 +110,8 @@ public final class GwmClusterDataSource
     private final String[] values = new String[DATA_IDS.length];
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
+    private final FuelConsumptionEstimator fuelConsumptionEstimator =
+            new FuelConsumptionEstimator();
     private final TransmissionTemperatureReader transmissionTemperatureReader;
     private final FactoryNotificationMonitor factoryNotificationMonitor =
             new FactoryNotificationMonitor();
@@ -119,6 +125,8 @@ public final class GwmClusterDataSource
     private long binderRpmUpdatedAtMs;
     private long fdbusRpmUpdatedAtMs;
     private int fdbusRpm;
+    private float fdbusFuelFlowLitersPerHour = Float.NaN;
+    private long fdbusFuelFlowUpdatedAtMs;
     private long journeyAverageFuelConsumptionUpdatedAtMs;
     private long journeyOdometerUpdatedAtMs;
     private long steeringUpdatedAtMs;
@@ -178,6 +186,9 @@ public final class GwmClusterDataSource
     public void start(Listener listener) {
         this.listener = listener;
         started = true;
+        fuelConsumptionEstimator.reset();
+        fdbusFuelFlowLitersPerHour = Float.NaN;
+        fdbusFuelFlowUpdatedAtMs = 0L;
         publishState();
         fdbusRpmReader.start();
         transmissionTemperatureReader.start();
@@ -190,6 +201,9 @@ public final class GwmClusterDataSource
         mainHandler.removeCallbacks(rebindTask);
         mainHandler.removeCallbacks(factoryNotificationTimeout);
         fdbusRpmReader.stop();
+        fuelConsumptionEstimator.reset();
+        fdbusFuelFlowLitersPerHour = Float.NaN;
+        fdbusFuelFlowUpdatedAtMs = 0L;
         transmissionTemperatureReader.stop();
         unregisterListener();
         if (bound) {
@@ -474,8 +488,17 @@ public final class GwmClusterDataSource
                 values[INDEX_AVG_CONSUMPTION_A],
                 values[INDEX_AVG_CONSUMPTION_B],
                 lastState.consumptionLitersPer100Km);
-
         long now = SystemClock.elapsedRealtime();
+        int speedKph = clamp(
+                parseInt(values[INDEX_SPEED], lastState.speedKph),
+                0,
+                220);
+        float instantConsumption = selectInstantFuelConsumption(
+                now,
+                speedKph,
+                fdbusFuelFlowLitersPerHour,
+                fdbusFuelFlowUpdatedAtMs,
+                values[INDEX_INSTANT_FUEL_CONSUMPTION]);
         RpmSample rpmSample = selectRpmSample(
                 now,
                 fdbusRpm,
@@ -497,7 +520,7 @@ public final class GwmClusterDataSource
                         parseInt(values[INDEX_GEAR_STATUS], -1));
 
         ClusterState state = new ClusterState(
-                clamp(parseInt(values[INDEX_SPEED], lastState.speedKph), 0, 220),
+                speedKph,
                 rpmSample.rpm,
                 currentGear,
                 gearSelector,
@@ -512,6 +535,7 @@ public final class GwmClusterDataSource
                 pressures[1],
                 pressures[2],
                 pressures[3],
+                instantConsumption,
                 Math.max(0.0f, consumption),
                 journeyAverageConsumption,
                 Math.max(0.0f, parseFloat(values[INDEX_VOLTAGE], lastState.voltage)),
@@ -556,6 +580,22 @@ public final class GwmClusterDataSource
         }
         fdbusRpm = rpm;
         fdbusRpmUpdatedAtMs = receivedAtMs;
+        publishState();
+    }
+
+    @Override
+    public void onFdbusFuelConsumptionCounter(int counter, long receivedAtMs) {
+        if (!started) {
+            return;
+        }
+        float flowLitersPerHour = fuelConsumptionEstimator.update(
+                counter,
+                receivedAtMs);
+        if (!Float.isFinite(flowLitersPerHour)) {
+            return;
+        }
+        fdbusFuelFlowLitersPerHour = flowLitersPerHour;
+        fdbusFuelFlowUpdatedAtMs = receivedAtMs;
         publishState();
     }
 
@@ -711,6 +751,32 @@ public final class GwmClusterDataSource
             consumption = parseFloat(rawIndicatorB, previousConsumption);
         }
         return consumption;
+    }
+
+    static float instantFuelConsumption(String rawValue) {
+        float consumption = parseFloat(rawValue, Float.NaN);
+        return Float.isFinite(consumption) && consumption >= 0.0f
+                ? consumption
+                : Float.NaN;
+    }
+
+    static float selectInstantFuelConsumption(
+            long nowMs,
+            int speedKph,
+            float fdbusFlowLitersPerHour,
+            long fdbusUpdatedAtMs,
+            String binderValue) {
+        boolean fdbusFresh = Float.isFinite(fdbusFlowLitersPerHour)
+                && fdbusFlowLitersPerHour >= 0.0f
+                && fdbusUpdatedAtMs > 0L
+                && nowMs >= fdbusUpdatedAtMs
+                && nowMs - fdbusUpdatedAtMs <= FDBUS_FUEL_STALE_MS;
+        if (fdbusFresh) {
+            return FuelConsumptionEstimator.forClusterDisplay(
+                    fdbusFlowLitersPerHour,
+                    speedKph);
+        }
+        return instantFuelConsumption(binderValue);
     }
 
     static int normalizeCurrentGear(int rawGear) {

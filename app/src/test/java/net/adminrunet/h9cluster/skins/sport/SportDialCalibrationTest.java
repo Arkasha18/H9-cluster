@@ -73,6 +73,16 @@ public final class SportDialCalibrationTest {
     }
 
     @Test
+    public void vehicleReportedNeedleUnderReadGetsMeasuredCompensation() {
+        assertSamePosition(
+                SportDialCalibration.speed(81.0f),
+                SportDialCalibration.speedNeedle(76.0f));
+        assertSamePosition(
+                SportDialCalibration.speed(0.0f),
+                SportDialCalibration.speedNeedle(0.0f));
+    }
+
+    @Test
     public void lowRpmAdvancesThroughTheFirstPrintedInterval() {
         SportDialCalibration.Sample idle = SportDialCalibration.rpm(700.0f);
         SportDialCalibration.Sample oneThousand = SportDialCalibration.rpm(1000.0f);

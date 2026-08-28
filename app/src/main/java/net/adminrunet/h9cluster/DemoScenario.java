@@ -66,6 +66,10 @@ final class DemoScenario {
                 : 1.0f;
         float frontLeftPressure = alertPhase == 0 ? 2.35f : 1.85f;
         float averageConsumption = alertPhase == 0 ? 18.0f : 21.5f;
+        float instantConsumption = speed < 1.0f
+                ? 0.9f + 0.1f * sin(seconds * 1.7f)
+                : 7.0f + speed * 0.12f
+                        + 2.5f * Math.abs(sin(seconds * 0.9f));
         float voltage = alertPhase == 0 ? 13.8f : 11.8f;
 
         return new ClusterState(
@@ -84,6 +88,9 @@ final class DemoScenario {
                 2.37f + 0.02f * sin(seconds / 3.0f + 0.5f),
                 2.42f + 0.02f * sin(seconds / 3.0f + 1.0f),
                 2.40f + 0.02f * sin(seconds / 3.0f + 1.5f),
+                invalidConsumption
+                        ? Float.NaN
+                        : instantConsumption,
                 invalidConsumption
                         ? Float.NaN
                         : averageConsumption,
@@ -128,6 +135,7 @@ final class DemoScenario {
                 frozen.tyreFrontRightBar,
                 frozen.tyreRearLeftBar,
                 frozen.tyreRearRightBar,
+                0.0f,
                 frozen.consumptionLitersPer100Km,
                 frozen.journeyAverageFuelConsumption,
                 frozen.voltage,

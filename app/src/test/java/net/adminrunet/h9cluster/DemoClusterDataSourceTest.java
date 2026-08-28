@@ -200,6 +200,8 @@ public final class DemoClusterDataSourceTest {
         assertTrue(Float.isNaN(
                 received.get(0).journeyAverageFuelConsumption));
         assertTrue(Float.isNaN(
+                received.get(0).instantFuelConsumption));
+        assertTrue(Float.isNaN(
                 received.get(0).consumptionLitersPer100Km));
         assertTrue(received.get(0).dayKm > 0.0f);
     }
