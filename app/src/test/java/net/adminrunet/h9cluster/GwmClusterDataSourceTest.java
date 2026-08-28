@@ -169,6 +169,41 @@ public final class GwmClusterDataSourceTest {
     }
 
     @Test
+    public void freshFdbusFuelFlowIsConvertedForCurrentSpeed() {
+        assertEquals(
+                8.0f,
+                GwmClusterDataSource.selectInstantFuelConsumption(
+                        2_000L,
+                        50,
+                        4.0f,
+                        1_500L,
+                        null),
+                0.0001f);
+        assertEquals(
+                1.5f,
+                GwmClusterDataSource.selectInstantFuelConsumption(
+                        2_000L,
+                        0,
+                        1.5f,
+                        1_500L,
+                        null),
+                0.0001f);
+    }
+
+    @Test
+    public void staleFdbusFuelFlowFallsBackToBinderValue() {
+        assertEquals(
+                12.3f,
+                GwmClusterDataSource.selectInstantFuelConsumption(
+                        4_001L,
+                        50,
+                        4.0f,
+                        2_000L,
+                        "12.3"),
+                0.0001f);
+    }
+
+    @Test
     public void forwardGearsOneThroughSevenRemainUnchanged() {
         for (int gear = 1; gear <= 7; gear++) {
             assertEquals(gear, GwmClusterDataSource.normalizeCurrentGear(gear));
