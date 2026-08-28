@@ -367,6 +367,7 @@ public final class TripSummaryCoordinatorTest {
                 2.3f,
                 averageFuel,
                 averageFuel,
+                averageFuel,
                 14.0f,
                 20.0f,
                 0.0f,

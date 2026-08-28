@@ -125,6 +125,7 @@ public final class TripTelemetryTest {
                 2.3f,
                 2.3f,
                 clusterConsumption,
+                clusterConsumption,
                 journeyAverageFuel,
                 14.0f,
                 20.0f,

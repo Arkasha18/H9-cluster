@@ -28,6 +28,7 @@ public final class DemoScenarioTest {
             assertTrue(state.tyreFrontRightBar >= 2.0f);
             assertTrue(state.tyreRearLeftBar >= 2.0f);
             assertTrue(state.tyreRearRightBar >= 2.0f);
+            assertTrue(state.instantFuelConsumption >= 0.0f);
             assertTrue(state.consumptionLitersPer100Km >= 0.0f);
             assertTrue(state.voltage >= 11.5f && state.voltage <= 15.0f);
             assertTrue(state.outsideTemperatureC >= -50.0f);
@@ -124,6 +125,7 @@ public final class DemoScenarioTest {
         assertTrue(state.tyreFrontRightBar > 0.0f);
         assertTrue(state.tyreRearLeftBar > 0.0f);
         assertTrue(state.tyreRearRightBar > 0.0f);
+        assertTrue(state.instantFuelConsumption > 0.0f);
         assertTrue(state.consumptionLitersPer100Km > 0.0f);
         assertTrue(state.journeyAverageFuelConsumption > 0.0f);
         assertTrue(state.voltage > 0.0f);
@@ -213,6 +215,7 @@ public final class DemoScenarioTest {
         ClusterState state = scenario.snapshot(12_000L, 20_000L, true);
 
         assertTrue(Float.isNaN(state.journeyAverageFuelConsumption));
+        assertTrue(Float.isNaN(state.instantFuelConsumption));
         assertTrue(Float.isNaN(state.consumptionLitersPer100Km));
         assertTrue(state.dayKm > 0.0f);
         assertEquals(

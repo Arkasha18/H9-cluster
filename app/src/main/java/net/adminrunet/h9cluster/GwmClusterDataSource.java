@@ -69,6 +69,7 @@ public final class GwmClusterDataSource
     private static final int INDEX_ENGINE_FLYWHEEL_TORQUE = 22;
     private static final int INDEX_DOOR_STATUS = 23;
     private static final int INDEX_IPK_WARNING = 24;
+    private static final int INDEX_INSTANT_FUEL_CONSUMPTION = 25;
 
     private static final String[] DATA_IDS = new String[] {
             "car.basic.vehicle_speed",
@@ -95,7 +96,8 @@ public final class GwmClusterDataSource
             "car.basic.rr_wheel_speed",
             "car.off_road_info.engine_flywheel_torque",
             "car.basic.door_status",
-            "car.ipk_info.tts_contents"
+            "car.ipk_info.tts_contents",
+            "car.basic.instant_fuel_consumption"
     };
 
     private static final Pattern NUMBER_PATTERN =
@@ -474,6 +476,8 @@ public final class GwmClusterDataSource
                 values[INDEX_AVG_CONSUMPTION_A],
                 values[INDEX_AVG_CONSUMPTION_B],
                 lastState.consumptionLitersPer100Km);
+        float instantConsumption = instantFuelConsumption(
+                values[INDEX_INSTANT_FUEL_CONSUMPTION]);
 
         long now = SystemClock.elapsedRealtime();
         RpmSample rpmSample = selectRpmSample(
@@ -512,6 +516,7 @@ public final class GwmClusterDataSource
                 pressures[1],
                 pressures[2],
                 pressures[3],
+                instantConsumption,
                 Math.max(0.0f, consumption),
                 journeyAverageConsumption,
                 Math.max(0.0f, parseFloat(values[INDEX_VOLTAGE], lastState.voltage)),
@@ -711,6 +716,13 @@ public final class GwmClusterDataSource
             consumption = parseFloat(rawIndicatorB, previousConsumption);
         }
         return consumption;
+    }
+
+    static float instantFuelConsumption(String rawValue) {
+        float consumption = parseFloat(rawValue, Float.NaN);
+        return Float.isFinite(consumption) && consumption >= 0.0f
+                ? consumption
+                : Float.NaN;
     }
 
     static int normalizeCurrentGear(int rawGear) {

@@ -4,7 +4,10 @@ import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
+import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
+import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -81,6 +84,8 @@ public final class SportClusterView extends View implements ClusterRenderer {
             new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
+    private final RpmDisplaySmoother rpmSmoother =
+            new RpmDisplaySmoother();
 
     private final Bitmap calibratedEdgeBackground;
     private final Bitmap staticBackground;
@@ -90,6 +95,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private final Bitmap smallNeedle;
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
+    private final WifiIndicator wifiIndicator;
 
     private ClusterState targetState = ClusterState.empty();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -122,6 +128,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
         gaugeTypeface = Typeface.createFromAsset(
                 context.getAssets(), "fonts/Rajdhani-Medium.ttf");
+        wifiIndicator = new WifiIndicator(context);
 
         bitmapPaint.setAlpha(255);
         linePaint.setStyle(Paint.Style.STROKE);
@@ -134,7 +141,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
             return;
         }
         targetState = state;
-        displayedRpm = state.rpm;
         if (state.steeringUpdatedAtMs > 0L) {
             steeringMotion.onSample(state.steeringAngleDeg, state.steeringUpdatedAtMs);
         }
@@ -236,7 +242,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         drawSportScaleNeedle(
                 canvas,
                 mainNeedle,
-                SportDialCalibration.speed(displayedSpeed),
+                SportDialCalibration.speedNeedle(displayedSpeed),
                 false,
                 SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
@@ -345,6 +351,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
         drawLiveTelemetryCards(canvas, state);
         drawCurrentGearCard(canvas, state);
+        wifiIndicator.draw(canvas, shapePaint, 1708.0f, 42.0f, frameAtMs);
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
         // the measured value would exceed the zone; the position itself never jumps.
@@ -413,12 +420,12 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 23.0f);
 
         // Match the relocated Classic odometer block above the transparent windows.
-        configureText(dataTypeface, 20.0f, Paint.Align.LEFT,
+        configureText(dataTypeface, 22.0f, Paint.Align.LEFT,
                 0xFFF0F0EE, false, 0.0f);
         canvas.drawText("ODO:", ODOMETER_LABEL_X, ODOMETER_BASELINE, textPaint);
         canvas.drawText("Day:", ODOMETER_LABEL_X, DAY_ODOMETER_BASELINE, textPaint);
         canvas.drawText("Trip:", ODOMETER_LABEL_X, TRIP_ODOMETER_BASELINE, textPaint);
-        configureText(gaugeTypeface, 23.0f, Paint.Align.LEFT,
+        configureText(gaugeTypeface, 29.0f, Paint.Align.LEFT,
                 0xFFF8F8F7, false, -0.05f);
         canvas.drawText(String.format(Locale.US, "%.0f  km", state.odometerKm),
                 ODOMETER_VALUE_X, ODOMETER_BASELINE, textPaint);
@@ -428,43 +435,43 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 ODOMETER_VALUE_X, TRIP_ODOMETER_BASELINE, textPaint);
 
         // Keep all four pressures around the car position from example.png.
-        configureText(gaugeTypeface, 25.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
+        configureText(gaugeTypeface, 31.0f, Paint.Align.CENTER, 0xFFF4F4F2, false, -0.06f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontLeftBar),
                 1490.0f,
                 293.0f,
                 74.0f,
-                25.0f,
-                20.0f);
+                31.0f,
+                25.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreFrontRightBar),
                 1617.0f,
                 293.0f,
                 74.0f,
-                25.0f,
-                20.0f);
+                31.0f,
+                25.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearLeftBar),
                 1490.0f,
                 346.0f,
                 74.0f,
-                25.0f,
-                20.0f);
+                31.0f,
+                25.0f);
         drawFittedText(
                 canvas,
                 formatPressure(state.tyreRearRightBar),
                 1617.0f,
                 346.0f,
                 74.0f,
-                25.0f,
-                20.0f);
+                31.0f,
+                25.0f);
 
         // Live outside temperature and steering angle remain at the top.
         drawSteeringWheel(canvas, 762.0f, 44.0f, 13.0f, 0xFFD9DEE2);
-        configureText(dataTypeface, 23.0f, Paint.Align.LEFT, 0xFFF7F7F5, false, 0.0f);
+        configureText(dataTypeface, 28.0f, Paint.Align.LEFT, 0xFFF7F7F5, false, 0.0f);
         canvas.drawText(formatSteering(displayedSteering), 784.0f, 53.0f, textPaint);
         configureText(dataTypeface, 27.0f, Paint.Align.CENTER, 0xFFF9F9F7, true, 0.0f);
         canvas.drawText(
@@ -489,18 +496,30 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 ATF_VALUE_BASELINE,
                 textPaint);
 
-        // Bottom live metrics.
-        configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
+        // Instant consumption is above the existing average-consumption row.
+        configureText(dataTypeface, 12.0f, Paint.Align.LEFT, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("INST", 18.0f, 629.0f, textPaint);
+        configureText(gaugeTypeface, 25.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.06f);
         drawFittedText(
                 canvas,
-                String.format(Locale.US, "%.1fL", state.consumptionLitersPer100Km),
-                91.0f,
-                678.0f,
-                112.0f,
-                32.0f,
-                24.0f);
-        configureText(dataTypeface, 16.0f, Paint.Align.LEFT, 0xFFD6D9DB, true, 0.0f);
-        canvas.drawText("/100 km", 46.0f, 712.0f, textPaint);
+                FuelConsumptionFormatter.instant(state),
+                108.0f,
+                623.0f,
+                126.0f,
+                25.0f,
+                19.0f);
+        configureText(dataTypeface, 12.0f, Paint.Align.LEFT, 0xFFA7AFB5, true, 0.0f);
+        canvas.drawText("AVG", 18.0f, 683.0f, textPaint);
+        configureText(gaugeTypeface, 27.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.06f);
+        drawFittedText(
+                canvas,
+                FuelConsumptionFormatter.average(
+                        state.consumptionLitersPer100Km),
+                108.0f,
+                677.0f,
+                126.0f,
+                27.0f,
+                20.0f);
 
         configureText(gaugeTypeface, 32.0f, Paint.Align.CENTER, 0xFFF5F5F3, true, -0.08f);
         drawFittedText(
@@ -558,6 +577,10 @@ public final class SportClusterView extends View implements ClusterRenderer {
         float blend = 1.0f - (float) Math.exp(-deltaMs / 115.0f);
 
         displayedSpeed += (targetState.speedKph - displayedSpeed) * blend;
+        displayedRpm = rpmSmoother.update(
+                targetState.rpm,
+                targetState.speedKph,
+                now);
         displayedFuel += (targetState.fuelLiters - displayedFuel) * blend;
         displayedCoolant += (targetState.coolantC - displayedCoolant) * blend;
         displayedSteering = steeringMotion.update(now);
@@ -565,6 +588,9 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
     private boolean needsAnotherAnimationFrame(long nowMs) {
         return Math.abs(targetState.speedKph - displayedSpeed) > 0.05f
+                || rpmSmoother.needsAnimationFrame(
+                        targetState.rpm,
+                        targetState.speedKph)
                 || Math.abs(targetState.fuelLiters - displayedFuel) > 0.01f
                 || Math.abs(targetState.coolantC - displayedCoolant) > 0.01f
                 || steeringMotion.needsAnimationFrame(nowMs);
@@ -639,9 +665,9 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
         configureText(dataTypeface, 11.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
         canvas.drawText("TRQ", 340.0f, 32.0f, textPaint);
-        configureText(gaugeTypeface, 21.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
+        configureText(gaugeTypeface, 26.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
         drawFittedText(canvas, formatTorque(state.engineFlywheelTorque),
-                340.0f, 57.0f, 94.0f, 21.0f, 16.0f);
+                340.0f, 57.0f, 94.0f, 26.0f, 19.0f);
     }
 
     private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
@@ -679,7 +705,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         canvas.drawText(label, labelX, labelBaseline, textPaint);
         configureText(
                 gaugeTypeface,
-                18.0f,
+                23.0f,
                 Paint.Align.CENTER,
                 wheelSpeedColor(state, speedKph),
                 true,
@@ -690,8 +716,8 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 valueX,
                 valueCenterY,
                 92.0f,
-                18.0f,
-                15.0f);
+                23.0f,
+                18.0f);
     }
 
     private static Bitmap loadBitmap(Context context, String assetPath) {

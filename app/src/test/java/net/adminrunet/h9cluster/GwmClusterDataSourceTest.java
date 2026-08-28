@@ -155,6 +155,20 @@ public final class GwmClusterDataSourceTest {
     }
 
     @Test
+    public void instantConsumptionAcceptsOnlyAvailableNonNegativeValues() {
+        assertEquals(
+                14.7f,
+                GwmClusterDataSource.instantFuelConsumption("14.7"),
+                0.0001f);
+        assertTrue(Float.isNaN(
+                GwmClusterDataSource.instantFuelConsumption(null)));
+        assertTrue(Float.isNaN(
+                GwmClusterDataSource.instantFuelConsumption("-1")));
+        assertTrue(Float.isNaN(
+                GwmClusterDataSource.instantFuelConsumption("waiting")));
+    }
+
+    @Test
     public void forwardGearsOneThroughSevenRemainUnchanged() {
         for (int gear = 1; gear <= 7; gear++) {
             assertEquals(gear, GwmClusterDataSource.normalizeCurrentGear(gear));

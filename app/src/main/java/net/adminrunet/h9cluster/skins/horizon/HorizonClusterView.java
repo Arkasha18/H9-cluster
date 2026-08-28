@@ -3,8 +3,11 @@ package net.adminrunet.h9cluster.skins.horizon;
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.GearSelector;
+import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -57,7 +60,10 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
+    private final RpmDisplaySmoother rpmSmoother =
+            new RpmDisplaySmoother();
     private final boolean swapPrimaryGauges;
+    private final WifiIndicator wifiIndicator;
 
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
@@ -76,6 +82,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         super(context);
         this.swapPrimaryGauges = HorizonSettingsProvider
                 .shouldSwapPrimaryGauges(settings);
+        wifiIndicator = new WifiIndicator(context);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
@@ -86,7 +93,6 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
             return;
         }
         targetState = state;
-        displayedRpm = state.rpm;
         postInvalidateOnAnimation();
     }
 
@@ -339,6 +345,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         drawTelemetryCard(canvas, new RectF(286.0f, 14.0f, 394.0f, 74.0f),
                 "TRQ", formatTorque(state.engineFlywheelTorque));
         drawCurrentGearCard(canvas, state);
+        wifiIndicator.draw(canvas, shapePaint, 1870.0f, 42.0f, frameAtMs);
 
         RectF clock = new RectF(404.0f, 14.0f, 568.0f, 74.0f);
         RectF right = new RectF(1038.0f, 14.0f, 1186.0f, 74.0f);
@@ -408,26 +415,35 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     }
 
     private void drawOdometerCard(Canvas canvas, ClusterState state) {
-        RectF card = new RectF(74.0f, 548.0f, 586.0f, 688.0f);
+        RectF card = new RectF(74.0f, 540.0f, 586.0f, 688.0f);
         drawCard(canvas, card, 26.0f);
 
         configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("ODOMETER", 104.0f, 581.0f, textPaint);
-        canvas.drawText("TODAY", 104.0f, 633.0f, textPaint);
-        canvas.drawText("TRIP", 354.0f, 633.0f, textPaint);
+        canvas.drawText("ODOMETER", 104.0f, 566.0f, textPaint);
+        canvas.drawText("TODAY", 104.0f, 644.0f, textPaint);
+        canvas.drawText("TRIP", 354.0f, 644.0f, textPaint);
 
-        configureText(27.0f, Paint.Align.RIGHT, COLOR_TEXT, true);
-        canvas.drawText(Math.round(state.odometerKm) + " km", 554.0f, 585.0f, textPaint);
-        canvas.drawText(String.format(Locale.US, "%.1f km", state.dayKm), 310.0f, 665.0f, textPaint);
-        canvas.drawText(formatTrip(state.tripKm) + " km", 554.0f, 665.0f, textPaint);
+        configureText(25.0f, Paint.Align.RIGHT, COLOR_TEXT, true);
+        canvas.drawText(Math.round(state.odometerKm) + " km", 554.0f, 570.0f, textPaint);
+        canvas.drawText(String.format(Locale.US, "%.1f km", state.dayKm), 310.0f, 675.0f, textPaint);
+        canvas.drawText(formatTrip(state.tripKm) + " km", 554.0f, 675.0f, textPaint);
 
-        configureText(13.0f, Paint.Align.LEFT, COLOR_MUTED, true);
-        canvas.drawText("AVG", 104.0f, 613.0f, textPaint);
-        configureText(21.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
+        configureText(12.0f, Paint.Align.LEFT, COLOR_MUTED, true);
+        canvas.drawText("INST", 104.0f, 599.0f, textPaint);
+        configureText(20.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
         canvas.drawText(
-                String.format(Locale.US, "%.1f L/100", state.consumptionLitersPer100Km),
+                FuelConsumptionFormatter.instant(state),
                 150.0f,
-                614.0f,
+                600.0f,
+                textPaint);
+        configureText(12.0f, Paint.Align.LEFT, COLOR_MUTED, true);
+        canvas.drawText("AVG", 104.0f, 625.0f, textPaint);
+        configureText(20.0f, Paint.Align.LEFT, COLOR_ACCENT, true);
+        canvas.drawText(
+                FuelConsumptionFormatter.average(
+                        state.consumptionLitersPer100Km),
+                150.0f,
+                626.0f,
                 textPaint);
     }
 
@@ -542,12 +558,19 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         lastFrameAtMs = now;
         float amount = 1.0f - (float) Math.exp(-elapsedMs / 140.0f);
         displayedSpeed += (targetState.speedKph - displayedSpeed) * amount;
+        displayedRpm = rpmSmoother.update(
+                targetState.rpm,
+                targetState.speedKph,
+                now);
         displayedFuel += (targetState.fuelLiters - displayedFuel) * amount;
         displayedCoolant += (targetState.coolantC - displayedCoolant) * amount;
     }
 
     private boolean needsAnotherAnimationFrame(long nowMs) {
         return Math.abs(targetState.speedKph - displayedSpeed) > 0.05f
+                || rpmSmoother.needsAnimationFrame(
+                        targetState.rpm,
+                        targetState.speedKph)
                 || Math.abs(targetState.fuelLiters - displayedFuel) > 0.01f
                 || Math.abs(targetState.coolantC - displayedCoolant) > 0.01f;
     }
