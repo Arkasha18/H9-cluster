@@ -21,6 +21,32 @@ public final class RpmDisplaySmootherTest {
     }
 
     @Test
+    public void alternatingSevenHundredAndEightHundredDoesNotFlicker() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        long nowMs = 1_000L;
+        assertEquals(700.0f, smoother.update(700, 0, nowMs), 0.0f);
+
+        for (int frame = 0; frame < 80; frame++) {
+            nowMs += 50L;
+            int rpm = frame % 2 == 0 ? 800 : 700;
+            assertEquals(700.0f, smoother.update(rpm, 0, nowMs), 0.0f);
+        }
+    }
+
+    @Test
+    public void alternatingEightHundredAndSevenHundredKeepsInitialValue() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        long nowMs = 1_000L;
+        assertEquals(800.0f, smoother.update(800, 0, nowMs), 0.0f);
+
+        for (int frame = 0; frame < 80; frame++) {
+            nowMs += 50L;
+            int rpm = frame % 2 == 0 ? 700 : 800;
+            assertEquals(800.0f, smoother.update(rpm, 0, nowMs), 0.0f);
+        }
+    }
+
+    @Test
     public void sustainedIdleChangeMovesToNewTenthPromptly() {
         RpmDisplaySmoother smoother = new RpmDisplaySmoother();
         long nowMs = 1_000L;
@@ -33,6 +59,30 @@ public final class RpmDisplaySmootherTest {
         }
 
         assertEquals(900.0f, displayed, 0.0f);
+    }
+
+    @Test
+    public void sustainedSevenHundredToEightHundredChangeIsAcceptedPromptly() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        long nowMs = 1_000L;
+        smoother.update(700, 0, nowMs);
+
+        float displayed = 700.0f;
+        for (int frame = 0; frame < 5; frame++) {
+            nowMs += 50L;
+            displayed = smoother.update(800, 0, nowMs);
+        }
+
+        assertEquals(800.0f, displayed, 0.0f);
+    }
+
+    @Test
+    public void twoTenthIdleIncreaseIsImmediate() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        long nowMs = 1_000L;
+        smoother.update(700, 0, nowMs);
+
+        assertEquals(900.0f, smoother.update(900, 0, nowMs + 50L), 0.0f);
     }
 
     @Test
@@ -64,13 +114,24 @@ public final class RpmDisplaySmootherTest {
     }
 
     @Test
-    public void lightThrottleOutsideIdleJitterBandIsImmediate() {
+    public void lightThrottleOutsideIdleFilterIsImmediate() {
         RpmDisplaySmoother smoother = new RpmDisplaySmoother();
         long nowMs = 1_000L;
         smoother.update(800, 0, nowMs);
 
         assertEquals(1100.0f, smoother.update(1100, 0, nowMs + 50L), 0.0f);
         assertEquals(1050.0f, smoother.update(1050, 0, nowMs + 100L), 0.0f);
+    }
+
+    @Test
+    public void gradualLightThrottleDoesNotWaitForEveryIntermediateTenth() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        long nowMs = 1_000L;
+        smoother.update(700, 0, nowMs);
+
+        assertEquals(700.0f, smoother.update(800, 0, nowMs + 50L), 0.0f);
+        assertEquals(900.0f, smoother.update(900, 0, nowMs + 100L), 0.0f);
+        assertEquals(1050.0f, smoother.update(1050, 0, nowMs + 150L), 0.0f);
     }
 
     @Test

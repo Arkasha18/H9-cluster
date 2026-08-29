@@ -7,12 +7,12 @@ package net.adminrunet.h9cluster;
 public final class RpmDisplaySmoother {
     private static final int MAX_RPM = 8000;
     private static final int IDLE_MAX_SPEED_KPH = 2;
-    private static final float IDLE_JITTER_MIN_RPM = 775.0f;
-    private static final float IDLE_JITTER_MAX_RPM = 1025.0f;
-    private static final float IDLE_MIN_RPM = 800.0f;
+    private static final float IDLE_FILTER_MIN_RPM = 550.0f;
+    private static final float IDLE_FILTER_MAX_RPM = 1050.0f;
+    private static final float IDLE_MIN_RPM = 600.0f;
     private static final float IDLE_MAX_RPM = 1000.0f;
     private static final float IDLE_STEP_RPM = 100.0f;
-    private static final long IDLE_CHANGE_CONFIRM_MS = 250L;
+    private static final long ADJACENT_IDLE_CHANGE_CONFIRM_MS = 200L;
 
     private boolean initialized;
     private float displayedRpm;
@@ -23,14 +23,14 @@ public final class RpmDisplaySmoother {
         float targetRpm = clamp(rawRpm, 0, MAX_RPM);
         if (!initialized) {
             initialized = true;
-            displayedRpm = isIdleJitterBand(targetRpm, speedKph)
+            displayedRpm = isIdleFilterActive(targetRpm, speedKph)
                     ? nearestIdleValue(targetRpm)
                     : targetRpm;
             clearPendingIdleChange();
             return displayedRpm;
         }
 
-        if (!isIdleJitterBand(targetRpm, speedKph)) {
+        if (!isIdleFilterActive(targetRpm, speedKph)) {
             displayedRpm = targetRpm;
             clearPendingIdleChange();
             return displayedRpm;
@@ -42,10 +42,14 @@ public final class RpmDisplaySmoother {
             clearPendingIdleChange();
         } else if (idleRpm == displayedRpm) {
             clearPendingIdleChange();
+        } else if (Math.abs(idleRpm - displayedRpm) >= IDLE_STEP_RPM * 2.0f) {
+            // A larger change is throttle response, not adjacent-tenth jitter.
+            displayedRpm = idleRpm;
+            clearPendingIdleChange();
         } else if (pendingIdleRpm != idleRpm || nowMs < pendingIdleSinceMs) {
             pendingIdleRpm = idleRpm;
             pendingIdleSinceMs = nowMs;
-        } else if (nowMs - pendingIdleSinceMs >= IDLE_CHANGE_CONFIRM_MS) {
+        } else if (nowMs - pendingIdleSinceMs >= ADJACENT_IDLE_CHANGE_CONFIRM_MS) {
             displayedRpm = idleRpm;
             clearPendingIdleChange();
         }
@@ -56,10 +60,10 @@ public final class RpmDisplaySmoother {
         return false;
     }
 
-    private static boolean isIdleJitterBand(float rpm, int speedKph) {
+    private static boolean isIdleFilterActive(float rpm, int speedKph) {
         return speedKph <= IDLE_MAX_SPEED_KPH
-                && rpm >= IDLE_JITTER_MIN_RPM
-                && rpm <= IDLE_JITTER_MAX_RPM;
+                && rpm >= IDLE_FILTER_MIN_RPM
+                && rpm < IDLE_FILTER_MAX_RPM;
     }
 
     private static float nearestIdleValue(float rpm) {
