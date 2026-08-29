@@ -24,6 +24,10 @@ public final class ClusterDisplayPolicy {
                 && targetDisplayId != CLUSTER_DISPLAY_ID;
     }
 
+    public static boolean canRenderOnDisplay(boolean demoMode, int actualDisplayId) {
+        return demoMode || actualDisplayId == CLUSTER_DISPLAY_ID;
+    }
+
     public static boolean shouldReturnToSettingsOnInteraction(
             boolean demoMode,
             boolean singleDisplayFallback) {

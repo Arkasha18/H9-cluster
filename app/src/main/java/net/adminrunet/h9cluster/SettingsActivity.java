@@ -135,6 +135,7 @@ public final class SettingsActivity extends Activity {
     private void exitApplication() {
         unsavedPreviewActive = false;
         AutostartPreferences.setAutostartSuspended(this, true);
+        ClusterDisplayRecovery.cancel();
         ClusterWindowRegistry.closeAll();
         finishAndRemoveTask();
     }

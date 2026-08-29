@@ -15,6 +15,7 @@ import net.adminrunet.h9cluster.trip.TripTelemetryDiagnostics;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
@@ -28,6 +29,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 /** Full-screen host for the live cluster renderer. */
 @SuppressWarnings("deprecation")
@@ -68,6 +70,7 @@ public final class PreviewActivity extends Activity
     private ClusterState lastState = ClusterState.empty();
     private long lastTripTelemetryLogAtMs = -1L;
     private boolean clusterWorkStopped;
+    private boolean displayMismatchHandled;
     private final Runnable tripHeartbeat = new Runnable() {
         @Override
         public void run() {
@@ -87,6 +90,9 @@ public final class PreviewActivity extends Activity
                         && savedInstanceState.getBoolean(
                                 STATE_USER_REQUEST_CONSUMED,
                                 false));
+        if (!ensureCorrectDisplay()) {
+            return;
+        }
         Log.i(TAG, "Starting build "
                 + BuildConfig.VERSION_NAME
                 + "-display2-api28");
@@ -177,6 +183,9 @@ public final class PreviewActivity extends Activity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (!ensureCorrectDisplay()) {
+            return;
+        }
         SkinSettingsSession.Snapshot snapshot = resolveSnapshot(intent);
         if (!SkinRegistry.hasRenderer(snapshot.skinId)) {
             closeClusterWindow();
@@ -388,7 +397,16 @@ public final class PreviewActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
+        if (!ensureCorrectDisplay()) {
+            return;
+        }
         hideSystemUi();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        ensureCorrectDisplay();
     }
 
     @Override
@@ -426,6 +444,33 @@ public final class PreviewActivity extends Activity
 
     private void hideSystemUi() {
         getWindow().getDecorView().setSystemUiVisibility(IMMERSIVE_FLAGS);
+    }
+
+    private boolean ensureCorrectDisplay() {
+        int actualDisplayId = getWindowManager().getDefaultDisplay().getDisplayId();
+        if (ClusterDisplayPolicy.canRenderOnDisplay(
+                BuildConfig.DEMO_MODE,
+                actualDisplayId)) {
+            if (!BuildConfig.DEMO_MODE) {
+                ClusterDisplayRecovery.confirmOnClusterDisplay();
+            }
+            return true;
+        }
+        if (displayMismatchHandled) {
+            return false;
+        }
+        displayMismatchHandled = true;
+        Log.e(TAG, "Rejecting cluster window on Display " + actualDisplayId);
+        String message = ClusterLauncher.isClusterDisplayAvailable(this)
+                ? "Переносим панель на приборный дисплей"
+                : "Приборный дисплей ещё не готов. Ожидаем подключение";
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        boolean userRequested = getIntent() != null
+                && getIntent().getBooleanExtra(EXTRA_USER_REQUESTED, false);
+        ClusterDisplayRecovery.request(getApplicationContext(), userRequested);
+        stopClusterWork();
+        finishAndRemoveTask();
+        return false;
     }
 
     private boolean shouldReturnToSettingsOnInteraction() {
