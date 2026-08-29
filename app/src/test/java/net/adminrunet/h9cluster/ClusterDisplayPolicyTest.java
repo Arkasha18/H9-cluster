@@ -33,6 +33,20 @@ public final class ClusterDisplayPolicyTest {
     }
 
     @Test
+    public void productionRendererAcceptsOnlyDisplayTwo() {
+        assertFalse(ClusterDisplayPolicy.canRenderOnDisplay(false, 0));
+        assertFalse(ClusterDisplayPolicy.canRenderOnDisplay(false, 1));
+        assertTrue(ClusterDisplayPolicy.canRenderOnDisplay(false, 2));
+    }
+
+    @Test
+    public void demoRendererCanUseCurrentDisplay() {
+        assertTrue(ClusterDisplayPolicy.canRenderOnDisplay(true, 0));
+        assertTrue(ClusterDisplayPolicy.canRenderOnDisplay(true, 1));
+        assertTrue(ClusterDisplayPolicy.canRenderOnDisplay(true, 2));
+    }
+
+    @Test
     public void onlyDemoFallbackReturnsToSettingsOnInteraction() {
         assertTrue(ClusterDisplayPolicy.shouldReturnToSettingsOnInteraction(true, true));
         assertFalse(ClusterDisplayPolicy.shouldReturnToSettingsOnInteraction(true, false));
