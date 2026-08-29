@@ -135,7 +135,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core:1.13.0")
+    implementation("androidx.core:core:1.19.0")
     implementation("com.jcraft:jsch:0.1.55")
     implementation("io.noties.markwon:core:4.6.2")
     testImplementation("junit:junit:4.13.2")
