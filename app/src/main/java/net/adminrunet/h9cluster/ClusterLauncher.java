@@ -19,18 +19,37 @@ public final class ClusterLauncher {
 
     /** Automatic starts keep whatever visibility the engine stop left behind. */
     public static boolean startOnClusterDisplay(Context context) {
-        return launchOnClusterDisplay(context, null, false);
+        boolean launched = launchOnClusterDisplay(context, null, false);
+        if (!launched && !BuildConfig.DEMO_MODE) {
+            ClusterDisplayRecovery.request(context, false);
+        }
+        return launched;
     }
 
     /** The settings screen asks for the chosen skin even with the engine off. */
     static boolean applyOnClusterDisplay(Context context) {
-        return launchOnClusterDisplay(context, null, true);
+        boolean launched = launchOnClusterDisplay(context, null, true);
+        if (!launched && !BuildConfig.DEMO_MODE) {
+            ClusterDisplayRecovery.request(context, true);
+        }
+        return launched;
     }
 
     static boolean previewOnClusterDisplay(
             Context context,
             SkinSettingsSession.Snapshot draft) {
         return launchOnClusterDisplay(context, draft, true);
+    }
+
+    /** Recovery retries must not recursively start another recovery session. */
+    static boolean retryOnClusterDisplay(Context context, boolean userRequested) {
+        return launchOnClusterDisplay(context, null, userRequested);
+    }
+
+    static boolean isClusterDisplayAvailable(Context context) {
+        DisplayManager displayManager =
+                (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+        return displayManager != null && hasClusterDisplay(displayManager);
     }
 
     private static boolean launchOnClusterDisplay(
@@ -41,14 +60,12 @@ public final class ClusterLauncher {
                 ? SkinPreferences.getSelectedSkin(context)
                 : draft.skinId;
         if (!SkinRegistry.hasRenderer(skinId)) {
+            ClusterDisplayRecovery.cancel();
             ClusterWindowRegistry.closeAll();
             return true;
         }
 
-        DisplayManager displayManager =
-                (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
-        boolean clusterDisplayAvailable =
-                displayManager != null && hasClusterDisplay(displayManager);
+        boolean clusterDisplayAvailable = isClusterDisplayAvailable(context);
         int currentDisplayId = getCurrentDisplayId(context);
         int targetDisplayId = ClusterDisplayPolicy.resolveTargetDisplay(
                 BuildConfig.DEMO_MODE,

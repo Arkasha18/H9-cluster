@@ -24,7 +24,7 @@
             android:name=".PreviewActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|density"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:taskAffinity="net.adminrunet.h9cluster.cluster"
