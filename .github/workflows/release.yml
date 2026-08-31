@@ -43,22 +43,19 @@ concurrency:
 permissions: {}
 
 jobs:
-  preflight:
-    name: Release preflight
+  resolve_candidate:
+    name: Authorize and resolve candidate
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 10
     permissions:
-      actions: read
       contents: read
-      pull-requests: read
     outputs:
-      previous_tag: ${{ steps.published_baseline.outputs.previous_tag }}
-      previous_version_code: ${{ steps.baseline_apk.outputs.previous_version_code }}
-      source_ref: ${{ steps.gate.outputs.source_ref }}
+      candidate_sha: ${{ steps.resolve.outputs.candidate_sha }}
+      source_ref: ${{ steps.resolve.outputs.source_ref }}
 
     steps:
-      - name: Authorize owner and derive source ref
-        id: gate
+      - name: Authorize owner and resolve trusted source head
+        id: resolve
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
           COMMIT_SHA: ${{ inputs.commit_sha }}
@@ -77,13 +74,6 @@ jobs:
           fi
           if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
             echo "::error::Run this workflow from the protected main branch"
-            exit 1
-          fi
-          current_main="$(gh api \
-            "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" \
-            --jq '.object.sha')"
-          if [[ "${current_main}" != "${CONTROL_COMMIT}" ]]; then
-            echo "::error::This workflow run uses an outdated release control plane"
             exit 1
           fi
           if [[ "${IMMUTABLE_RELEASES_ENABLED}" != "true" ]]; then
@@ -108,7 +98,54 @@ jobs:
           else
             source_ref="main"
           fi
-          printf 'source_ref=%s\n' "${source_ref}" >> "${GITHUB_OUTPUT}"
+          current_main="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" \
+            --jq '.object.sha')"
+          if [[ "${current_main}" != "${CONTROL_COMMIT}" ]]; then
+            echo "::error::This workflow run uses an outdated release control plane"
+            exit 1
+          fi
+          candidate_sha="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/heads/${source_ref}" \
+            --jq '.object.sha')"
+          if [[ ! "${candidate_sha}" =~ ^[0-9a-f]{40}$ \
+              || "${candidate_sha}" != "${COMMIT_SHA}" ]]; then
+            echo "::error::Requested commit is no longer the current source head"
+            exit 1
+          fi
+          {
+            printf 'candidate_sha=%s\n' "${candidate_sha}"
+            printf 'source_ref=%s\n' "${source_ref}"
+          } >> "${GITHUB_OUTPUT}"
+
+  preflight:
+    name: Release preflight
+    needs: resolve_candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      candidate_sha: ${{ needs.resolve_candidate.outputs.candidate_sha }}
+      previous_tag: ${{ steps.published_baseline.outputs.previous_tag }}
+      previous_version_code: ${{ steps.baseline_apk.outputs.previous_version_code }}
+      source_ref: ${{ needs.resolve_candidate.outputs.source_ref }}
+
+    steps:
+      - name: Re-authorize resolved request
+        env:
+          CANDIDATE_SHA: ${{ needs.resolve_candidate.outputs.candidate_sha }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          SOURCE_REF: ${{ needs.resolve_candidate.outputs.source_ref }}
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_ACTOR}" == "Arkasha18" ]]
+          [[ "${GITHUB_TRIGGERING_ACTOR}" == "Arkasha18" ]]
+          [[ "${GITHUB_REF}" == "refs/heads/main" ]]
+          [[ "${CANDIDATE_SHA}" == "${COMMIT_SHA}" ]]
+          [[ "${SOURCE_REF}" == "main" || "${SOURCE_REF}" == hotfix/* ]]
 
       - name: Check out trusted release control plane
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -120,15 +157,15 @@ jobs:
       - name: Check out exact candidate commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.resolve_candidate.outputs.candidate_sha }}
           path: candidate
           fetch-depth: 0
           persist-credentials: false
 
       - name: Verify candidate is the current source head
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
-          SOURCE_REF: ${{ steps.gate.outputs.source_ref }}
+          COMMIT_SHA: ${{ needs.resolve_candidate.outputs.candidate_sha }}
+          SOURCE_REF: ${{ needs.resolve_candidate.outputs.source_ref }}
         run: |
           set -euo pipefail
           git -C candidate fetch --force origin \
@@ -143,6 +180,22 @@ jobs:
             echo "::error::Requested commit is no longer the head of ${SOURCE_REF}"
             exit 1
           fi
+
+      - name: Authorize candidate PR and CI before execution
+        env:
+          COMMIT_SHA: ${{ needs.resolve_candidate.outputs.candidate_sha }}
+          CONTROL_COMMIT: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          SOURCE_REF: ${{ needs.resolve_candidate.outputs.source_ref }}
+        run: |
+          set -euo pipefail
+          python3 control/tools/release/github_gate.py \
+            --repository "${GITHUB_REPOSITORY}" \
+            --commit "${COMMIT_SHA}" \
+            --control-commit "${CONTROL_COMMIT}" \
+            --release-type "${RELEASE_TYPE}" \
+            --source-ref "${SOURCE_REF}"
 
       - name: Test trusted release tooling
         run: python3 -m unittest discover -s tools/release -p 'test_*.py'
@@ -188,9 +241,9 @@ jobs:
         run: |
           docker build \
             --platform linux/amd64 \
-            --build-arg "OCI_REVISION=${{ inputs.commit_sha }}" \
+            --build-arg "OCI_REVISION=${{ needs.resolve_candidate.outputs.candidate_sha }}" \
             --tag h9-cluster-build:release-preflight \
-            candidate
+            control
 
       - name: Verify public baseline APK and signer
         id: baseline_apk
@@ -237,12 +290,12 @@ jobs:
 
       - name: Verify release metadata and changelog
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_SHA: ${{ needs.resolve_candidate.outputs.candidate_sha }}
           PREVIOUS_TAG: ${{ steps.published_baseline.outputs.previous_tag }}
           PREVIOUS_VERSION_CODE: ${{ steps.baseline_apk.outputs.previous_version_code }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           RELEASE_VERSION: ${{ inputs.version }}
-          SOURCE_REF: ${{ steps.gate.outputs.source_ref }}
+          SOURCE_REF: ${{ needs.resolve_candidate.outputs.source_ref }}
         run: |
           set -euo pipefail
           python3 control/tools/release/release_tool.py verify \
@@ -262,13 +315,13 @@ jobs:
             cat "${RUNNER_TEMP}/release-metadata.json"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Require exact successful CI and eligible PR
+      - name: Recheck exact successful CI and eligible PR
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_SHA: ${{ needs.resolve_candidate.outputs.candidate_sha }}
           CONTROL_COMMIT: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
           RELEASE_TYPE: ${{ inputs.release_type }}
-          SOURCE_REF: ${{ steps.gate.outputs.source_ref }}
+          SOURCE_REF: ${{ needs.resolve_candidate.outputs.source_ref }}
         run: |
           set -euo pipefail
           python3 control/tools/release/github_gate.py \
@@ -369,7 +422,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions:
+      actions: read
       contents: read
+      pull-requests: read
 
     steps:
       - name: Re-authorize owner
@@ -393,14 +448,14 @@ jobs:
       - name: Check out exact candidate commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.preflight.outputs.candidate_sha }}
           path: candidate
           fetch-depth: 0
           persist-credentials: false
 
       - name: Revalidate source head and release metadata
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_SHA: ${{ needs.preflight.outputs.candidate_sha }}
           CONTROL_COMMIT: ${{ github.sha }}
           PREVIOUS_TAG: ${{ needs.preflight.outputs.previous_tag }}
           PREVIOUS_VERSION_CODE: ${{ needs.preflight.outputs.previous_version_code }}
@@ -432,13 +487,29 @@ jobs:
             --output-json "${RUNNER_TEMP}/release-metadata.json" \
             --output-notes "${RUNNER_TEMP}/release-notes.md"
 
+      - name: Recheck candidate PR and CI before production execution
+        env:
+          COMMIT_SHA: ${{ needs.preflight.outputs.candidate_sha }}
+          CONTROL_COMMIT: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          SOURCE_REF: ${{ needs.preflight.outputs.source_ref }}
+        run: |
+          set -euo pipefail
+          python3 control/tools/release/github_gate.py \
+            --repository "${GITHUB_REPOSITORY}" \
+            --commit "${COMMIT_SHA}" \
+            --control-commit "${CONTROL_COMMIT}" \
+            --release-type "${RELEASE_TYPE}" \
+            --source-ref "${SOURCE_REF}"
+
       - name: Build pinned toolchain image
         run: |
           docker build \
             --platform linux/amd64 \
-            --build-arg "OCI_REVISION=${{ inputs.commit_sha }}" \
+            --build-arg "OCI_REVISION=${{ needs.preflight.outputs.candidate_sha }}" \
             --tag h9-cluster-build:production \
-            candidate
+            control
 
       - name: Build production APK with TBOX support
         env:
@@ -519,7 +590,7 @@ jobs:
       - name: Upload immutable unsigned handoff
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: production-unsigned-${{ inputs.commit_sha }}
+          name: production-unsigned-${{ needs.preflight.outputs.candidate_sha }}
           path: release-package/
           if-no-files-found: error
           retention-days: 1
@@ -554,12 +625,12 @@ jobs:
       - name: Download exact unsigned handoff
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: production-unsigned-${{ inputs.commit_sha }}
+          name: production-unsigned-${{ needs.preflight.outputs.candidate_sha }}
           path: unsigned
 
       - name: Validate immutable handoff metadata
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_SHA: ${{ needs.preflight.outputs.candidate_sha }}
           PREVIOUS_TAG: ${{ needs.preflight.outputs.previous_tag }}
           PREVIOUS_VERSION_CODE: ${{ needs.preflight.outputs.previous_version_code }}
           RELEASE_TYPE: ${{ inputs.release_type }}
@@ -703,7 +774,7 @@ jobs:
 
       - name: Create immutable GitHub Release
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_SHA: ${{ needs.preflight.outputs.candidate_sha }}
           CONTROL_COMMIT: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
           IMMUTABLE_RELEASES_ENABLED: ${{ vars.H9_IMMUTABLE_RELEASES_ENABLED }}
