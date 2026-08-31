@@ -310,8 +310,8 @@ tools/verify_demo_apk_secrets.sh \
   app/build/outputs/apk/demo/app-demo.apk
 ```
 
-Для release-сборки используйте собственный ключ. Секреты рекомендуется хранить
-в пользовательском `~/.gradle/gradle.properties`, который находится за
+Для локальной контрольной release-сборки используйте production-ключ из
+пользовательского `~/.gradle/gradle.properties`, который находится за
 пределами репозитория:
 
 ```properties
@@ -329,7 +329,10 @@ H9_CLUSTER_KEY_PASSWORD=your-password
 ```
 
 Файлы ключей, локальные свойства, APK/AAB и каталоги сборки исключены через
-`.gitignore`.
+`.gitignore`. Автоматическая публикация использует отдельный защищённый GitHub
+Environment `release`: ключ выдаётся только signing job после личного
+подтверждения владельца, не передаётся Gradle/Docker и не попадает в checkout
+или Actions artifacts.
 
 Порядок выпуска подписанной версии приведён в
 [docs/RELEASING_RU.md](docs/RELEASING_RU.md).
@@ -345,8 +348,11 @@ GitHub Actions для каждого Pull Request:
 5. сохраняет Debug и Demo APK отдельными временными Actions artifacts;
 6. после попадания проверенного commit в `main` публикует toolchain в GHCR.
 
-Production-ключ не используется GitHub Actions и должен оставаться только на
-компьютере владельца.
+Отдельный workflow `Production release` никогда не запускается от обычного
+коммита в `main`. Только `Arkasha18` может вручную проверить либо опубликовать
+точную версию и полный commit SHA. Production-сборка, подпись, сверка
+сертификата и создание Immutable Release выполняются раздельными job; перед
+доступом к signing secrets требуется подтверждение Environment `release`.
 
 ## Установка
 
