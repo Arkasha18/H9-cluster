@@ -487,6 +487,14 @@ jobs:
             --output-json "${RUNNER_TEMP}/release-metadata.json" \
             --output-notes "${RUNNER_TEMP}/release-notes.md"
 
+      - name: Build pinned toolchain image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg "OCI_REVISION=${{ needs.preflight.outputs.candidate_sha }}" \
+            --tag h9-cluster-build:production \
+            control
+
       - name: Recheck candidate PR and CI before production execution
         env:
           COMMIT_SHA: ${{ needs.preflight.outputs.candidate_sha }}
@@ -502,14 +510,6 @@ jobs:
             --control-commit "${CONTROL_COMMIT}" \
             --release-type "${RELEASE_TYPE}" \
             --source-ref "${SOURCE_REF}"
-
-      - name: Build pinned toolchain image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            --build-arg "OCI_REVISION=${{ needs.preflight.outputs.candidate_sha }}" \
-            --tag h9-cluster-build:production \
-            control
 
       - name: Build production APK with TBOX support
         env:
