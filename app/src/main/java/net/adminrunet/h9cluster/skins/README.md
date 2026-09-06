@@ -15,7 +15,8 @@ All renderers receive the same immutable `ClusterState` through the shared
 `ClusterRenderer` interface. Vehicle services, polling and decoding stay outside
 the skin folders.
 
-Real-device screenshots of all four renderers are available in the
+An ION AURORA Demo preview and real-device screenshots of the four original
+renderers are available in the
 [skin gallery](../../../../../../../../docs/SKINS_RU.md).
 
 ## Factory gear companion numeral
