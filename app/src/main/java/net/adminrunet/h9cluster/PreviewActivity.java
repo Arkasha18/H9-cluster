@@ -59,6 +59,7 @@ public final class PreviewActivity extends Activity
     private ClusterRenderer clusterRenderer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private View rendererView;
+    private View demoSystemIconsView;
     private TripSummaryView tripSummaryView;
     private TripSummaryLayerState tripSummaryLayers;
     private TripSummaryLayerStore tripSummaryLayerStore;
@@ -165,6 +166,7 @@ public final class PreviewActivity extends Activity
             public void onClusterState(ClusterState state) {
                 lastState = state;
                 clusterRenderer.setClusterState(state);
+                PreviewSystemIcons.update(demoSystemIconsView, state);
                 logTripTelemetryIfDue(state);
                 tripCoordinator.onClusterState(state);
             }
@@ -282,6 +284,14 @@ public final class PreviewActivity extends Activity
         rendererView = replacement;
         syncRendererVisibility();
         clusterRenderer.setClusterState(lastState);
+        if (demoSystemIconsView != null) rootView.removeView(demoSystemIconsView);
+        demoSystemIconsView = PreviewSystemIcons.create(this, snapshot.skinId);
+        if (demoSystemIconsView != null) {
+            rootView.addView(demoSystemIconsView, Math.min(1, rootView.getChildCount()),
+                    new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT));
+            PreviewSystemIcons.update(demoSystemIconsView, lastState);
+        }
     }
 
     private void addDemoTouchLayer() {

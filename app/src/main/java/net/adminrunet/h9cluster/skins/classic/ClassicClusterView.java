@@ -309,7 +309,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
-        drawCurrentGearCard(canvas, state);
+        drawCurrentGear(canvas, state);
         wifiIndicator.draw(canvas, shapePaint, 1708.0f, 42.0f, frameAtMs);
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
@@ -626,26 +626,18 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 340.0f, 57.0f, 94.0f, 26.0f, 19.0f);
     }
 
-    private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
-        RectF bounds = new RectF(916.0f, 78.0f, 1004.0f, 140.0f);
-
-        shapePaint.setStyle(Paint.Style.FILL);
-        shapePaint.setColor(0xFF080B0E);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.STROKE);
-        shapePaint.setStrokeWidth(2.0f);
-        shapePaint.setColor(COLOR_CARD_BORDER);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.FILL);
-
-        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
-        configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
-        canvas.drawText(
-                GearSelector.label(state.gearSelector, state.currentGear),
-                bounds.centerX(),
-                130.0f,
-                textPaint);
+    private void drawCurrentGear(Canvas canvas, ClusterState state) {
+        // Match ION AURORA: the factory owns selector letters and manual-mode text.
+        // No lower GEAR card, frame, or duplicate D/M caption is drawn by the skin.
+        if (!GearSelector.DRIVE.equals(state.gearSelector)) {
+            return;
+        }
+        String ratio = GearSelector.ratio(state.currentGear);
+        if (ratio.isEmpty()) {
+            return;
+        }
+        configureText(gaugeTypeface, 44.0f, Paint.Align.CENTER, 0xFFFAFDFF, true, 0.0f);
+        canvas.drawText(ratio, 1000.0f, 63.0f, textPaint);
     }
 
     private void drawWheelValue(

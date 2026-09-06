@@ -4,6 +4,7 @@ import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
+import net.adminrunet.h9cluster.skins.ionaurora.IonAuroraClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleSettingsProvider;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
@@ -21,6 +22,7 @@ import android.view.View;
 public final class SkinRegistry {
     public static final String CLASSIC = "classic";
     public static final String HORIZON = "horizon";
+    public static final String ION_AURORA = "ionaurora";
     public static final String SIMPLE = "simple";
     public static final String SPORT = "sport";
     public static final String STOCK = "stock";
@@ -107,6 +109,19 @@ public final class SkinRegistry {
     }
 
     private static final Definition[] DEFINITIONS = {
+        new Definition(
+                ION_AURORA,
+                "ION AURORA — rolling tape",
+                "Космический кокпит с вертикальными барабанами скорости и RPM",
+                new RendererFactory() {
+                    @Override
+                    public View create(
+                            Context context,
+                            SkinSettings settings) {
+                        return new IonAuroraClusterView(context);
+                    }
+                },
+                null),
         new Definition(
                 CLASSIC,
                 "Classic — утверждённый дизайн",

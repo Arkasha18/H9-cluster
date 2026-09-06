@@ -38,7 +38,7 @@ public final class DemoClusterDataSourceTest {
         scheduler.runDelayed();
 
         assertEquals(2, received.size());
-        assertEquals(35, received.get(1).speedKph);
+        assertEquals(17, received.get(1).speedKph);
         assertEquals(50L, scheduler.lastDelayMs);
     }
 

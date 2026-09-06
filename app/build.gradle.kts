@@ -126,6 +126,10 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         disable += "ExpiredTargetSdkVersion"
         // Keep update compatibility with production builds already installed
