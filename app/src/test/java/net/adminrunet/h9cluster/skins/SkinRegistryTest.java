@@ -12,12 +12,13 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(5, definitions.length);
-        assertEquals(SkinRegistry.CLASSIC, definitions[0].id);
-        assertEquals(SkinRegistry.SPORT, definitions[1].id);
-        assertEquals(SkinRegistry.SIMPLE, definitions[2].id);
-        assertEquals(SkinRegistry.HORIZON, definitions[3].id);
-        assertEquals(SkinRegistry.STOCK, definitions[4].id);
+        assertEquals(6, definitions.length);
+        assertEquals(SkinRegistry.ION_AURORA, definitions[0].id);
+        assertEquals(SkinRegistry.CLASSIC, definitions[1].id);
+        assertEquals(SkinRegistry.SPORT, definitions[2].id);
+        assertEquals(SkinRegistry.SIMPLE, definitions[3].id);
+        assertEquals(SkinRegistry.HORIZON, definitions[4].id);
+        assertEquals(SkinRegistry.STOCK, definitions[5].id);
     }
 
     @Test
@@ -30,6 +31,7 @@ public final class SkinRegistryTest {
                     definition.hasRenderer());
         }
         assertFalse(SkinRegistry.hasRenderer(SkinRegistry.STOCK));
+        assertTrue(SkinRegistry.hasRenderer(SkinRegistry.ION_AURORA));
         assertTrue(SkinRegistry.hasRenderer(SkinRegistry.CLASSIC));
     }
 
