@@ -7,7 +7,7 @@ import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
-import net.adminrunet.h9cluster.skins.WifiIndicator;
+import net.adminrunet.h9cluster.skins.ClusterHeader;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -54,7 +54,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private final boolean includeBackdrop;
     private final RollingTapeGauge speedGauge;
     private final RollingTapeGauge rpmGauge;
-    private final WifiIndicator wifiIndicator;
+    private final ClusterHeader header;
     private final RpmDisplaySmoother rpmSmoother = new RpmDisplaySmoother();
     private final TransmissionTemperatureAlert atfAlert =
             new TransmissionTemperatureAlert();
@@ -130,7 +130,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
                 context.getAssets(),
                 "fonts/Rajdhani-Medium.ttf");
         staticBase = buildStaticBase(context);
-        wifiIndicator = new WifiIndicator(context);
+        header = new ClusterHeader(context, ClusterHeader.Style.ION_AURORA, true);
 
         speedGauge = new RollingTapeGauge(
                 652.0f,
@@ -226,8 +226,8 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         canvas.restoreToCount(tapeSave);
         drawMainValues(canvas, valuesReveal);
         drawTelemetry(canvas, frameAtMs, valuesReveal);
+        header.draw(canvas, frameAtMs, System.currentTimeMillis());
         drawCurrentGear(canvas, valuesReveal);
-        wifiIndicator.draw(canvas, shapePaint, 1708, 42, frameAtMs);
         shapePaint.setStyle(Paint.Style.FILL);
 
         canvas.restoreToCount(rootSave);
@@ -324,8 +324,9 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     }
 
     private void drawMainValues(Canvas canvas, float reveal) {
-        drawGlowingValue(canvas, cachedSpeedText, 320, 329, 130, 290, COLOR_CYAN, reveal);
-        drawGlowingValue(canvas, cachedRpmText, 1600, 329, 120, 340, COLOR_VIOLET, reveal);
+        // Keep the complete 10px glow clear of the upper frame and the unit row below.
+        drawGlowingValue(canvas, cachedSpeedText, 320, 329, 112, 290, COLOR_CYAN, reveal);
+        drawGlowingValue(canvas, cachedRpmText, 1600, 329, 112, 340, COLOR_VIOLET, reveal);
     }
 
     private void drawCurrentGear(Canvas canvas, float reveal) {
@@ -485,8 +486,8 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         label(canvas, "FR", 1537, 235, Paint.Align.LEFT, COLOR_MUTED, 18, 1);
         label(canvas, "RL", 1382, 267, Paint.Align.LEFT, COLOR_MUTED, 18, 1);
         label(canvas, "RR", 1537, 267, Paint.Align.LEFT, COLOR_MUTED, 18, 1);
-        label(canvas, "км/ч", 320, 392, Paint.Align.CENTER, COLOR_MUTED, 27, 1);
-        label(canvas, "об/мин", 1600, 392, Paint.Align.CENTER, COLOR_MUTED, 27, 1);
+        label(canvas, "км/ч", 320, 388, Paint.Align.CENTER, COLOR_MUTED, 24, 1);
+        label(canvas, "об/мин", 1600, 388, Paint.Align.CENTER, COLOR_MUTED, 24, 1);
 
         label(canvas, "МГНОВЕННЫЙ", 158, 418, Paint.Align.CENTER, COLOR_CYAN, 17, 1);
         label(canvas, "СРЕДНИЙ", 310, 418, Paint.Align.CENTER, COLOR_CYAN, 18, 1);

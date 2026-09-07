@@ -113,7 +113,10 @@ public final class FactoryGearReadoutTest {
             view.draw(canvas);
             int[] blankReservation = rectanglePixels(
                     frame, GEAR_LEFT, GEAR_TOP, GEAR_RIGHT, GEAR_BOTTOM);
-            int[] oldCardReservation = rectanglePixels(frame, 914, 76, 1006, 142);
+            // The new clock legitimately occupies the former card area. Compare
+            // the strip above it so a minute rollover cannot make this gear test flaky.
+            // The isolated drawGear tests still require the entire old card to be empty.
+            int[] headerSeam = rectanglePixels(frame, 914, 76, 1006, 82);
 
             String[] selectors = {GearSelector.MANUAL, GearSelector.MANUAL, GearSelector.MANUAL,
                     GearSelector.PARK, GearSelector.NEUTRAL, GearSelector.REVERSE,
@@ -126,8 +129,8 @@ public final class FactoryGearReadoutTest {
                         frame, GEAR_LEFT, GEAR_TOP, GEAR_RIGHT, GEAR_BOTTOM);
                 assertTrue(view.getClass().getSimpleName() + " D8 must appear in the full frame",
                         differentPixels(blankReservation, automaticReservation) > 30);
-                assertArrayEquals("D8 must not restore a card below the system indicator",
-                        oldCardReservation, rectanglePixels(frame, 914, 76, 1006, 142));
+                assertArrayEquals("D8 must not alter the system-adjacent header seam",
+                        headerSeam, rectanglePixels(frame, 914, 76, 1006, 82));
 
                 renderer.setClusterState(state(selectors[index], ratios[index]));
                 view.draw(canvas);
@@ -135,8 +138,8 @@ public final class FactoryGearReadoutTest {
                                 + selectors[index] + ":" + ratios[index],
                         blankReservation, rectanglePixels(
                                 frame, GEAR_LEFT, GEAR_TOP, GEAR_RIGHT, GEAR_BOTTOM));
-                assertArrayEquals("Non-drive state must not restore the old gear card",
-                        oldCardReservation, rectanglePixels(frame, 914, 76, 1006, 142));
+                assertArrayEquals("Non-drive state must preserve the header seam",
+                        headerSeam, rectanglePixels(frame, 914, 76, 1006, 82));
             }
             frame.recycle();
         }
