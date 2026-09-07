@@ -236,6 +236,17 @@ class TboxVerificationTest(unittest.TestCase):
 
 
 class HotfixLineageTest(unittest.TestCase):
+    GRADLE_SOURCE = """android {
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "net.adminrunet.h9cluster"
+        versionCode = 2026082801
+        versionName = "9.5.2"
+    }
+}
+"""
+
     @staticmethod
     def git(repo: Path, *arguments: str) -> str:
         return subprocess.run(
@@ -247,19 +258,75 @@ class HotfixLineageTest(unittest.TestCase):
             text=True,
         ).stdout.strip()
 
-    def create_repository(self, root: Path) -> None:
+    def create_repository(self, root: Path, gradle_source: str = GRADLE_SOURCE) -> None:
         self.git(root, "init", "--initial-branch=main")
         self.git(root, "config", "user.name", "Release Test")
         self.git(root, "config", "user.email", "release-test@example.invalid")
         (root / "app").mkdir()
         (root / "app/build.gradle.kts").write_text(
-            'versionCode = 2026082801\nversionName = "9.5.2"\n',
+            gradle_source,
             encoding="utf-8",
         )
         (root / "README.md").write_text("baseline\n", encoding="utf-8")
         self.git(root, "add", ".")
         self.git(root, "commit", "-m", "baseline")
         self.git(root, "tag", "v9.5.2")
+
+    def test_hotfix_version_bump_preserves_gradle_trailing_newline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            self.create_repository(repo)
+            self.git(repo, "switch", "--create", "hotfix/9.5.3", "v9.5.2")
+            updated = replace_gradle_metadata(
+                self.GRADLE_SOURCE,
+                version=Version.parse("9.5.3"),
+                version_code=2026083101,
+            )
+            self.assertTrue(updated.endswith("    }\n}\n"))
+            (repo / "app/build.gradle.kts").write_text(updated, encoding="utf-8")
+            self.git(repo, "commit", "-am", "hotfix version metadata")
+
+            verify_hotfix_control_plane(repo, "v9.5.2", "main")
+
+    def test_hotfix_rejects_non_version_gradle_changes(self):
+        cases = (
+            (
+                "compileSdk",
+                self.GRADLE_SOURCE,
+                self.GRADLE_SOURCE.replace("compileSdk = 36", "compileSdk = 35"),
+            ),
+            (
+                "applicationId",
+                self.GRADLE_SOURCE,
+                self.GRADLE_SOURCE.replace(
+                    'applicationId = "net.adminrunet.h9cluster"',
+                    'applicationId = "net.adminrunet.h9cluster.demo"',
+                ),
+            ),
+            ("added final LF", self.GRADLE_SOURCE[:-1], self.GRADLE_SOURCE),
+            ("removed final LF", self.GRADLE_SOURCE, self.GRADLE_SOURCE[:-1]),
+            ("extra final LF", self.GRADLE_SOURCE, self.GRADLE_SOURCE + "\n"),
+            ("added leading space", self.GRADLE_SOURCE, " " + self.GRADLE_SOURCE),
+            ("removed leading space", " " + self.GRADLE_SOURCE, self.GRADLE_SOURCE),
+        )
+        for name, baseline, changed in cases:
+            with self.subTest(change=name), tempfile.TemporaryDirectory() as directory:
+                repo = Path(directory)
+                self.create_repository(repo, baseline)
+                self.git(repo, "switch", "--create", "hotfix/9.5.3", "v9.5.2")
+                updated = replace_gradle_metadata(
+                    changed,
+                    version=Version.parse("9.5.3"),
+                    version_code=2026083101,
+                )
+                (repo / "app/build.gradle.kts").write_text(updated, encoding="utf-8")
+                self.git(repo, "commit", "-am", "hotfix with non-version change")
+
+                with self.assertRaisesRegex(
+                    ReleaseError,
+                    "hotfix may change only versionName/versionCode",
+                ):
+                    verify_hotfix_control_plane(repo, "v9.5.2", "main")
 
     def test_hotfix_must_fork_from_previous_tag(self):
         with tempfile.TemporaryDirectory() as directory:
