@@ -585,7 +585,10 @@ def verify_hotfix_control_plane(
         )
 
     if "app/build.gradle.kts" in changed:
-        previous = git(repo, "show", f"{previous_tag}:app/build.gradle.kts")
+        # Compare file contents without git() stripping significant whitespace.
+        previous = run(
+            ("git", "show", f"{previous_tag}:app/build.gradle.kts"), cwd=repo
+        ).stdout
         current = (repo / "app/build.gradle.kts").read_text(encoding="utf-8")
         if normalized_gradle_metadata(previous) != normalized_gradle_metadata(current):
             raise ReleaseError(
