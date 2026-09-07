@@ -154,8 +154,11 @@ public final class IonAuroraClusterViewTest {
         // Only the tiny automatic gear numeral may occupy the original gear reservation.
         assertGearRegionUnchangedOutsideDigit(foreground, rendered, backdrop);
         assertRegionUnchanged(rendered, backdrop, 1426, 666, 1529, 700);
-        // The relocated drums frame, but never fill, the central navigation corridor.
-        assertPanelRecessClear(foreground, rendered, backdrop, 738, 110, 1182, 630);
+        // Only the requested clock may occupy the top of the navigation corridor.
+        // Its lower edge is y153; the map below and beside it remains untouched.
+        assertPanelRecessClear(foreground, rendered, backdrop, 738, 154, 1182, 630);
+        assertPanelRecessClear(foreground, rendered, backdrop, 738, 110, 885, 154);
+        assertPanelRecessClear(foreground, rendered, backdrop, 1054, 110, 1182, 154);
         // No empty glass remains below the left system warning block.
         assertPanelRecessClear(foreground, rendered, backdrop, 400, 444, 552, 493);
     }

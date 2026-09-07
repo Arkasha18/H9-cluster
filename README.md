@@ -1,4 +1,4 @@
-# H9 Cluster 9.6.0
+# H9 Cluster 9.6.1
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -51,6 +51,8 @@
   сети;
 - индикатор подключения Wi-Fi в пользовательских темах `Classic`, `Sport` и
   `Horizon` и `ION AURORA`;
+- часы под штатной передачей в согласованных рамках в `ION AURORA`, `Classic`
+  и `Sport`; текущая дата дополнительно отображается в `ION AURORA`;
 - выбор темы на основном экране;
 - вариант `Штатная панель`: приложение ничего не рисует и на `Display ID 2`
   остаётся заводская приборная панель;
@@ -174,7 +176,8 @@ VIN, координатами или служебными данными авт�
 получен, остаётся одна буква. Числовые коды положений, которые отдаёт штатный
 адаптер, сняты на автомобиле и перечислены в `GearSelector`.
 
-Исключение — тема `Simple`: она рисует номер ступени только в положении `D`.
+Исключение — темы `Simple`, `ION AURORA`, `Classic` и `Sport`: они рисуют
+только номер ступени 1–8 в положении `D`.
 В остальных положениях поле пустое, чтобы не дублировать заводскую надпись
 рядом с этим местом.
 
