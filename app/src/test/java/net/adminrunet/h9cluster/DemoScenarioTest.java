@@ -49,14 +49,20 @@ public final class DemoScenarioTest {
         DemoScenario scenario = new DemoScenario();
 
         assertEquals(0, scenario.snapshot(0L, 1_000L).speedKph);
-        assertEquals(35, scenario.snapshot(3_000L, 4_000L).speedKph);
-        assertEquals(75, scenario.snapshot(8_000L, 9_000L).speedKph);
-        assertEquals(95, scenario.snapshot(13_000L, 14_000L).speedKph);
-        assertEquals(95, scenario.snapshot(18_000L, 19_000L).speedKph);
-        assertEquals(20, scenario.snapshot(24_000L, 25_000L).speedKph);
-        assertEquals(0, scenario.snapshot(27_000L, 28_000L).speedKph);
-        assertTrue(scenario.snapshot(24_000L, 25_000L).speedKph
-                < scenario.snapshot(18_000L, 19_000L).speedKph);
+        assertEquals(0, scenario.snapshot(1_500L, 2_500L).speedKph);
+        assertEquals(54, scenario.snapshot(5_500L, 6_500L).speedKph);
+        assertEquals(86, scenario.snapshot(8_500L, 9_500L).speedKph);
+        assertEquals(86, scenario.snapshot(10_500L, 11_500L).speedKph);
+        assertEquals(112, scenario.snapshot(12_500L, 13_500L).speedKph);
+        assertEquals(0, scenario.snapshot(16_500L, 17_500L).speedKph);
+        assertTrue(scenario.snapshot(15_000L, 16_000L).speedKph
+                < scenario.snapshot(12_500L, 13_500L).speedKph);
+        assertTrue(scenario.snapshot(3_350L, 4_350L).rpm
+                < scenario.snapshot(3_100L, 4_100L).rpm);
+        assertTrue(scenario.snapshot(7_450L, 8_450L).rpm
+                < scenario.snapshot(7_200L, 8_200L).rpm);
+        assertEquals(2_400, scenario.snapshot(8_500L, 9_500L).rpm);
+        assertEquals(2_400, scenario.snapshot(10_500L, 11_500L).rpm);
     }
 
     @Test
@@ -68,22 +74,22 @@ public final class DemoScenarioTest {
                 Math.signum(scenario.snapshot(16_000L, 17_000L).steeringAngleDeg),
                 0.0f);
         assertEquals(1, scenario.snapshot(1_000L, 2_000L).currentGear);
-        assertEquals(4, scenario.snapshot(8_000L, 9_000L).currentGear);
-        assertEquals(6, scenario.snapshot(15_000L, 16_000L).currentGear);
-        assertEquals(0, scenario.snapshot(28_000L, 29_000L).currentGear);
-        assertEquals("D", scenario.snapshot(8_000L, 9_000L).gearSelector);
-        assertEquals("P", scenario.snapshot(28_000L, 29_000L).gearSelector);
+        assertEquals(5, scenario.snapshot(8_500L, 9_500L).currentGear);
+        assertEquals(6, scenario.snapshot(12_500L, 13_500L).currentGear);
+        assertEquals(0, scenario.snapshot(17_000L, 18_000L).currentGear);
+        assertEquals("D", scenario.snapshot(8_500L, 9_500L).gearSelector);
+        assertEquals("P", scenario.snapshot(17_000L, 18_000L).gearSelector);
         assertEquals("SPORT", scenario.snapshot(4_000L, 5_000L).driveMode);
-        assertEquals("NORMAL", scenario.snapshot(12_000L, 13_000L).driveMode);
-        assertEquals("ECO", scenario.snapshot(24_000L, 25_000L).driveMode);
+        assertEquals("NORMAL", scenario.snapshot(8_000L, 9_000L).driveMode);
+        assertEquals("ECO", scenario.snapshot(15_000L, 16_000L).driveMode);
     }
 
     @Test
     public void cycleExercisesNormalWarningAndCriticalTelemetry() {
         DemoScenario scenario = new DemoScenario();
         ClusterState normal = scenario.snapshot(5_000L, 6_000L);
-        ClusterState warning = scenario.snapshot(15_000L, 16_000L);
-        ClusterState critical = scenario.snapshot(25_000L, 26_000L);
+        ClusterState warning = scenario.snapshot(12_000L, 13_000L);
+        ClusterState critical = scenario.snapshot(15_000L, 16_000L);
 
         assertTrue(normal.consumptionLitersPer100Km <= 20.0f);
         assertTrue(normal.coolantC <= 110);
@@ -143,6 +149,15 @@ public final class DemoScenarioTest {
         assertEquals(91_000L, state.journeyOdometerUpdatedAtMs);
         assertEquals(91_000L, state.steeringUpdatedAtMs);
         assertEquals(91_000L, state.transmissionTemperatureUpdatedAtMs);
+    }
+
+    @Test
+    public void nearStopInstantConsumptionUsesTheDisplayedSpeedMode() {
+        DemoScenario scenario = new DemoScenario();
+        ClusterState nearStop = scenario.snapshot(1_850L, 2_850L);
+
+        assertEquals(1, nearStop.speedKph);
+        assertTrue(nearStop.instantFuelConsumption < 2.0f);
     }
 
     @Test

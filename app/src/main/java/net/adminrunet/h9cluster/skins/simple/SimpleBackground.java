@@ -21,6 +21,9 @@ final class SimpleBackground {
             Canvas canvas,
             boolean demoMode,
             SimpleScaleColor scaleColor) {
+        if (!scaleColor.drawsScales()) {
+            return;
+        }
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         drawGaugeBackdrop(canvas, paint, demoMode, false);
         drawGaugeBackdrop(canvas, paint, demoMode, true);

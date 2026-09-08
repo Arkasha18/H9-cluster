@@ -16,9 +16,12 @@ public final class SkinPreferences {
     public static String getSelectedSkin(Context context) {
         SharedPreferences preferences =
                 context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+        String defaultSkin = BuildConfig.DEMO_MODE
+                ? SkinRegistry.ION_AURORA
+                : SkinRegistry.getDefaultId();
         String selected = preferences.getString(
                 KEY_SELECTED_SKIN,
-                SkinRegistry.getDefaultId());
+                defaultSkin);
         return SkinRegistry.normalize(selected);
     }
 

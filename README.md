@@ -1,4 +1,4 @@
-# H9 Cluster 9.5.2
+# H9 Cluster 9.6.1
 
 [![Android CI](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml/badge.svg)](https://github.com/Arkasha18/H9-cluster/actions/workflows/android-ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Arkasha18/H9-cluster)](https://github.com/Arkasha18/H9-cluster/releases/latest)
@@ -18,8 +18,11 @@
 
 ## Скины
 
-Все четыре темы сняты на реальном `Display ID 2` в разрешении `1920×720`.
-Изображения открываются в полном размере по клику.
+Доступны пять тем. ION AURORA показана в Demo с примерными данными и
+имитацией системных индикаторов; остальные снимки получены на реальном
+`Display ID 2`. Разрешение — `1920×720`, изображения открываются по клику.
+
+[![H9 Cluster ION AURORA — Demo](docs/images/skins/ionaurora-1920x720.png)](docs/images/skins/ionaurora-1920x720.png)
 
 | Classic | Sport |
 | --- | --- |
@@ -34,7 +37,8 @@
 
 ## Возможности
 
-- независимые темы `Classic`, `Sport`, `Horizon` и `Simple`;
+- независимые темы `Classic`, `Sport`, `Horizon`, `Simple` и `ION AURORA`;
+- анимированные барабанные шкалы скорости и оборотов в `ION AURORA`;
 - отдельно откалиброванные по печатным делениям стрелки спидометра и
   тахометра в темах `Classic` и `Sport`;
 - скорость, обороты, пробег, топливо и запас хода;
@@ -46,7 +50,9 @@
 - момент маховика, средний и мгновенный расход топлива и напряжение бортовой
   сети;
 - индикатор подключения Wi-Fi в пользовательских темах `Classic`, `Sport` и
-  `Horizon`;
+  `Horizon` и `ION AURORA`;
+- часы под штатной передачей в согласованных рамках в `ION AURORA`, `Classic`
+  и `Sport`; текущая дата дополнительно отображается в `ION AURORA`;
 - выбор темы на основном экране;
 - вариант `Штатная панель`: приложение ничего не рисует и на `Display ID 2`
   остаётся заводская приборная панель;
@@ -170,7 +176,8 @@ VIN, координатами или служебными данными авт�
 получен, остаётся одна буква. Числовые коды положений, которые отдаёт штатный
 адаптер, сняты на автомобиле и перечислены в `GearSelector`.
 
-Исключение — тема `Simple`: она рисует номер ступени только в положении `D`.
+Исключение — темы `Simple`, `ION AURORA`, `Classic` и `Sport`: они рисуют
+только номер ступени 1–8 в положении `D`.
 В остальных положениях поле пустое, чтобы не дублировать заводскую надпись
 рядом с этим местом.
 
@@ -310,8 +317,8 @@ tools/verify_demo_apk_secrets.sh \
   app/build/outputs/apk/demo/app-demo.apk
 ```
 
-Для release-сборки используйте собственный ключ. Секреты рекомендуется хранить
-в пользовательском `~/.gradle/gradle.properties`, который находится за
+Для локальной контрольной release-сборки используйте production-ключ из
+пользовательского `~/.gradle/gradle.properties`, который находится за
 пределами репозитория:
 
 ```properties
@@ -329,7 +336,10 @@ H9_CLUSTER_KEY_PASSWORD=your-password
 ```
 
 Файлы ключей, локальные свойства, APK/AAB и каталоги сборки исключены через
-`.gitignore`.
+`.gitignore`. Автоматическая публикация использует отдельный защищённый GitHub
+Environment `release`: ключ выдаётся только signing job после личного
+подтверждения владельца, не передаётся Gradle/Docker и не попадает в checkout
+или Actions artifacts.
 
 Порядок выпуска подписанной версии приведён в
 [docs/RELEASING_RU.md](docs/RELEASING_RU.md).
@@ -345,8 +355,11 @@ GitHub Actions для каждого Pull Request:
 5. сохраняет Debug и Demo APK отдельными временными Actions artifacts;
 6. после попадания проверенного commit в `main` публикует toolchain в GHCR.
 
-Production-ключ не используется GitHub Actions и должен оставаться только на
-компьютере владельца.
+Отдельный workflow `Production release` никогда не запускается от обычного
+коммита в `main`. Только `Arkasha18` может вручную проверить либо опубликовать
+точную версию и полный commit SHA. Production-сборка, подпись, сверка
+сертификата и создание Immutable Release выполняются раздельными job; перед
+доступом к signing secrets требуется подтверждение Environment `release`.
 
 ## Установка
 

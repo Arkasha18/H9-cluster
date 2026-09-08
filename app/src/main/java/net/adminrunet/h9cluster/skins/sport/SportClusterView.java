@@ -6,8 +6,8 @@ import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.ClusterHeader;
 import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
-import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -24,8 +24,6 @@ import android.view.View;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Locale;
 
 /** Independent renderer for the user-supplied asymmetric red Sport skin. */
@@ -37,12 +35,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private static final float SPORT_TYRE_CAR_X = 1538.0f;
     private static final float SPORT_TYRE_CAR_Y = 285.0f;
     private static final float REFERENCE_PIXELS_PER_MM = 160.0f / 25.4f;
-    private static final float CLOCK_CARD_LEFT = 11.0f;
-    private static final float CLOCK_CARD_TOP = 88.0f;
-    private static final float CLOCK_CARD_RIGHT = 175.0f;
-    private static final float CLOCK_CARD_BOTTOM = 152.0f;
-    private static final float CLOCK_CENTER_X = 93.0f;
-    private static final float CLOCK_BASELINE = 132.0f;
     private static final float ATF_CARD_LEFT = 1757.0f;
     private static final float ATF_CARD_TOP = 15.0f;
     private static final float ATF_CARD_RIGHT = 1905.0f;
@@ -80,8 +72,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private final RectF logicalBounds =
             new RectF(0.0f, 0.0f, LOGICAL_WIDTH, LOGICAL_HEIGHT);
     private final RectF needleDestination = new RectF();
-    private final SimpleDateFormat timeFormat =
-            new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final TransmissionTemperatureAlert transmissionTemperatureAlert =
             new TransmissionTemperatureAlert();
     private final RpmDisplaySmoother rpmSmoother =
@@ -95,7 +85,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private final Bitmap smallNeedle;
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
-    private final WifiIndicator wifiIndicator;
+    private final ClusterHeader header;
 
     private ClusterState targetState = ClusterState.empty();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -107,8 +97,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private float displayedCoolant = targetState.coolantC;
     private float displayedSteering = targetState.steeringAngleDeg;
     private long lastFrameAtMs;
-    private long cachedClockSecond = -1L;
-    private String cachedClockText = "00:00";
 
     public SportClusterView(Context context) {
         super(context);
@@ -128,7 +116,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         dataTypeface = Typeface.createFromAsset(context.getAssets(), "fonts/Inter-Regular.ttf");
         gaugeTypeface = Typeface.createFromAsset(
                 context.getAssets(), "fonts/Rajdhani-Medium.ttf");
-        wifiIndicator = new WifiIndicator(context);
+        header = new ClusterHeader(context, ClusterHeader.Style.FACTORY, false);
 
         bitmapPaint.setAlpha(255);
         linePaint.setStyle(Paint.Style.STROKE);
@@ -151,7 +139,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
     protected void onDraw(Canvas canvas) {
         long frameAtMs = SystemClock.elapsedRealtime();
         updateSmoothedValues(frameAtMs);
-        updateClock();
         TransmissionTemperatureAlert.Level transmissionTemperatureLevel =
                 updateTransmissionTemperatureAlert(targetState, frameAtMs);
 
@@ -205,13 +192,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
         // card, border or text is drawn in those protected zones.
         drawTopCard(canvas, 12.0f, 276.0f);
         drawTopCard(canvas, 286.0f, 394.0f);
-        drawTopCard(
-                canvas,
-                CLOCK_CARD_LEFT,
-                CLOCK_CARD_TOP,
-                CLOCK_CARD_RIGHT,
-                CLOCK_CARD_BOTTOM,
-                COLOR_CARD_BORDER);
         drawTopCard(canvas, 706.0f, 882.0f);
         drawTopCard(
                 canvas,
@@ -226,13 +206,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 transmissionTemperatureColor(
                         transmissionTemperatureLevel,
                         COLOR_CARD_BORDER));
-
-        configureText(dataTypeface, 31.0f, Paint.Align.CENTER, 0xFFFFFFFF, true, 0.0f);
-        canvas.drawText(
-                cachedClockText,
-                CLOCK_CENTER_X,
-                CLOCK_BASELINE,
-                textPaint);
     }
 
     private void drawNeedleLayer(Canvas canvas) {
@@ -350,8 +323,8 @@ public final class SportClusterView extends View implements ClusterRenderer {
         ClusterState state = targetState;
 
         drawLiveTelemetryCards(canvas, state);
-        drawCurrentGearCard(canvas, state);
-        wifiIndicator.draw(canvas, shapePaint, 1708.0f, 42.0f, frameAtMs);
+        header.draw(canvas, frameAtMs, System.currentTimeMillis());
+        drawCurrentGear(canvas, state);
 
         // Main values occupy fixed inner safe zones. Their size is reduced only when
         // the measured value would exceed the zone; the position itself never jumps.
@@ -596,15 +569,6 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 || steeringMotion.needsAnimationFrame(nowMs);
     }
 
-    private void updateClock() {
-        long wallTime = System.currentTimeMillis();
-        long second = wallTime / 1000L;
-        if (second != cachedClockSecond) {
-            cachedClockSecond = second;
-            cachedClockText = timeFormat.format(new Date(wallTime));
-        }
-    }
-
     private void configureText(
             Typeface typeface,
             float size,
@@ -670,26 +634,18 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 340.0f, 57.0f, 94.0f, 26.0f, 19.0f);
     }
 
-    private void drawCurrentGearCard(Canvas canvas, ClusterState state) {
-        RectF bounds = new RectF(916.0f, 78.0f, 1004.0f, 140.0f);
-
-        shapePaint.setStyle(Paint.Style.FILL);
-        shapePaint.setColor(0xFF080B0E);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.STROKE);
-        shapePaint.setStrokeWidth(2.0f);
-        shapePaint.setColor(COLOR_CARD_BORDER);
-        canvas.drawRoundRect(bounds, 18.0f, 18.0f, shapePaint);
-        shapePaint.setStyle(Paint.Style.FILL);
-
-        configureText(dataTypeface, 10.0f, Paint.Align.CENTER, 0xFFA7AFB5, true, 0.0f);
-        canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
-        configureText(gaugeTypeface, 29.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.04f);
-        canvas.drawText(
-                GearSelector.label(state.gearSelector, state.currentGear),
-                bounds.centerX(),
-                130.0f,
-                textPaint);
+    private void drawCurrentGear(Canvas canvas, ClusterState state) {
+        // Match ION AURORA: the factory owns selector letters and manual-mode text.
+        // No lower GEAR card, frame, or duplicate D/M caption is drawn by the skin.
+        if (!GearSelector.DRIVE.equals(state.gearSelector)) {
+            return;
+        }
+        String ratio = GearSelector.ratio(state.currentGear);
+        if (ratio.isEmpty()) {
+            return;
+        }
+        configureText(gaugeTypeface, 44.0f, Paint.Align.CENTER, 0xFFFAFDFF, true, 0.0f);
+        canvas.drawText(ratio, 1000.0f, 63.0f, textPaint);
     }
 
     private void drawWheelValue(

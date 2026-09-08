@@ -136,13 +136,13 @@ final class SimpleLayout {
     static final float GEAR_NUMBER_X = 1000.0f;
     static final float GEAR_NUMBER_BASELINE = 63.0f;
 
-    static final float TYRE_LEFT_X = 1748.0f;
-    static final float TYRE_RIGHT_X = 1852.0f;
+    static final float TYRE_LEFT_X = 68.0f;
+    static final float TYRE_RIGHT_X = 172.0f;
     static final float TYRE_TEXT_SIZE = 22.0f;
     static final float TYRE_TOP_Y = 40.0f;
     static final float TYRE_BOTTOM_Y = 65.0f;
     /** The wheel sits between the four pressures, so it centres them. */
-    static final float STEERING_ICON_X = 1800.0f;
+    static final float STEERING_ICON_X = 120.0f;
     static final float STEERING_ICON_VERTICAL_OFFSET = -3.0f;
     static final float STEERING_ICON_Y =
             (TYRE_TOP_Y + TYRE_BOTTOM_Y) * 0.5f
@@ -156,6 +156,8 @@ final class SimpleLayout {
     static final float STEERING_T_BAR_Y_OFFSET = -1.0f;
     static final float STEERING_T_STEM_LENGTH = 15.0f;
     static final int STEERING_COLOR = 0xFFF9F9F7;
+    static final float WIFI_X = 1850.0f;
+    static final float WIFI_Y = 42.0f;
 
     static final float FACTORY_SCALE_BASELINE = 690.0f;
     static final float CONSUMPTION_X = 24.0f;
