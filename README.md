@@ -1,4 +1,4 @@
-# H9 Cluster 9.6.1
+# H9 Cluster 9.6.2
 
 <img src="docs/images/h9-cluster-icon-192.png" alt="Иконка H9 Cluster" width="96" height="96">
 
