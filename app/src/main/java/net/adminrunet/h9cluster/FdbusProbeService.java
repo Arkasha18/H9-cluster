@@ -241,7 +241,7 @@ public final class FdbusProbeService extends Service
                 ? new Notification.Builder(this, NOTIFICATION_CHANNEL)
                 : new Notification.Builder(this);
         Notification notification = builder
-                .setSmallIcon(R.drawable.ic_dashboard)
+                .setSmallIcon(R.drawable.ic_dashboard_notification)
                 .setContentTitle("H9 FDBus probe")
                 .setContentText("Read-only diagnostics active")
                 .setOngoing(true)
