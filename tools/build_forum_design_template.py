@@ -59,7 +59,7 @@ def checkerboard() -> Image.Image:
 
 
 def create_map_transparency_mask(background: Image.Image) -> Image.Image:
-    """Mark only pixels that are fully transparent in the calibrated layer."""
+    """Build the deprecated link-compatible mask from the calibrated layer."""
     return background.getchannel("A").point(
         lambda alpha: 255 if alpha == 0 else 0
     )
@@ -75,15 +75,10 @@ def create_black_map_gradient(source: Path) -> Image.Image:
 
 def create_guide(
     system_overlay: Image.Image,
-    map_mask: Image.Image,
     black_gradient: Image.Image,
 ) -> Image.Image:
     image = checkerboard()
     image.alpha_composite(black_gradient)
-
-    map_overlay = Image.new("RGBA", SIZE, (34, 222, 158, 0))
-    map_overlay.putalpha(map_mask.point(lambda value: 82 if value else 0))
-    image.alpha_composite(map_overlay)
 
     reserved_overlay = Image.new("RGBA", SIZE, (255, 62, 21, 0))
     reserved_overlay.putalpha(
@@ -94,15 +89,6 @@ def create_guide(
     image.alpha_composite(reserved_overlay)
 
     draw = ImageDraw.Draw(image)
-    map_bbox = map_mask.getbbox()
-    if map_bbox is None:
-        raise ValueError("calibrated background has no fully transparent map area")
-    left, top, right, bottom = map_bbox
-    draw.rectangle(
-        (left, top, right - 1, bottom - 1),
-        outline=(64, 255, 196, 255),
-        width=4,
-    )
     draw.rectangle(
         (0, 0, WIDTH - 1, HEIGHT - 1),
         outline=(255, 255, 255, 190),
@@ -112,48 +98,125 @@ def create_guide(
     title = font(23)
     label = font(20)
     small = font(17)
+    callout_title = font(18)
+    callout_note = font(15)
 
-    panel = (664, 276, 1255, 458)
+    gear_panel = (770, 94, 1150, 158)
+    draw.rounded_rectangle(
+        gear_panel,
+        radius=12,
+        fill=(3, 7, 9, 225),
+        outline=(255, 178, 73, 235),
+        width=2,
+    )
+    draw.line((960, 94, 960, 77), fill=(255, 178, 73, 255), width=3)
+    draw.ellipse((955, 72, 965, 82), fill=(255, 178, 73, 255))
+    draw.text(
+        (790, 104),
+        "ТЕКУЩАЯ ПЕРЕДАЧА",
+        font=callout_title,
+        fill=(255, 255, 255, 255),
+    )
+    draw.text(
+        (790, 132),
+        "штатная система — скин не рисует",
+        font=callout_note,
+        fill=(220, 226, 229, 255),
+    )
+
+    drive_mode_panel = (1220, 584, 1620, 648)
+    draw.rounded_rectangle(
+        drive_mode_panel,
+        radius=12,
+        fill=(3, 7, 9, 225),
+        outline=(255, 178, 73, 235),
+        width=2,
+    )
+    draw.line((1476, 648, 1476, 669), fill=(255, 178, 73, 255), width=3)
+    draw.ellipse((1471, 664, 1481, 674), fill=(255, 178, 73, 255))
+    draw.text(
+        (1240, 594),
+        "РЕЖИМ ДВИЖЕНИЯ (driveMode)",
+        font=callout_title,
+        fill=(255, 255, 255, 255),
+    )
+    draw.text(
+        (1240, 622),
+        "штатная система — скин не рисует",
+        font=callout_note,
+        fill=(220, 226, 229, 255),
+    )
+
+    panel = (505, 238, 1415, 510)
     draw.rounded_rectangle(
         panel,
         radius=18,
-        fill=(3, 7, 9, 225),
-        outline=(138, 157, 166, 220),
+        fill=(3, 7, 9, 232),
+        outline=(138, 157, 166, 230),
         width=2,
     )
     draw.text(
-        (708, 300),
-        "H9 CLUSTER — ТЕХНИЧЕСКИЙ ШАБЛОН 1920×720",
+        (545, 262),
+        "H9 CLUSTER — ТЕХНИЧЕСКИЙ ГАЙД 1920×720",
         font=title,
         fill=(255, 255, 255, 255),
     )
-    draw.rectangle((708, 355, 728, 375), fill=(34, 222, 158, 210))
     draw.text(
-        (744, 352),
-        "1. Карта: откалиброванная чёрная подложка",
-        font=label,
-        fill=(232, 247, 242, 255),
+        (545, 301),
+        "Справочная визуализация — не использовать как фон скина",
+        font=small,
+        fill=(188, 205, 211, 255),
     )
-    draw.rectangle((708, 400, 728, 420), fill=(255, 62, 21, 255))
+
+    draw.rectangle(
+        (545, 345, 569, 369),
+        fill=(36, 44, 48, 255),
+        outline=(214, 224, 228, 255),
+        width=2,
+    )
+    draw.line((547, 367, 567, 347), fill=(214, 224, 228, 255), width=2)
     draw.text(
-        (744, 397),
-        "2. Красные зоны: маска системных иконок v2.4",
+        (589, 342),
+        "04 — точная RGBA-подложка; видимость карты задаёт её альфа-канал",
+        font=label,
+        fill=(232, 239, 242, 255),
+    )
+
+    draw.rectangle((545, 389, 569, 413), fill=(255, 62, 21, 255))
+    draw.text(
+        (589, 386),
+        "03 — красные области заняты штатной системой",
         font=label,
         fill=(255, 238, 234, 255),
     )
+
+    draw.rectangle(
+        (545, 433, 569, 457),
+        fill=(36, 44, 48, 255),
+        outline=(151, 163, 168, 255),
+        width=2,
+    )
+    draw.line((547, 435, 567, 455), fill=(255, 178, 73, 255), width=3)
+    draw.line((567, 435, 547, 455), fill=(255, 178, 73, 255), width=3)
     draw.text(
-        (739, 438),
-        "За пределами этих зон компоновка и стиль свободны.",
+        (589, 430),
+        "02 — УСТАРЕЛА: не использовать как границу или маску карты",
+        font=label,
+        fill=(255, 205, 139, 255),
+    )
+
+    draw.text(
+        (545, 476),
+        "Обязательный состав показаний: FORUM_DESIGN_PROMPTS_RU.md",
         font=small,
         fill=(188, 205, 211, 255),
     )
     return image
 
 
-def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None:
-    left, top, right, bottom = map_bbox
+def write_readme(destination: Path) -> None:
     destination.write_text(
-        f"""H9 CLUSTER — АКТУАЛЬНЫЙ ТЕХНИЧЕСКИЙ ШАБЛОН
+        """H9 CLUSTER — АКТУАЛЬНЫЙ ТЕХНИЧЕСКИЙ ШАБЛОН
 
 Рабочая система координат всех файлов: 1920×720.
 
@@ -168,13 +231,14 @@ def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None
 раздельные нижние участки и локально осветлённые зоны системных значков.
 Его нужно использовать непосредственно, не рисовать похожий градиент заново.
 
-Карта выводится штатной системой под приложением. Полностью прозрачная область
-готовой подложки отмечена белым в `02_yandex_map_transparency_mask.png`:
-    X = {left}..{right - 1}
-    Y = {top}..{bottom - 1}
+Карта выводится штатной системой под приложением и видна через прозрачные и
+полупрозрачные участки готовой подложки, в том числе в центре экрана. Её
+фактические границы и плавное проявление задаёт альфа-канал файла 04.
 
-Полупрозрачная растушёвка вокруг этой области намеренно остаётся частью
-подложки: через неё карта плавно проявляется к центру.
+`02_yandex_map_transparency_mask.png` устарела: её белая область не
+соответствует фактической области отображения карты. Файл сохранён только ради
+совместимости с опубликованными ссылками. Не используй его как границу карты,
+маску прозрачности, clipPath или проверочную маску.
 
 2. ЗОНЫ СИСТЕМНЫХ ЗНАЧКОВ
 
@@ -185,17 +249,23 @@ def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None
 При создании скина файл нужно открыть временным верхним слоем и не размещать
 под ним графику, текст, шкалы, цифры, рамки, свечение и динамические показания.
 
+В верхнем центральном квадрате этой маски штатная система всегда показывает
+текущую передачу. В маленьком квадрате справа внизу она показывает режим
+движения `driveMode`. Эти два реальных показателя не рисуются скином: обе
+области нужно оставить свободными и учитывать в общей композиции.
+
 Это контрольный слой, а не часть итогового оформления. Его нельзя запекать в
 готовый фон и нельзя использовать для вырезания отверстий из уже нарисованного
 скина. Размер, положение и полупрозрачные края шаблона нельзя менять.
 
-ЧТО НЕ ОГРАНИЧЕНО
+СВОБОДА ВИЗУАЛЬНОГО ОФОРМЛЕНИЯ
 
-Всё остальное автор скина определяет самостоятельно: форму и положение шкал,
-набор и расположение датчиков, цвета, шрифты, размеры, композицию, количество
-слоёв и способ отрисовки. Требование только функциональное: реальные и
-изменяющиеся значения должны оставаться динамическими, а не быть запечены в
-статический фон.
+Автор скина самостоятельно определяет форму и положение шкал, расположение
+показаний, которые рисует приложение, цвета, шрифты, размеры, композицию,
+количество слоёв и способ отрисовки. Обязательный состав автомобильных
+показаний фиксирован в `FORUM_DESIGN_PROMPTS_RU.md` и сокращать его нельзя.
+Реальные и изменяющиеся значения должны оставаться динамическими, а не быть
+запечены в статический фон.
 
 СОСТАВ
 
@@ -203,10 +273,13 @@ def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None
     Полностью прозрачный рабочий холст.
 
 01_technical_guide.png
-    Контрольная схема двух обязательных зон. Не использовать как фон скина.
+    Справочная визуализация точного слоя 04 и красного наложения зон 03 с
+    подписями штатных областей передачи и driveMode. Не использовать как фон
+    скина и не определять по ней фактические границы карты.
 
 02_yandex_map_transparency_mask.png
-    Одноканальная маска: белый = alpha=0 в готовой подложке.
+    Устаревшая справочная маска. Не использовать при создании или проверке
+    скина.
 
 03_system_icons_forbidden_mask.png
     Актуальный RGBA-шаблон системных иконок v2.4. Непрозрачный или
@@ -218,12 +291,16 @@ def write_readme(destination: Path, map_bbox: tuple[int, int, int, int]) -> None
 ПРОВЕРКА
 
 1. Все итоговые растровые слои имеют размер 1920×720.
-2. Итоговый alpha равен 0 во всей белой области маски карты.
-3. Ни статические, ни динамические элементы не пересекают непрозрачные и
+2. Файл 04 используется как нижняя подложка без изменения его положения,
+   пикселей и альфа-канала; файл 02 не используется.
+3. Ни статические, ни динамические элементы скина не пересекают непрозрачные и
    полупрозрачные области системного шаблона v2.4.
-4. Файл 04 используется как нижняя подложка без изменения его альфа-канала.
+4. Скин не рисует текущую передачу и `driveMode`; их верхняя центральная и
+   нижняя правая штатные области остаются свободными.
+5. Макет содержит весь обязательный состав показаний из
+   `FORUM_DESIGN_PROMPTS_RU.md`.
 
-Других обязательных правил компоновки этот шаблон не задаёт.
+В пределах этих требований визуальное оформление остаётся свободным.
 """,
         encoding="utf-8",
     )
@@ -258,7 +335,7 @@ def main() -> None:
     Image.new("RGBA", SIZE, (0, 0, 0, 0)).save(
         output / "00_blank_1920x720_rgba.png", "PNG", optimize=True
     )
-    create_guide(system_overlay, map_mask, black_gradient).save(
+    create_guide(system_overlay, black_gradient).save(
         output / "01_technical_guide.png", "PNG", optimize=True
     )
     map_mask.save(
@@ -272,10 +349,7 @@ def main() -> None:
         args.gradient_source,
         output / "04_yandex_map_black_gradient_rgba.png",
     )
-    map_bbox = map_mask.getbbox()
-    if map_bbox is None:
-        raise ValueError("calibrated background has no fully transparent map area")
-    write_readme(output / "README_RU.txt", map_bbox)
+    write_readme(output / "README_RU.txt")
 
 
 if __name__ == "__main__":
