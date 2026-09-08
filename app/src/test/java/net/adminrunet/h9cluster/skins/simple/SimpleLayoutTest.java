@@ -824,7 +824,9 @@ public final class SimpleLayoutTest {
     }
 
     @Test
-    public void topTelemetryIsACompactRightAlignedGroup() {
+    public void tyreTelemetryIsACompactLeftAlignedGroup() {
+        org.junit.Assert.assertTrue(SimpleLayout.TYRE_LEFT_X < 200.0f);
+        org.junit.Assert.assertTrue(SimpleLayout.TYRE_RIGHT_X < 200.0f);
         assertEquals(
                 104.0f,
                 SimpleLayout.TYRE_RIGHT_X
