@@ -8,6 +8,7 @@ import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.ClusterHeader;
 import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -86,6 +87,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
     private final ClusterHeader header;
+    private final SpeedDisplayMode speedDisplayMode;
 
     private ClusterState targetState = ClusterState.empty();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -99,7 +101,16 @@ public final class SportClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public SportClusterView(Context context) {
+        this(context, SpeedDisplayMode.REAL);
+    }
+
+    public SportClusterView(
+            Context context,
+            SpeedDisplayMode speedDisplayMode) {
         super(context);
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
@@ -215,7 +226,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         drawSportScaleNeedle(
                 canvas,
                 mainNeedle,
-                SportDialCalibration.speedNeedle(displayedSpeed),
+                SportDialCalibration.speed(indicatedSpeed()),
                 false,
                 SPORT_MAIN_NEEDLE_GAP,
                 56.0f,
@@ -332,7 +343,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 0xFFF7F7F5, true, -0.16f);
         drawFittedText(
                 canvas,
-                Integer.toString(Math.round(displayedSpeed)),
+                Integer.toString(Math.round(indicatedSpeed())),
                 MAIN_SPEED_CENTER_X,
                 435.0f,
                 168.0f,
@@ -567,6 +578,11 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 || Math.abs(targetState.fuelLiters - displayedFuel) > 0.01f
                 || Math.abs(targetState.coolantC - displayedCoolant) > 0.01f
                 || steeringMotion.needsAnimationFrame(nowMs);
+    }
+
+    /** Smoothed speed after the selected factory-style correction. */
+    private float indicatedSpeed() {
+        return speedDisplayMode.indicatedKph(displayedSpeed);
     }
 
     private void configureText(

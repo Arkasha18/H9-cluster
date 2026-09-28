@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -21,10 +22,17 @@ final class SkinSettingsSession {
     static final class Snapshot {
         final String skinId;
         final SkinSettings settings;
+        final SpeedDisplayMode speedDisplayMode;
 
-        Snapshot(String skinId, SkinSettings settings) {
+        Snapshot(
+                String skinId,
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode) {
             this.skinId = SkinRegistry.normalize(skinId);
             this.settings = settings == null ? SkinSettings.empty() : settings;
+            this.speedDisplayMode = speedDisplayMode == null
+                    ? SpeedDisplayMode.REAL
+                    : speedDisplayMode;
         }
 
         @Override
@@ -37,12 +45,13 @@ final class SkinSettingsSession {
             }
             Snapshot that = (Snapshot) other;
             return skinId.equals(that.skinId)
-                    && settings.equals(that.settings);
+                    && settings.equals(that.settings)
+                    && speedDisplayMode == that.speedDisplayMode;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(skinId, settings);
+            return Objects.hash(skinId, settings, speedDisplayMode);
         }
     }
 
@@ -50,6 +59,7 @@ final class SkinSettingsSession {
     private final Normalizer normalizer;
     private final Map<String, SkinSettings> drafts = new LinkedHashMap<>();
     private String selectedSkinId;
+    private SpeedDisplayMode speedDisplayMode = SpeedDisplayMode.REAL;
 
     SkinSettingsSession(String selectedSkinId, Loader loader) {
         this(
@@ -92,8 +102,15 @@ final class SkinSettingsSession {
                 normalize(selectedSkinId, settings));
     }
 
+    void selectSpeedDisplayMode(SpeedDisplayMode mode) {
+        speedDisplayMode = mode == null ? SpeedDisplayMode.REAL : mode;
+    }
+
     Snapshot snapshot() {
-        return new Snapshot(selectedSkinId, drafts.get(selectedSkinId));
+        return new Snapshot(
+                selectedSkinId,
+                drafts.get(selectedSkinId),
+                speedDisplayMode);
     }
 
     Map<String, SkinSettings> drafts() {

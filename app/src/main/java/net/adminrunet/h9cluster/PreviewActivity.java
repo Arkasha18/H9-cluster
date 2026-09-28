@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 import net.adminrunet.h9cluster.trip.DemoSpeedometerHotspot;
 import net.adminrunet.h9cluster.trip.TripSessionStore;
 import net.adminrunet.h9cluster.trip.TripSummary;
@@ -41,6 +42,8 @@ public final class PreviewActivity extends Activity
     public static final String EXTRA_HAS_DRAFT = "has_skin_settings_draft";
     public static final String EXTRA_DRAFT_SKIN = "draft_skin";
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
+    public static final String EXTRA_DRAFT_SPEED_DISPLAY_MODE =
+            "draft_speed_display_mode";
     public static final String EXTRA_DEMO_INVALID_CONSUMPTION =
             "demo_invalid_consumption";
     private static final String STATE_USER_REQUEST_CONSUMED =
@@ -255,13 +258,17 @@ public final class PreviewActivity extends Activity
                         draftSkin,
                         SkinRegistry.normalizeSettings(
                                 draftSkin,
-                                draftSettings));
+                                draftSettings),
+                        SpeedDisplayMode.fromKey(
+                                intent.getStringExtra(
+                                        EXTRA_DRAFT_SPEED_DISPLAY_MODE)));
             }
         }
         String persistedSkin = SkinPreferences.getSelectedSkin(this);
         return new SkinSettingsSession.Snapshot(
                 persistedSkin,
-                SkinSettingsStore.load(this, persistedSkin));
+                SkinSettingsStore.load(this, persistedSkin),
+                SkinPreferences.getSpeedDisplayMode(this));
     }
 
     private void applySnapshot(
@@ -273,7 +280,8 @@ public final class PreviewActivity extends Activity
         View replacement = SkinRegistry.createRenderer(
                 this,
                 snapshot.skinId,
-                snapshot.settings);
+                snapshot.settings,
+                snapshot.speedDisplayMode);
         clusterRenderer = (ClusterRenderer) replacement;
         activeSnapshot = snapshot;
         replacement.setBackgroundColor(

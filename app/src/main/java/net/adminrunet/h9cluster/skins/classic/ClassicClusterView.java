@@ -8,6 +8,7 @@ import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.ClusterHeader;
 import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -87,6 +88,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
     private final ClusterHeader header;
+    private final SpeedDisplayMode speedDisplayMode;
 
     private ClusterState targetState = ClusterState.empty();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -100,7 +102,16 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private long lastFrameAtMs;
 
     public ClassicClusterView(Context context) {
+        this(context, SpeedDisplayMode.REAL);
+    }
+
+    public ClassicClusterView(
+            Context context,
+            SpeedDisplayMode speedDisplayMode) {
         super(context);
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
@@ -202,7 +213,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 MAIN_DIAL_CENTER_Y,
                 260.0f,
                 MAIN_DIAL_RADIUS_Y,
-                ClassicDialCalibration.speedAngleDeg(displayedSpeed),
+                ClassicDialCalibration.speedAngleDeg(indicatedSpeed()),
                 72.0f,
                 56.0f,
                 12.0f);
@@ -290,7 +301,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(gaugeTypeface, 112.0f, Paint.Align.CENTER, 0xFFF7F7F5, true, -0.10f);
         drawFittedText(
                 canvas,
-                Integer.toString(Math.round(displayedSpeed)),
+                Integer.toString(Math.round(indicatedSpeed())),
                 MAIN_SPEED_CENTER_X,
                 435.0f,
                 168.0f,
@@ -523,6 +534,11 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
                 || Math.abs(targetState.fuelLiters - displayedFuel) > 0.01f
                 || Math.abs(targetState.coolantC - displayedCoolant) > 0.01f
                 || steeringMotion.needsAnimationFrame(nowMs);
+    }
+
+    /** Smoothed speed after the selected factory-style correction. */
+    private float indicatedSpeed() {
+        return speedDisplayMode.indicatedKph(displayedSpeed);
     }
 
     private void configureText(

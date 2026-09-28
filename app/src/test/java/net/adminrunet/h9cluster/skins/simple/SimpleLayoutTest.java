@@ -599,36 +599,10 @@ public final class SimpleLayoutTest {
     }
 
     @Test
-    public void bandLeadsTheMeasuredSpeedByTheIndicationFactor() {
-        // The band has to sit where the factory dial would put the same
-        // moment, which is further along than the raw bus reading.
-        assertEquals(
-                SimpleLayout.speedFraction(
-                        100.0f * SimpleLayout.SPEED_INDICATION_FACTOR),
-                SimpleLayout.indicatedSpeedFraction(100.0f),
-                0.0001f);
-        org.junit.Assert.assertTrue(
-                SimpleLayout.indicatedSpeedFraction(100.0f)
-                        > SimpleLayout.speedFraction(100.0f));
-    }
-
-    @Test
-    public void indicatedSpeedStaysPinnedAtBothEndsOfTheScale() {
-        assertEquals(
-                0.0f,
-                SimpleLayout.indicatedSpeedFraction(0.0f),
-                0.0001f);
-        assertEquals(
-                1.0f,
-                SimpleLayout.indicatedSpeedFraction(
-                        SimpleLayout.MAX_SPEED_KPH),
-                0.0001f);
-    }
-
-    @Test
     public void labelsStayOnTheUncorrectedScale() {
-        // Only the band is scaled; moving the labels with it would cancel
-        // the correction out and leave the dial reading as before.
+        // Any factory-style correction is applied by the caller before the
+        // value reaches the layout; the printed scale itself never moves,
+        // otherwise moving the labels would cancel the correction out.
         assertEquals(
                 0.5f,
                 SimpleLayout.speedFraction(

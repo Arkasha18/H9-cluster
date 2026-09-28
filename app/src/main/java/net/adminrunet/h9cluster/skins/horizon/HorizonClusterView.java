@@ -7,6 +7,7 @@ import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.FuelConsumptionFormatter;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
@@ -64,6 +65,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
             new RpmDisplaySmoother();
     private final boolean swapPrimaryGauges;
     private final WifiIndicator wifiIndicator;
+    private final SpeedDisplayMode speedDisplayMode;
 
     private ClusterState targetState = ClusterState.empty();
     private float displayedSpeed = targetState.speedKph;
@@ -79,9 +81,19 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     public HorizonClusterView(
             Context context,
             SkinSettings settings) {
+        this(context, settings, SpeedDisplayMode.REAL);
+    }
+
+    public HorizonClusterView(
+            Context context,
+            SkinSettings settings,
+            SpeedDisplayMode speedDisplayMode) {
         super(context);
         this.swapPrimaryGauges = HorizonSettingsProvider
                 .shouldSwapPrimaryGauges(settings);
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         wifiIndicator = new WifiIndicator(context);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -113,7 +125,13 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         drawSidePanels(canvas);
         float speedCenterX = swapPrimaryGauges ? 1590.0f : 330.0f;
         float rpmCenterX = swapPrimaryGauges ? 330.0f : 1590.0f;
-        drawGauge(canvas, speedCenterX, 315.0f, displayedSpeed, 220.0f, false);
+        drawGauge(
+                canvas,
+                speedCenterX,
+                315.0f,
+                speedDisplayMode.indicatedKph(displayedSpeed),
+                220.0f,
+                false);
         drawGauge(canvas, rpmCenterX, 315.0f, displayedRpm, 8000.0f, true);
         drawFuelCard(canvas, targetState);
         drawCoolantCard(canvas, targetState);

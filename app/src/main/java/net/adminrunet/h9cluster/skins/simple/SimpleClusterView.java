@@ -6,6 +6,7 @@ import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
@@ -54,6 +55,7 @@ public final class SimpleClusterView extends View
     private final SimpleScaleColor scaleColor;
     private final Shader tipBloomShader;
     private final WifiIndicator wifiIndicator;
+    private final SpeedDisplayMode speedDisplayMode;
 
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
@@ -80,10 +82,20 @@ public final class SimpleClusterView extends View
     public SimpleClusterView(
             Context context,
             SimpleScaleColor scaleColor) {
+        this(context, scaleColor, SpeedDisplayMode.REAL);
+    }
+
+    public SimpleClusterView(
+            Context context,
+            SimpleScaleColor scaleColor,
+            SpeedDisplayMode speedDisplayMode) {
         super(context);
         this.scaleColor = scaleColor == null
                 ? SimpleScaleColor.defaultColor()
                 : scaleColor;
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         tipBloomShader = createTipBloomShader(this.scaleColor);
         wifiIndicator = new WifiIndicator(context);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -219,7 +231,8 @@ public final class SimpleClusterView extends View
             return;
         }
         float speedFraction = clamp(
-                SimpleLayout.indicatedSpeedFraction(displayedSpeed),
+                SimpleLayout.speedFraction(
+                        speedDisplayMode.indicatedKph(displayedSpeed)),
                 0.0f,
                 1.0f);
         float rpmFraction = clamp(
