@@ -9,13 +9,16 @@ final class PreviewSystemIcons {
     private PreviewSystemIcons() { }
 
     static View create(Context context, String skinId) {
+        if (SkinRegistry.SCULPTED_TITANIUM.equals(skinId)) {
+            return new TitaniumDemoSystemView(context);
+        }
         return SkinRegistry.ION_AURORA.equals(skinId)
                 ? new DemoSystemIconsView(context) : null;
     }
 
     static void update(View view, ClusterState state) {
-        if (view instanceof DemoSystemIconsView) {
-            ((DemoSystemIconsView) view).setClusterState(state);
+        if (view instanceof ClusterRenderer) {
+            ((ClusterRenderer) view).setClusterState(state);
         }
     }
 }

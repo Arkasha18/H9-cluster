@@ -16,6 +16,8 @@ final class FactoryNotificationMonitor {
 
     private boolean doorOpen;
     private long warningVisibleUntilMs;
+    private int lastWarningId;
+    private int lastWarningAction;
 
     boolean updateDoorStatus(String rawValue, long nowMs) {
         doorOpen = containsPositiveValue(rawValue);
@@ -23,14 +25,52 @@ final class FactoryNotificationMonitor {
     }
 
     boolean updateWarning(String rawValue, long nowMs) {
-        Integer warningId = firstInteger(rawValue);
-        if (warningId == null) {
+        int[] event = warningEvent(rawValue);
+        if (event == null) {
+            if (Integer.valueOf(0).equals(firstInteger(rawValue))) {
+                warningVisibleUntilMs = 0L;
+                lastWarningId = 0;
+                lastWarningAction = 2;
+            }
             return isVisibleAt(nowMs);
         }
-        warningVisibleUntilMs = warningId.intValue() > 0
-                ? saturatedAdd(nowMs, WARNING_TIMEOUT_MS)
-                : 0L;
+        int warningId = event[0];
+        int action = event[2];
+        if (warningId <= 0 || action == 2) {
+            // The dismiss packet can retain its warnId; it is not a new alert.
+            warningVisibleUntilMs = 0L;
+        } else if (action == 1
+                && (warningId != lastWarningId || action != lastWarningAction)) {
+            warningVisibleUntilMs = saturatedAdd(nowMs, WARNING_TIMEOUT_MS);
+        }
+        lastWarningId = warningId;
+        lastWarningAction = action;
         return isVisibleAt(nowMs);
+    }
+
+    /** GET_DATA is a cache, not evidence that QNX is still displaying this event. */
+    void seedWarningSnapshot(String rawValue) {
+        int[] event = warningEvent(rawValue);
+        if (event != null) {
+            lastWarningId = event[0];
+            lastWarningAction = event[2];
+        }
+        warningVisibleUntilMs = 0L;
+    }
+
+    private static int[] warningEvent(String rawValue) {
+        if (rawValue == null) return null;
+        Matcher matcher = INTEGER_PATTERN.matcher(rawValue);
+        int[] values = new int[3];
+        for (int i = 0; i < values.length; i++) {
+            if (!matcher.find()) return null;
+            try {
+                values[i] = Integer.parseInt(matcher.group());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return matcher.find() ? null : values;
     }
 
     boolean isVisibleAt(long nowMs) {

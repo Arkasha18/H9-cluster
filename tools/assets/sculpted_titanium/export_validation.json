@@ -1,0 +1,11 @@
+{
+  "size": [
+    1920,
+    720
+  ],
+  "removedTextElements": 79,
+  "lowerLeftOverlap": 0,
+  "centralCorridorOverlap": 0,
+  "baseSha256": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+  "chromeSha256": "135ac029c72331e58e6319a51be8c3e1addac30664d52c21e4ff49a8c9ea99e0"
+}

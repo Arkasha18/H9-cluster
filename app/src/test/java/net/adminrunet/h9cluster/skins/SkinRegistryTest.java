@@ -12,13 +12,14 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(6, definitions.length);
+        assertEquals(7, definitions.length);
         assertEquals(SkinRegistry.ION_AURORA, definitions[0].id);
         assertEquals(SkinRegistry.CLASSIC, definitions[1].id);
         assertEquals(SkinRegistry.SPORT, definitions[2].id);
         assertEquals(SkinRegistry.SIMPLE, definitions[3].id);
         assertEquals(SkinRegistry.HORIZON, definitions[4].id);
-        assertEquals(SkinRegistry.STOCK, definitions[5].id);
+        assertEquals(SkinRegistry.SCULPTED_TITANIUM, definitions[5].id);
+        assertEquals(SkinRegistry.STOCK, definitions[6].id);
     }
 
     @Test
