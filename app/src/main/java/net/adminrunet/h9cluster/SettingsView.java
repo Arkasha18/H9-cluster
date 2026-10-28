@@ -39,6 +39,12 @@ public final class SettingsView extends View {
             "Как в авто +4,5%",
             "Как в авто +5 км/ч",
     };
+    private static final int[] FUEL_TANK_CAPACITIES = {
+            FuelTankCapacity.DEFAULT_LITERS,
+            FuelTankCapacity.SMALL_LITERS,
+    };
+    private static final float CONFIGURE_LEFT = 590.0f;
+    private static final float CONFIGURE_RIGHT = 850.0f;
     private static final float CONFIGURE_TOP = 318.0f;
     private static final float CONFIGURE_BOTTOM = 360.0f;
     private static final float SAVE_TOP = 368.0f;
@@ -108,6 +114,7 @@ public final class SettingsView extends View {
 
         drawSkinSelector(canvas);
         drawSpeedControl(canvas);
+        drawFuelControl(canvas);
 
         boolean configurable = selectedDefinition().hasSettings();
         if (configurable) {
@@ -211,9 +218,9 @@ public final class SettingsView extends View {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_CARD_SELECTED);
         canvas.drawRoundRect(
-                300.0f,
+                CONFIGURE_LEFT,
                 CONFIGURE_TOP,
-                660.0f,
+                CONFIGURE_RIGHT,
                 CONFIGURE_BOTTOM,
                 12.0f,
                 12.0f,
@@ -222,17 +229,17 @@ public final class SettingsView extends View {
         paint.setStrokeWidth(2.0f);
         paint.setColor(COLOR_ACCENT);
         canvas.drawRoundRect(
-                300.0f,
+                CONFIGURE_LEFT,
                 CONFIGURE_TOP,
-                660.0f,
+                CONFIGURE_RIGHT,
                 CONFIGURE_BOTTOM,
                 12.0f,
                 12.0f,
                 paint);
         drawCenteredText(
                 canvas,
-                "Настройки",
-                480.0f,
+                "Настройки темы",
+                (CONFIGURE_LEFT + CONFIGURE_RIGHT) * 0.5f,
                 CONFIGURE_TOP + 31.0f,
                 17.0f,
                 COLOR_TEXT,
@@ -318,6 +325,25 @@ public final class SettingsView extends View {
         }
     }
 
+    private void drawFuelControl(Canvas canvas) {
+        drawLeftText(canvas, "Объём бака", 140.0f,
+                SettingsFuelControl.TEXT_BASELINE, 15.0f, COLOR_MUTED, false);
+        for (int index = 0; index < SettingsFuelControl.SEGMENT_COUNT; index++) {
+            int capacity = FUEL_TANK_CAPACITIES[index];
+            boolean selected = capacity == session.snapshot().fuelTankCapacityLiters;
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(selected ? COLOR_ACCENT : COLOR_CARD_SELECTED);
+            canvas.drawRoundRect(
+                    SettingsFuelControl.segmentLeft(index), SettingsFuelControl.TOP,
+                    SettingsFuelControl.segmentRight(index), SettingsFuelControl.BOTTOM,
+                    12.0f, 12.0f, paint);
+            drawCenteredText(canvas, capacity + " л",
+                    SettingsFuelControl.segmentCenterX(index),
+                    SettingsFuelControl.TEXT_BASELINE, 17.0f,
+                    selected ? Color.BLACK : COLOR_TEXT, selected);
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() != MotionEvent.ACTION_UP) {
@@ -335,10 +361,21 @@ public final class SettingsView extends View {
             selectSpeedDisplayMode(SPEED_MODES[speedSegment]);
             return true;
         }
+        int fuelSegment = SettingsFuelControl.segmentAt(x, y);
+        if (fuelSegment >= 0) {
+            int capacity = FUEL_TANK_CAPACITIES[fuelSegment];
+            if (capacity != session.snapshot().fuelTankCapacityLiters) {
+                session.selectFuelTankCapacity(capacity);
+                status = "Предпросмотр объёма бака: " + capacity + " л";
+                listener.onDraftChanged(session.snapshot());
+                invalidate();
+            }
+            return true;
+        }
         boolean configurable = selectedDefinition().hasSettings();
         if (configurable
-                && x >= 300.0f
-                && x <= 660.0f
+                && x >= CONFIGURE_LEFT
+                && x <= CONFIGURE_RIGHT
                 && y >= CONFIGURE_TOP
                 && y <= CONFIGURE_BOTTOM) {
             showSettingsEditor();

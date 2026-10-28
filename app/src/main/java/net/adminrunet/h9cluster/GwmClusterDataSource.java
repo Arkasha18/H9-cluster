@@ -44,7 +44,8 @@ public final class GwmClusterDataSource
     private static final int TRANSACTION_REGISTER_LISTENER = 3;
     private static final int TRANSACTION_UNREGISTER_LISTENER = 4;
     private static final int MAX_ENGINE_RPM = 8000;
-    private static final float TANK_CAPACITY_LITERS = 80.0f;
+    // Baseline for the shared rendering projection in ClusterState.
+    private static final float TANK_CAPACITY_LITERS = FuelTankCapacity.DEFAULT_LITERS;
     private static final long REBIND_DELAY_MS = 1500L;
     private static final long FDBUS_RPM_STALE_MS = 500L;
     private static final long FDBUS_FUEL_STALE_MS = 2000L;

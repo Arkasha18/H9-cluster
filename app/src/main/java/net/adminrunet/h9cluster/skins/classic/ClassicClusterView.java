@@ -34,7 +34,6 @@ import java.util.Locale;
 public final class ClassicClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
-    private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
     private static final float MAIN_DIAL_RADIUS_Y = 230.0f;
     private static final float MAIN_SPEED_CENTER_X = 317.0f;
@@ -201,7 +200,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private void drawNeedleLayer(Canvas canvas) {
-        float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
+        float fuelFraction = clamp(displayedFuel / targetState.fuelTankCapacityLiters, 0.0f, 1.0f);
         float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
 
         // The Classic artwork has a compressed elliptical scale. Its measured major
@@ -341,7 +340,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         configureText(gaugeTypeface, 27.0f, Paint.Align.CENTER, 0xFFCFD2D4, true, -0.08f);
         drawFittedText(
                 canvas,
-                String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
+                String.format(Locale.US, "%.1f", displayedFuel / state.fuelTankCapacityLiters),
                 564.0f,
                 370.0f,
                 34.0f,

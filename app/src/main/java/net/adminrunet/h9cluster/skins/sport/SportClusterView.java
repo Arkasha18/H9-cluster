@@ -31,7 +31,6 @@ import java.util.Locale;
 public final class SportClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
-    private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final float MAIN_SPEED_CENTER_X = 317.0f;
     private static final float SPORT_TYRE_CAR_X = 1538.0f;
     private static final float SPORT_TYRE_CAR_Y = 285.0f;
@@ -220,7 +219,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
     }
 
     private void drawNeedleLayer(Canvas canvas) {
-        float fuelFraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
+        float fuelFraction = clamp(displayedFuel / targetState.fuelTankCapacityLiters, 0.0f, 1.0f);
         float coolantFraction = clamp((displayedCoolant - 40.0f) / 90.0f, 0.0f, 1.0f);
 
         drawSportScaleNeedle(
@@ -385,7 +384,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
         configureText(gaugeTypeface, 27.0f, Paint.Align.CENTER, 0xFFCFD2D4, true, -0.08f);
         drawFittedText(
                 canvas,
-                String.format(Locale.US, "%.1f", displayedFuel / TANK_CAPACITY_LITERS),
+                String.format(Locale.US, "%.1f", displayedFuel / state.fuelTankCapacityLiters),
                 564.0f,
                 458.0f,
                 40.0f,

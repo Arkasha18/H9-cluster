@@ -44,6 +44,8 @@ public final class PreviewActivity extends Activity
     public static final String EXTRA_DRAFT_SETTINGS = "draft_skin_settings";
     public static final String EXTRA_DRAFT_SPEED_DISPLAY_MODE =
             "draft_speed_display_mode";
+    public static final String EXTRA_DRAFT_FUEL_TANK_CAPACITY =
+            "draft_fuel_tank_capacity_liters";
     public static final String EXTRA_DEMO_INVALID_CONSUMPTION =
             "demo_invalid_consumption";
     private static final String STATE_USER_REQUEST_CONSUMED =
@@ -168,7 +170,7 @@ public final class PreviewActivity extends Activity
             @Override
             public void onClusterState(ClusterState state) {
                 lastState = state;
-                clusterRenderer.setClusterState(state);
+                updateRendererState();
                 PreviewSystemIcons.update(demoSystemIconsView, state);
                 logTripTelemetryIfDue(state);
                 tripCoordinator.onClusterState(state);
@@ -261,14 +263,17 @@ public final class PreviewActivity extends Activity
                                 draftSettings),
                         SpeedDisplayMode.fromKey(
                                 intent.getStringExtra(
-                                        EXTRA_DRAFT_SPEED_DISPLAY_MODE)));
+                                        EXTRA_DRAFT_SPEED_DISPLAY_MODE)),
+                        intent.getIntExtra(EXTRA_DRAFT_FUEL_TANK_CAPACITY,
+                                SkinPreferences.getFuelTankCapacityLiters(this)));
             }
         }
         String persistedSkin = SkinPreferences.getSelectedSkin(this);
         return new SkinSettingsSession.Snapshot(
                 persistedSkin,
                 SkinSettingsStore.load(this, persistedSkin),
-                SkinPreferences.getSpeedDisplayMode(this));
+                SkinPreferences.getSpeedDisplayMode(this),
+                SkinPreferences.getFuelTankCapacityLiters(this));
     }
 
     private void applySnapshot(
@@ -291,7 +296,7 @@ public final class PreviewActivity extends Activity
         }
         rendererView = replacement;
         syncRendererVisibility();
-        clusterRenderer.setClusterState(lastState);
+        updateRendererState();
         if (demoSystemIconsView != null) rootView.removeView(demoSystemIconsView);
         demoSystemIconsView = PreviewSystemIcons.create(this, snapshot.skinId);
         if (demoSystemIconsView != null) {
@@ -300,6 +305,13 @@ public final class PreviewActivity extends Activity
                             FrameLayout.LayoutParams.MATCH_PARENT));
             PreviewSystemIcons.update(demoSystemIconsView, lastState);
         }
+    }
+
+    private void updateRendererState() {
+        // Keep raw telemetry for future previews and trip accounting. Project
+        // liters and capacity together, including before the next bus update.
+        clusterRenderer.setClusterState(
+                lastState.withFuelTankCapacity(activeSnapshot.fuelTankCapacityLiters));
     }
 
     private void addDemoTouchLayer() {

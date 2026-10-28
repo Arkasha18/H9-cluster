@@ -36,6 +36,8 @@ public final class SettingsActivity extends Activity {
                 });
         session.selectSpeedDisplayMode(
                 SkinPreferences.getSpeedDisplayMode(this));
+        session.selectFuelTankCapacity(
+                SkinPreferences.getFuelTankCapacityLiters(this));
         settingsView = new SettingsView(
                 this,
                 session,
@@ -59,6 +61,9 @@ public final class SettingsActivity extends Activity {
                         SkinPreferences.setSpeedDisplayMode(
                                 SettingsActivity.this,
                                 draft.speedDisplayMode);
+                        SkinPreferences.setFuelTankCapacityLiters(
+                                SettingsActivity.this,
+                                draft.fuelTankCapacityLiters);
                         for (Map.Entry<String, SkinSettings> entry
                                 : session.drafts().entrySet()) {
                             SkinSettingsStore.save(

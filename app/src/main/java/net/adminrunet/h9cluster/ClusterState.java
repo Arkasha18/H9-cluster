@@ -9,6 +9,7 @@ public final class ClusterState {
     public final int coolantC;
     public final float transmissionTemperatureC;
     public final float fuelLiters;
+    public final int fuelTankCapacityLiters;
     public final int rangeKm;
     public final double odometerKm;
     public final float dayKm;
@@ -35,6 +36,7 @@ public final class ClusterState {
     public final long transmissionTemperatureUpdatedAtMs;
     public final String driveMode;
 
+    /** Creates a source snapshot with fuel expressed on the default 80-liter basis. */
     public ClusterState(
             int speedKph,
             int rpm,
@@ -77,6 +79,7 @@ public final class ClusterState {
         this.coolantC = coolantC;
         this.transmissionTemperatureC = transmissionTemperatureC;
         this.fuelLiters = fuelLiters;
+        this.fuelTankCapacityLiters = FuelTankCapacity.DEFAULT_LITERS;
         this.rangeKm = rangeKm;
         this.odometerKm = odometerKm;
         this.dayKm = dayKm;
@@ -105,6 +108,56 @@ public final class ClusterState {
         this.transmissionTemperatureUpdatedAtMs =
                 transmissionTemperatureUpdatedAtMs;
         this.driveMode = driveMode == null ? "ECO" : driveMode;
+    }
+
+    private ClusterState(ClusterState source, int fuelTankCapacityLiters) {
+        speedKph = source.speedKph;
+        rpm = source.rpm;
+        currentGear = source.currentGear;
+        gearSelector = source.gearSelector;
+        coolantC = source.coolantC;
+        transmissionTemperatureC = source.transmissionTemperatureC;
+        fuelLiters = source.fuelLiters / source.fuelTankCapacityLiters
+                * fuelTankCapacityLiters;
+        this.fuelTankCapacityLiters = fuelTankCapacityLiters;
+        rangeKm = source.rangeKm;
+        odometerKm = source.odometerKm;
+        dayKm = source.dayKm;
+        tripKm = source.tripKm;
+        tyreFrontLeftBar = source.tyreFrontLeftBar;
+        tyreFrontRightBar = source.tyreFrontRightBar;
+        tyreRearLeftBar = source.tyreRearLeftBar;
+        tyreRearRightBar = source.tyreRearRightBar;
+        instantFuelConsumption = source.instantFuelConsumption;
+        consumptionLitersPer100Km = source.consumptionLitersPer100Km;
+        journeyAverageFuelConsumption = source.journeyAverageFuelConsumption;
+        voltage = source.voltage;
+        outsideTemperatureC = source.outsideTemperatureC;
+        steeringAngleDeg = source.steeringAngleDeg;
+        wheelFrontLeftKph = source.wheelFrontLeftKph;
+        wheelFrontRightKph = source.wheelFrontRightKph;
+        wheelRearLeftKph = source.wheelRearLeftKph;
+        wheelRearRightKph = source.wheelRearRightKph;
+        engineFlywheelTorque = source.engineFlywheelTorque;
+        rpmUpdatedAtMs = source.rpmUpdatedAtMs;
+        journeyAverageFuelConsumptionUpdatedAtMs =
+                source.journeyAverageFuelConsumptionUpdatedAtMs;
+        journeyOdometerUpdatedAtMs = source.journeyOdometerUpdatedAtMs;
+        steeringUpdatedAtMs = source.steeringUpdatedAtMs;
+        transmissionTemperatureUpdatedAtMs =
+                source.transmissionTemperatureUpdatedAtMs;
+        driveMode = source.driveMode;
+    }
+
+    /**
+     * Projects the same fuel percentage onto a selected tank size. Vehicle
+     * range and consumption remain the independent readings from the source.
+     */
+    public ClusterState withFuelTankCapacity(int liters) {
+        int normalized = FuelTankCapacity.normalize(liters);
+        return normalized == fuelTankCapacityLiters
+                ? this
+                : new ClusterState(this, normalized);
     }
 
     public boolean hasTransmissionTemperature() {
