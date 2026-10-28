@@ -16,6 +16,11 @@
 *.apk
 *.aab
 /release/
+/artifacts/
+
+# Local design iterations; the maintained Titanium source is in tools/assets/.
+/docs/H9_Cluster_Neutral_Design_Template_1920x720/02_mockup/
+/tools/assets/sculpted_titanium/refined_artwork.svg
 
 # Signing material and local secrets
 /signing/

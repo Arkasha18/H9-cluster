@@ -93,6 +93,28 @@ public final class RollingTapeGaugeTest {
     }
 
     @Test
+    public void animatedRpmTapeDoesNotOverrideTheStabilizedCapsuleValue() throws Exception {
+        RollingTapeGauge gauge = new RollingTapeGauge(100, 174, 608,
+                0, 8000, .1f, 100, 500, 1000, 0,
+                Typeface.create("sans-serif-condensed", Typeface.NORMAL));
+        java.lang.reflect.Field text = RollingTapeGauge.class.getDeclaredField("cachedFocusValue");
+        text.setAccessible(true);
+        Bitmap frame = Bitmap.createBitmap(200, 720, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(frame);
+        gauge.draw(canvas, 1504, 100, 1, 0, 1500);
+        gauge.drawFixedIndex(canvas, 1, 1);
+        assertEquals("1500", text.get(gauge));
+        float oldMark = gauge.positionFor(2000, 1504);
+        gauge.draw(canvas, 1578, 100, 1, 0, 1500);
+        gauge.drawFixedIndex(canvas, 1, 1);
+        assertEquals("1500", text.get(gauge));
+        assertTrue(gauge.positionFor(2000, 1578) > oldMark);
+        gauge.draw(canvas, 1620, 100, 1, 0, 1620);
+        assertEquals("1620", text.get(gauge));
+        frame.recycle();
+    }
+
+    @Test
     public void fixedIndexLeavesDarkSpaceBesideTheFocusedGlyph() {
         RollingTapeGauge gauge = new RollingTapeGauge(100.0f, 174.0f, 608.0f,
                 0.0f, 220.0f, 3.6f, 2.0f, 10.0f, 20.0f, 0,

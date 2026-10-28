@@ -26,6 +26,7 @@ public final class ProductionSystemIconsContractTest {
         assertFalse(BuildConfig.DEMO_MODE);
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.ION_AURORA));
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.CLASSIC));
+        assertNull(PreviewSystemIcons.create(context, SkinRegistry.SCULPTED_TITANIUM));
     }
 
     @Test
@@ -35,6 +36,18 @@ public final class ProductionSystemIconsContractTest {
             fail("Demo-only native system icon bitmap leaked into production assets");
         } catch (IOException expected) {
             // Android must report this Demo-only asset as absent in the release variant.
+        }
+    }
+
+    @Test
+    public void productionDoesNotPackageTheSimulatedFactoryLayers() {
+        for (String name : new String[]{"DemoSystemIconsView", "TitaniumDemoSystemView"}) {
+            try {
+                Class.forName("net.adminrunet.h9cluster." + name);
+                fail("Demo-only factory layer leaked into production: " + name);
+            } catch (ClassNotFoundException expected) {
+                // System lamps, selector captions and drive mode belong to the car.
+            }
         }
     }
 }

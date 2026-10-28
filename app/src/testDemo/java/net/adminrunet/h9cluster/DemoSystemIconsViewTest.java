@@ -34,9 +34,10 @@ import org.robolectric.shadows.ShadowSystemClock;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public final class DemoSystemIconsViewTest {
     @Test
-    public void factoryProvidesSystemIconsOnlyForIonAurora() {
+    public void factoryProvidesSystemIconsForTheTwoDesignedDemoSkins() {
         Context context = RuntimeEnvironment.getApplication();
         assertNotNull(PreviewSystemIcons.create(context, SkinRegistry.ION_AURORA));
+        assertNotNull(PreviewSystemIcons.create(context, SkinRegistry.SCULPTED_TITANIUM));
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.CLASSIC));
     }
 

@@ -145,3 +145,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16.1")
 }
+
+// Demo uses synthetic telemetry and never loads the vehicle's ARM64 FDBus
+// libraries. Leaving them in the APK prevents installation on x86 emulators.
+// Production and diagnostic variants retain their original native payload.
+androidComponents {
+    onVariants(selector().withBuildType("demo")) { variant ->
+        variant.packaging.jniLibs.excludes.add("**/*.so")
+    }
+}

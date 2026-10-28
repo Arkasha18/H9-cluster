@@ -448,6 +448,64 @@ class PrepareFromPublicBaselineTest(unittest.TestCase):
             self.assertEqual("9.6.0", result["version"])
             self.assertEqual(2026090101, result["version_code"])
 
+    def test_prepare_with_backported_hotfix_metadata_checks_release_type_and_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            self.git(repo, "init", "--initial-branch=main")
+            self.git(repo, "config", "user.name", "Release Test")
+            self.git(repo, "config", "user.email", "release-test@example.invalid")
+            (repo / "app").mkdir()
+            gradle_path = repo / "app/build.gradle.kts"
+            gradle_path.write_text(
+                'versionCode = 2026082801\nversionName = "9.5.2"\n',
+                encoding="utf-8",
+            )
+            (repo / "CHANGELOG.md").write_text(
+                "# Changelog\n\n## Unreleased\n\n- new feature.\n",
+                encoding="utf-8",
+            )
+            self.git(repo, "add", ".")
+            self.git(repo, "commit", "-m", "baseline")
+            self.git(repo, "tag", "v9.5.2")
+            self.git(repo, "switch", "--create", "hotfix/9.5.3")
+            hotfix_metadata = 'versionCode = 2026083001\nversionName = "9.5.3"\n'
+            gradle_path.write_text(hotfix_metadata, encoding="utf-8")
+            self.git(repo, "commit", "-am", "published hotfix")
+            self.git(repo, "tag", "v9.5.3")
+            self.git(repo, "switch", "main")
+            gradle_path.write_text(hotfix_metadata, encoding="utf-8")
+            self.git(repo, "commit", "-am", "backport published metadata")
+            args = SimpleNamespace(
+                repo=repo, github_repository="Arkasha18/H9-cluster",
+                aapt=None, apksigner=None, zipalign=None,
+                release_type="minor", date="2026-09-01",
+                version_code=None, apply=False,
+            )
+            baseline = PublicBaseline(
+                tag="v9.5.3", version=Version.parse("9.5.3"),
+                version_code=2026083001,
+            )
+            with mock.patch(
+                "tools.release.release_tool.discover_public_baseline",
+                return_value=baseline,
+            ):
+                for release_type, expected_version in (("minor", "9.6.0"), ("major", "10.0.0")):
+                    with self.subTest(release_type=release_type):
+                        args.release_type = release_type
+                        with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+                            command_prepare(args)
+                        result = json.loads(output.getvalue())
+                        self.assertEqual(expected_version, result["version"])
+                        self.assertEqual(2026090101, result["version_code"])
+                args.release_type = "patch"
+                with self.assertRaisesRegex(ReleaseError, "not an ancestor"):
+                    command_prepare(args)
+                self.git(repo, "checkout", "--orphan", "unrelated")
+                self.git(repo, "commit", "-m", "unrelated history")
+                args.release_type = "minor"
+                with self.assertRaisesRegex(ReleaseError, "no shared history"):
+                    command_prepare(args)
+
     def test_prepare_rejects_current_metadata_that_differs_from_its_tag(self):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)

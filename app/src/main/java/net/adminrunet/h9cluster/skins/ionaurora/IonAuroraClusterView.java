@@ -6,6 +6,7 @@ import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.RpmDisplaySmoother;
+import net.adminrunet.h9cluster.RpmReadoutStabilizer;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.ClusterHeader;
 import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
@@ -58,6 +59,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private final RollingTapeGauge rpmGauge;
     private final ClusterHeader header;
     private final RpmDisplaySmoother rpmSmoother = new RpmDisplaySmoother();
+    private final RpmReadoutStabilizer rpmReadout = new RpmReadoutStabilizer();
     private final TransmissionTemperatureAlert atfAlert =
             new TransmissionTemperatureAlert();
     private final PredictiveMotionFilter steeringMotion = new PredictiveMotionFilter(
@@ -230,7 +232,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         // 200 s = exactly 21 energy cycles: continuous wrap and stable float precision.
         float energyPhase = targetState.rpm > 0 ? (frameAtMs % 200_000L) * 0.001f : 0.0f;
         speedGauge.draw(canvas, visualSpeed, speedVelocity, tapeReveal, energyPhase);
-        rpmGauge.draw(canvas, visualRpm, rpmVelocity, tapeReveal, energyPhase);
+        rpmGauge.draw(canvas, visualRpm, rpmVelocity, tapeReveal, energyPhase, cachedRpm);
 
         float breath = 0.04f * (float) Math.sin(frameAtMs * Math.PI / 1000.0);
         float motionBoost = clamp(
@@ -271,7 +273,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
             displayedRpm = stabilizedRpmTarget;
             displayedSteering = targetState.steeringAngleDeg;
             lastFrameAtMs = nowMs;
-            updateVisualValues();
+            updateVisualValues(nowMs);
             return;
         }
 
@@ -287,8 +289,8 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         float boundedRpmTarget = stabilizedRpmTarget;
         float speedBlend = 1.0f - (float) Math.exp(-elapsedMs / 140.0f);
         float rpmTimeConstant = boundedRpmTarget < displayedRpm - 350.0f
-                ? 70.0f
-                : 90.0f;
+                ? 100.0f
+                : 140.0f;
         float rpmBlend = 1.0f - (float) Math.exp(-elapsedMs / rpmTimeConstant);
 
         displayedSpeed += (boundedSpeedTarget - displayedSpeed) * speedBlend;
@@ -313,7 +315,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         }
 
         displayedSteering = steeringMotion.update(nowMs);
-        updateVisualValues();
+        updateVisualValues(nowMs);
     }
 
     private boolean needsAnimationFrame(long nowMs, long launchAgeMs) {
@@ -325,16 +327,17 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
                 || steeringMotion.needsAnimationFrame(nowMs);
     }
 
-    private void updateVisualValues() {
-        // The exact same whole reading drives the tape and the digital display.
+    private void updateVisualValues(long nowMs) {
+        // Speed shares its whole reading. RPM tape remains continuous while
+        // the digits hold briefly, so animation frames do not make them flicker.
         visualSpeed = Math.round(speedDisplayMode.indicatedKph(displayedSpeed));
-        visualRpm = Math.round(displayedRpm / 10.0f) * 10;
+        visualRpm = displayedRpm;
         int speed = Math.round(visualSpeed);
         if (speed != cachedSpeed) {
             cachedSpeed = speed;
             cachedSpeedText = Integer.toString(speed);
         }
-        int rpm = Math.round(visualRpm);
+        int rpm = rpmReadout.update(displayedRpm, nowMs);
         if (rpm != cachedRpm) {
             cachedRpm = rpm;
             cachedRpmText = Integer.toString(rpm);

@@ -34,6 +34,51 @@ public final class FactoryNotificationMonitorTest {
     }
 
     @Test
+    public void dismissWithTheOriginalWarningIdClosesTheHoleImmediately() {
+        FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
+        assertTrue(monitor.updateWarning("[287,2,1]", 1_000L));
+        assertFalse(monitor.updateWarning("[287,2,2]", 1_500L));
+        assertEquals(0, monitor.remainingWarningMs(1_500L));
+        assertTrue(monitor.updateWarning("[287,2,1]", 2_000L));
+    }
+
+    @Test
+    public void bareZeroClearPacketAlsoRestoresTheSkin() {
+        FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
+        assertTrue(monitor.updateWarning("[287,2,1]", 1_000L));
+        assertFalse(monitor.updateWarning("0", 1_500L));
+        assertTrue(monitor.updateWarning("[287,2,1]", 2_000L));
+    }
+
+    @Test
+    public void cachedShowPacketAtStartupIsNotReplayedAsANewNotification() {
+        FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
+        monitor.seedWarningSnapshot("[287,2,1]");
+        assertFalse(monitor.isVisibleAt(1_000L));
+        assertFalse(monitor.updateWarning("[287,2,1]", 1_100L));
+        assertFalse(monitor.updateWarning("[287,2,2]", 1_200L));
+        assertTrue(monitor.updateWarning("[287,2,1]", 1_300L));
+    }
+
+    @Test
+    public void repeatedCachedEventCannotKeepTheHoleOpenPastItsFailSafe() {
+        FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
+        assertTrue(monitor.updateWarning("[287,2,1]", 1_000L));
+        for (long now = 2000; now < 11_000; now += 1000) {
+            assertTrue(monitor.updateWarning("[287,2,1]", now));
+        }
+        assertFalse(monitor.updateWarning("[287,2,1]", 11_000L));
+    }
+
+    @Test
+    public void unknownActionsAndIncompletePacketsCannotOpenAWindow() {
+        FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
+        for (String value : new String[]{"287", "[287,2]", "[287,2,0]", "[287,2,3]", "[287,2,2]"}) {
+            assertFalse(monitor.updateWarning(value, 1000));
+        }
+    }
+
+    @Test
     public void qnxWarningTimesOutIfDismissEventIsLost() {
         FactoryNotificationMonitor monitor = new FactoryNotificationMonitor();
 

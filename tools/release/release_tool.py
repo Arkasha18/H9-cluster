@@ -479,13 +479,24 @@ def command_prepare(args: argparse.Namespace) -> None:
         raise ReleaseError(
             f"patch source metadata must equal published baseline {baseline.tag}"
         )
-    current_tag_ancestor = run(
-        ("git", "merge-base", "--is-ancestor", current_tag, "HEAD"),
-        cwd=repo,
-        check=False,
-    )
-    if current_tag_ancestor.returncode != 0:
-        raise ReleaseError(f"current metadata tag {current_tag} is not an ancestor of HEAD")
+    if args.release_type == "patch":
+        current_tag_ancestor = run(
+            ("git", "merge-base", "--is-ancestor", current_tag, "HEAD"),
+            cwd=repo,
+            check=False,
+        )
+        if current_tag_ancestor.returncode != 0:
+            raise ReleaseError(f"current metadata tag {current_tag} is not an ancestor of HEAD")
+    else:
+        # Main may contain cherry-picked hotfix metadata without the hotfix
+        # tag itself in its ancestry. Match command_verify's minor/major rule.
+        shared_history = run(
+            ("git", "merge-base", current_tag, "HEAD"),
+            cwd=repo,
+            check=False,
+        )
+        if shared_history.returncode != 0 or not shared_history.stdout.strip():
+            raise ReleaseError(f"current metadata tag {current_tag} and HEAD have no shared history")
 
     next_version = baseline.version.bumped(args.release_type)
     release_date = (

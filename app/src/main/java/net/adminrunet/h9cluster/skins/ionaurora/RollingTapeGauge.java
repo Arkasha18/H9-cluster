@@ -143,11 +143,17 @@ final class RollingTapeGauge {
 
     void draw(Canvas canvas, float currentValue, float velocityPerSecond, float reveal,
             float phaseSeconds) {
+        draw(canvas, currentValue, velocityPerSecond, reveal, phaseSeconds, currentValue);
+    }
+
+    /** The animated tape and its readable digital capsule have separate cadences. */
+    void draw(Canvas canvas, float currentValue, float velocityPerSecond, float reveal,
+            float phaseSeconds, float readoutValue) {
         float safeValue = sanitizeValue(currentValue, minimum, maximum);
         float safeReveal = clamp(reveal, 0.0f, 1.0f);
         float safeVelocity = Float.isFinite(velocityPerSecond) ? velocityPerSecond : 0.0f;
         float safePhase = Float.isFinite(phaseSeconds) ? phaseSeconds : 0.0f;
-        updateFocusValue(safeValue);
+        updateFocusValue(sanitizeValue(readoutValue, minimum, maximum));
         if (safeReveal <= 0.0f) {
             return;
         }

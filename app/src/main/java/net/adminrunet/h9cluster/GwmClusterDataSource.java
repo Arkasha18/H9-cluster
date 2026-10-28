@@ -13,6 +13,8 @@ import android.util.Log;
 
 import java.util.Arrays;
 import java.util.StringTokenizer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,6 +48,8 @@ public final class GwmClusterDataSource
     private static final long REBIND_DELAY_MS = 1500L;
     private static final long FDBUS_RPM_STALE_MS = 500L;
     private static final long FDBUS_FUEL_STALE_MS = 2000L;
+    private static final long LIVE_REFRESH_MS = 500L;
+    private static final long SPEED_CALLBACK_STALE_MS = 1000L;
 
     private static final int INDEX_SPEED = 0;
     private static final int INDEX_RPM = 1;
@@ -102,12 +106,21 @@ public final class GwmClusterDataSource
             "car.basic.instant_fuel_consumption"
     };
 
+    // Refresh only fast adapter state. Cached RPM/trip/TTS packets must not
+    // receive fabricated freshness timestamps or be replayed as notifications.
+    private static final int[] LIVE_REFRESH_INDICES = {
+            INDEX_SPEED, INDEX_GEAR_STATUS, INDEX_CURRENT_GEAR,
+            INDEX_WHEEL_FRONT_LEFT, INDEX_WHEEL_FRONT_RIGHT,
+            INDEX_WHEEL_REAR_LEFT, INDEX_WHEEL_REAR_RIGHT, INDEX_DOOR_STATUS
+    };
+
     private static final Pattern NUMBER_PATTERN =
             Pattern.compile("[-+]?\\d+(?:\\.\\d+)?");
 
     private final Context context;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final String[] values = new String[DATA_IDS.length];
+    private final long[] valueRevisions = new long[DATA_IDS.length];
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
     private final FuelConsumptionEstimator fuelConsumptionEstimator =
@@ -133,6 +146,22 @@ public final class GwmClusterDataSource
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
     private boolean factoryNotificationVisible;
+    private long speedCallbackAtMs;
+    private int adapterGeneration;
+    private boolean refreshPending;
+    private ExecutorService adapterRefreshExecutor;
+    private final Runnable liveRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (!started || service == null) return;
+            long now = SystemClock.elapsedRealtime();
+            if (!listenerRegistered || speedCallbackAtMs <= 0
+                    || now - speedCallbackAtMs >= SPEED_CALLBACK_STALE_MS) {
+                requestLiveRefresh();
+            }
+            mainHandler.postDelayed(this, LIVE_REFRESH_MS);
+        }
+    };
 
     private final Runnable factoryNotificationTimeout = new Runnable() {
         @Override
@@ -200,6 +229,7 @@ public final class GwmClusterDataSource
         started = false;
         mainHandler.removeCallbacks(rebindTask);
         mainHandler.removeCallbacks(factoryNotificationTimeout);
+        stopLiveRefresh();
         fdbusRpmReader.stop();
         fuelConsumptionEstimator.reset();
         fdbusFuelFlowLitersPerHour = Float.NaN;
@@ -240,17 +270,21 @@ public final class GwmClusterDataSource
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder binder) {
+        if (!started) return;
+        stopLiveRefresh();
         bound = true;
         service = binder;
         listenerRegistered = registerListener();
         requestCurrentData();
+        mainHandler.postDelayed(liveRefresh, LIVE_REFRESH_MS);
         Log.i(TAG, listenerRegistered
                 ? "GWM adapter connected; live listener active"
-                : "GWM adapter connected; one-shot data only");
+                : "GWM adapter connected; read-only snapshot refresh active");
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
+        stopLiveRefresh();
         service = null;
         listenerRegistered = false;
         Log.w(TAG, "GWM adapter service disconnected; waiting for Android reconnect");
@@ -258,6 +292,7 @@ public final class GwmClusterDataSource
 
     @Override
     public void onBindingDied(ComponentName name) {
+        stopLiveRefresh();
         service = null;
         listenerRegistered = false;
         if (bound) {
@@ -273,6 +308,7 @@ public final class GwmClusterDataSource
 
     @Override
     public void onNullBinding(ComponentName name) {
+        stopLiveRefresh();
         service = null;
         listenerRegistered = false;
         if (bound) {
@@ -292,6 +328,13 @@ public final class GwmClusterDataSource
             if (DATA_IDS[index].equals(id)) {
                 String normalized = normalizeValue(value);
                 long now = SystemClock.elapsedRealtime();
+                if (index == INDEX_SPEED) {
+                    if (!validSpeed(normalized)) {
+                        speedCallbackAtMs = 0;
+                        return;
+                    }
+                    speedCallbackAtMs = now;
+                }
                 storeValue(index, normalized, now);
                 updateFactoryNotificationSignal(
                         index,
@@ -305,6 +348,7 @@ public final class GwmClusterDataSource
 
     private void storeValue(int index, String value, long nowMs) {
         values[index] = value;
+        valueRevisions[index]++;
         if (index == INDEX_RPM) {
             binderRpmUpdatedAtMs = engineRpm(value) >= 0 ? nowMs : 0L;
         } else if (index == INDEX_DAY) {
@@ -319,6 +363,81 @@ public final class GwmClusterDataSource
         } else if (index == INDEX_STEERING_ANGLE && value != null) {
             steeringUpdatedAtMs = nowMs;
         }
+    }
+
+    private void stopLiveRefresh() {
+        adapterGeneration++;
+        speedCallbackAtMs = 0;
+        refreshPending = false;
+        mainHandler.removeCallbacks(liveRefresh);
+        if (adapterRefreshExecutor != null) {
+            adapterRefreshExecutor.shutdownNow();
+            adapterRefreshExecutor = null;
+        }
+    }
+
+    /** A missing listener must not freeze the initial 0 km/h for the entire trip. */
+    private void requestLiveRefresh() {
+        if (refreshPending || service == null || !started) return;
+        if (adapterRefreshExecutor == null) {
+            adapterRefreshExecutor = Executors.newSingleThreadExecutor(task -> {
+                Thread thread = new Thread(task, "h9-adapter-refresh");
+                thread.setDaemon(true);
+                return thread;
+            });
+        }
+        refreshPending = true;
+        final IBinder requestedService = service;
+        final int generation = adapterGeneration;
+        final long[] revisions = valueRevisions.clone();
+        final String[] ids = new String[LIVE_REFRESH_INDICES.length];
+        for (int i = 0; i < ids.length; i++) ids[i] = DATA_IDS[LIVE_REFRESH_INDICES[i]];
+        adapterRefreshExecutor.execute(() -> {
+            String[] result = readAdapterSnapshot(requestedService, ids);
+            mainHandler.post(() -> {
+                if (!started || generation != adapterGeneration || service != requestedService) return;
+                refreshPending = false;
+                if (result == null) return;
+                long now = SystemClock.elapsedRealtime();
+                for (int i = 0; i < Math.min(result.length, ids.length); i++) {
+                    int index = LIVE_REFRESH_INDICES[i];
+                    // A newer callback always wins over an older in-flight GET.
+                    if (valueRevisions[index] != revisions[index]) continue;
+                    String value = normalizeValue(result[i]);
+                    if (value == null || (index == INDEX_SPEED && !validSpeed(value))) continue;
+                    storeValue(index, value, now);
+                    if (index == INDEX_DOOR_STATUS) updateFactoryNotificationSignal(index, value, now);
+                }
+                publishState();
+            });
+        });
+    }
+
+    private String[] readAdapterSnapshot(IBinder binder, String[] ids) {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            data.writeInterfaceToken(SERVICE_DESCRIPTOR);
+            data.writeInt(1);
+            data.writeString(context.getPackageName());
+            data.writeStringArray(ids);
+            data.writeStringArray(null);
+            data.writeInt(1);
+            if (!binder.transact(TRANSACTION_GET_DATA, data, reply, 0)) return null;
+            reply.readException();
+            return reply.createStringArray();
+        } catch (Exception error) {
+            Log.w(TAG, "Adapter live snapshot unavailable", error);
+            return null;
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
+    }
+
+    private static boolean validSpeed(String rawValue) {
+        double value = parseDouble(rawValue, Double.NaN);
+        return Double.isFinite(value) && value >= 0 && value <= 220;
     }
 
     private void scheduleRebind() {
@@ -357,6 +476,7 @@ public final class GwmClusterDataSource
                 long now = SystemClock.elapsedRealtime();
                 for (int index = 0; index < count; index++) {
                     String value = normalizeValue(response[index]);
+                    if (index == INDEX_SPEED && !validSpeed(value)) continue;
                     if (value != null
                             || index == INDEX_RPM
                             || index == INDEX_DAY
@@ -368,10 +488,10 @@ public final class GwmClusterDataSource
                         INDEX_DOOR_STATUS,
                         values[INDEX_DOOR_STATUS],
                         now);
-                updateFactoryNotificationSignal(
-                        INDEX_IPK_WARNING,
-                        values[INDEX_IPK_WARNING],
-                        now);
+                // A cached TTS packet may describe an already dismissed card.
+                // Only a new listener event may open the generic-warning hole.
+                factoryNotificationMonitor.seedWarningSnapshot(values[INDEX_IPK_WARNING]);
+                updateFactoryNotificationVisibility(now);
             }
             publishState();
         } catch (Throwable error) {

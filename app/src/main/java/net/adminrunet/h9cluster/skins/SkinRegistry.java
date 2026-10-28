@@ -8,6 +8,7 @@ import net.adminrunet.h9cluster.skins.ionaurora.IonAuroraClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleSettingsProvider;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
+import net.adminrunet.h9cluster.skins.sculptedtitanium.SculptedTitaniumClusterView;
 
 import android.content.Context;
 import android.view.View;
@@ -26,6 +27,7 @@ public final class SkinRegistry {
     public static final String SIMPLE = "simple";
     public static final String SPORT = "sport";
     public static final String STOCK = "stock";
+    public static final String SCULPTED_TITANIUM = "sculptedtitanium";
 
     private interface RendererFactory {
         View create(
@@ -197,6 +199,18 @@ public final class SkinRegistry {
                     }
                 },
                 new HorizonSettingsProvider()),
+        new Definition(
+                SCULPTED_TITANIUM,
+                "Sculpted Titanium — титановая приборка",
+                "Рельефный титан, янтарная подсветка и горизонтальные шкалы",
+                new RendererFactory() {
+                    @Override
+                    public View create(Context context, SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new SculptedTitaniumClusterView(context, speedDisplayMode);
+                    }
+                },
+                null),
         new Definition(
                 STOCK,
                 "Штатная панель — без наложения",
