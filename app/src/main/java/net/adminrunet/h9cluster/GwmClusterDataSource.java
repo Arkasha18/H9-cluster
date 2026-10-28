@@ -659,9 +659,7 @@ public final class GwmClusterDataSource
                 Math.max(0.0f, consumption),
                 journeyAverageConsumption,
                 Math.max(0.0f, parseFloat(values[INDEX_VOLTAGE], lastState.voltage)),
-                clamp(parseFloat(
-                        values[INDEX_OUTSIDE_TEMP],
-                        lastState.outsideTemperatureC), -50.0f, 60.0f),
+                outsideTemperatureC(values[INDEX_OUTSIDE_TEMP]),
                 clamp(parseFloat(
                         values[INDEX_STEERING_ANGLE],
                         lastState.steeringAngleDeg), -1080.0f, 1080.0f),
@@ -907,6 +905,19 @@ public final class GwmClusterDataSource
         // arrives as code 9. Reverse carries no ratio to show because the card
         // already spells the selector position out as "R".
         return rawGear == 9 ? 8 : 0;
+    }
+
+    /** The adapter returns -1001 on error/timeout; never turn it into -50 °C. */
+    static float outsideTemperatureC(String rawValue) {
+        if (rawValue == null) return Float.NaN;
+        final float value;
+        try {
+            value = Float.parseFloat(rawValue.trim());
+        } catch (NumberFormatException error) {
+            return Float.NaN;
+        }
+        return Float.isFinite(value) && value >= -50.0f && value <= 60.0f
+                ? value : Float.NaN;
     }
 
     private static float parseFloat(String value, float fallback) {

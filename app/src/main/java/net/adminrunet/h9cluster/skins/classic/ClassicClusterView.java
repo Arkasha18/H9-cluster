@@ -675,6 +675,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     }
 
     private static String formatOutside(float temperatureC) {
+        if (!Float.isFinite(temperatureC)) return "— °C";
         return String.format(Locale.US, "%.1f °C", temperatureC);
     }
 

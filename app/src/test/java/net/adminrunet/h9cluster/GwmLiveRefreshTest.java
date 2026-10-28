@@ -27,6 +27,17 @@ import static org.robolectric.Shadows.shadowOf;
 @Config(sdk = 28)
 public final class GwmLiveRefreshTest {
     @Test
+    public void outsideTemperatureErrorClearsWhenAdapterRecovers() throws Exception {
+        Fixture f = new Fixture(true);
+        assertTrue(Float.isNaN(f.latest().outsideTemperatureC));
+        f.source.onDataChanged("car.basic.outside_temp", "11.0");
+        assertEquals(11.0f, f.latest().outsideTemperatureC, 0.0f);
+        f.source.onDataChanged("car.basic.outside_temp", "-1001");
+        assertTrue(Float.isNaN(f.latest().outsideTemperatureC));
+        f.source.stop();
+    }
+
+    @Test
     public void rejectedListenerDoesNotFreezeInitialZeroSpeed() throws Exception {
         Fixture f = new Fixture(false);
         assertEquals(0, f.latest().speedKph);
@@ -111,6 +122,7 @@ public final class GwmLiveRefreshTest {
     private static final class Adapter extends Binder {
         final boolean acceptsListener;
         String speed = "0";
+        String outsideTemperature = "-1001";
         int reads;
         final List<String> lastIds = new ArrayList<>();
         Adapter(boolean acceptsListener) { this.acceptsListener = acceptsListener; }
@@ -131,7 +143,10 @@ public final class GwmLiveRefreshTest {
             lastIds.clear();
             Collections.addAll(lastIds, ids);
             String[] values = new String[ids.length];
-            for (int i = 0; i < ids.length; i++) values[i] = "car.basic.vehicle_speed".equals(ids[i]) ? speed : "0";
+            for (int i = 0; i < ids.length; i++) {
+                values[i] = "car.basic.vehicle_speed".equals(ids[i]) ? speed
+                        : "car.basic.outside_temp".equals(ids[i]) ? outsideTemperature : "0";
+            }
             reply.writeStringArray(values);
             reads++;
             return true;
