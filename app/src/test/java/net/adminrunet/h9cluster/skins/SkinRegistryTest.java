@@ -12,14 +12,15 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(7, definitions.length);
+        assertEquals(8, definitions.length);
         assertEquals(SkinRegistry.ION_AURORA, definitions[0].id);
         assertEquals(SkinRegistry.CLASSIC, definitions[1].id);
         assertEquals(SkinRegistry.SPORT, definitions[2].id);
         assertEquals(SkinRegistry.SIMPLE, definitions[3].id);
         assertEquals(SkinRegistry.HORIZON, definitions[4].id);
         assertEquals(SkinRegistry.SCULPTED_TITANIUM, definitions[5].id);
-        assertEquals(SkinRegistry.STOCK, definitions[6].id);
+        assertEquals(SkinRegistry.APEX_SPORT, definitions[6].id);
+        assertEquals(SkinRegistry.STOCK, definitions[7].id);
     }
 
     @Test
@@ -88,5 +89,19 @@ public final class SkinRegistryTest {
         assertEquals(
                 SkinRegistry.CLASSIC,
                 SkinRegistry.getDefinition("unknown").id);
+    }
+
+    @Test
+    public void apexSportIsIndependentlySelectableWithoutChangingTheDefault() {
+        SkinRegistry.Definition definition =
+                SkinRegistry.getDefinition(SkinRegistry.APEX_SPORT);
+
+        assertEquals("apexsport", definition.id);
+        assertEquals(SkinRegistry.APEX_SPORT,
+                SkinRegistry.normalize(SkinRegistry.APEX_SPORT));
+        assertTrue(definition.hasRenderer());
+        assertFalse(definition.hasSettings());
+        assertTrue(definition.getDefaultSettings().isEmpty());
+        assertEquals(SkinRegistry.CLASSIC, SkinRegistry.getDefaultId());
     }
 }
