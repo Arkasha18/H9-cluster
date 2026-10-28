@@ -47,8 +47,8 @@ android {
         applicationId = "net.adminrunet.h9cluster"
         minSdk = 28
         targetSdk = 28
-        versionCode = 2026102804
-        versionName = "9.7.1"
+        versionCode = 2026102805
+        versionName = "9.7.2"
         manifestPlaceholders["bootReceiverEnabled"] = "true"
         manifestPlaceholders["fdbusProbeEnabled"] = "false"
         buildConfigField(
