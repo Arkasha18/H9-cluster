@@ -624,6 +624,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
     }
 
     private static String formatOutsideTemperature(float value) {
+        if (!Float.isFinite(value)) return "— °C";
         if (Math.abs(value - Math.round(value)) < 0.05f) {
             return Math.round(value) + " \u00b0C";
         }
