@@ -85,6 +85,9 @@ public final class ClusterLauncher {
             intent.putExtra(
                     PreviewActivity.EXTRA_DRAFT_SETTINGS,
                     SkinSettingsTransport.toBundle(draft.settings));
+            intent.putExtra(
+                    PreviewActivity.EXTRA_DRAFT_SPEED_DISPLAY_MODE,
+                    draft.speedDisplayMode.key());
         }
         intent.putExtra(PreviewActivity.EXTRA_USER_REQUESTED, userRequested);
         intent.putExtra(

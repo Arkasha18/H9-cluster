@@ -28,7 +28,10 @@ public final class SkinRegistry {
     public static final String STOCK = "stock";
 
     private interface RendererFactory {
-        View create(Context context, SkinSettings settings);
+        View create(
+                Context context,
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode);
     }
 
     public static final class Definition {
@@ -99,12 +102,18 @@ public final class SkinRegistry {
 
         private View createRenderer(
                 Context context,
-                SkinSettings settings) {
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode) {
             if (factory == null) {
                 throw new IllegalStateException(
                         "Skin draws nothing and has no renderer: " + id);
             }
-            return factory.create(context, normalizeSettings(settings));
+            return factory.create(
+                    context,
+                    normalizeSettings(settings),
+                    speedDisplayMode == null
+                            ? SpeedDisplayMode.REAL
+                            : speedDisplayMode);
         }
     }
 
@@ -117,8 +126,11 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new IonAuroraClusterView(context);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new IonAuroraClusterView(
+                                context,
+                                speedDisplayMode);
                     }
                 },
                 null),
@@ -130,8 +142,9 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new ClassicClusterView(context);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new ClassicClusterView(context, speedDisplayMode);
                     }
                 },
                 null),
@@ -143,8 +156,9 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new SportClusterView(context);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new SportClusterView(context, speedDisplayMode);
                     }
                 },
                 null),
@@ -156,11 +170,13 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
                         return new SimpleClusterView(
                                 context,
                                 SimpleSettingsProvider.scaleColor(
-                                        settings));
+                                        settings),
+                                speedDisplayMode);
                     }
                 },
                 new SimpleSettingsProvider()),
@@ -172,8 +188,12 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new HorizonClusterView(context, settings);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new HorizonClusterView(
+                                context,
+                                settings,
+                                speedDisplayMode);
                     }
                 },
                 new HorizonSettingsProvider()),
@@ -237,8 +257,23 @@ public final class SkinRegistry {
             Context context,
             String id,
             SkinSettings settings) {
+        return createRenderer(
+                context,
+                id,
+                settings,
+                SpeedDisplayMode.REAL);
+    }
+
+    public static View createRenderer(
+            Context context,
+            String id,
+            SkinSettings settings,
+            SpeedDisplayMode speedDisplayMode) {
         Definition definition = getDefinition(id);
-        View view = definition.createRenderer(context, settings);
+        View view = definition.createRenderer(
+                context,
+                settings,
+                speedDisplayMode);
         if (!(view instanceof ClusterRenderer)) {
             throw new IllegalStateException(
                     "Skin renderer must implement ClusterRenderer: " + definition.id);

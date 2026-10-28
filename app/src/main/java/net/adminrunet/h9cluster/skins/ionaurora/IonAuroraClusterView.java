@@ -8,6 +8,7 @@ import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.RpmDisplaySmoother;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
 import net.adminrunet.h9cluster.skins.ClusterHeader;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -52,6 +53,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private final Typeface gaugeTypeface;
     private final Bitmap staticBase;
     private final boolean includeBackdrop;
+    private final SpeedDisplayMode speedDisplayMode;
     private final RollingTapeGauge speedGauge;
     private final RollingTapeGauge rpmGauge;
     private final ClusterHeader header;
@@ -110,12 +112,28 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private String currentGearText = "";
 
     public IonAuroraClusterView(Context context) {
-        this(context, true);
+        this(context, SpeedDisplayMode.REAL);
+    }
+
+    public IonAuroraClusterView(
+            Context context,
+            SpeedDisplayMode speedDisplayMode) {
+        this(context, speedDisplayMode, true);
     }
 
     IonAuroraClusterView(Context context, boolean includeBackdrop) {
+        this(context, SpeedDisplayMode.REAL, includeBackdrop);
+    }
+
+    private IonAuroraClusterView(
+            Context context,
+            SpeedDisplayMode speedDisplayMode,
+            boolean includeBackdrop) {
         super(context);
         this.includeBackdrop = includeBackdrop;
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         setLayerType(
                 BuildConfig.DEMO_MODE
                         ? View.LAYER_TYPE_NONE
@@ -309,7 +327,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
 
     private void updateVisualValues() {
         // The exact same whole reading drives the tape and the digital display.
-        visualSpeed = Math.round(displayedSpeed);
+        visualSpeed = Math.round(speedDisplayMode.indicatedKph(displayedSpeed));
         visualRpm = Math.round(displayedRpm / 10.0f) * 10;
         int speed = Math.round(visualSpeed);
         if (speed != cachedSpeed) {

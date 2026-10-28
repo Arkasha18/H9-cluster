@@ -6,7 +6,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public final class SettingsUpdateButtonTest {
-    private static final float SAVE_BOTTOM_WITH_SETTINGS = 423.0f;
+    private static final float SAVE_BOTTOM = 416.0f;
     private static final float CANVAS_WIDTH = 960.0f;
     private static final float CANVAS_HEIGHT = 540.0f;
 
@@ -31,7 +31,7 @@ public final class SettingsUpdateButtonTest {
 
     @Test
     public void theButtonDoesNotOverlapSaveOrExit() {
-        assertTrue(SettingsUpdateButton.TOP > SAVE_BOTTOM_WITH_SETTINGS);
+        assertTrue(SettingsUpdateButton.TOP > SAVE_BOTTOM);
         assertTrue(SettingsUpdateButton.LEFT > SettingsExitButton.RIGHT);
     }
 

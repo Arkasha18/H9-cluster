@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import org.junit.Test;
 
@@ -103,6 +104,35 @@ public final class SkinSettingsSessionTest {
                 });
 
         assertTrue(session.snapshot().settings.isEmpty());
+    }
+
+    @Test
+    public void speedDisplayModeTravelsWithTheSnapshot() {
+        SkinSettingsSession session = new SkinSettingsSession(
+                SkinRegistry.CLASSIC,
+                emptyLoader(),
+                passThroughNormalizer());
+
+        assertEquals(
+                SpeedDisplayMode.REAL,
+                session.snapshot().speedDisplayMode);
+
+        session.selectSpeedDisplayMode(
+                SpeedDisplayMode.FACTORY_PLUS_4_5_PERCENT);
+        SkinSettingsSession.Snapshot corrected = session.snapshot();
+        assertEquals(
+                SpeedDisplayMode.FACTORY_PLUS_4_5_PERCENT,
+                corrected.speedDisplayMode);
+
+        // The speed mode is part of the snapshot identity, so a change
+        // forces the cluster preview to rebuild its renderer.
+        session.selectSpeedDisplayMode(SpeedDisplayMode.REAL);
+        assertFalse(corrected.equals(session.snapshot()));
+
+        session.selectSpeedDisplayMode(null);
+        assertEquals(
+                SpeedDisplayMode.REAL,
+                session.snapshot().speedDisplayMode);
     }
 
     private static SkinSettingsSession.Loader emptyLoader() {

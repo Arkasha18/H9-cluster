@@ -3,6 +3,7 @@ package net.adminrunet.h9cluster;
 import net.adminrunet.h9cluster.skins.SkinRegistry;
 import net.adminrunet.h9cluster.skins.SkinSettings;
 import net.adminrunet.h9cluster.skins.SkinSettingsProvider;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -28,13 +29,21 @@ public final class SettingsView extends View {
     private static final SkinRegistry.Definition[] SKINS =
             SkinRegistry.getDefinitions();
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
-    private static final float CONFIGURE_TOP = 300.0f;
-    private static final float CONFIGURE_BOTTOM = 348.0f;
-    private static final float SAVE_TOP_DEFAULT = 340.0f;
-    private static final float SAVE_BOTTOM_DEFAULT = 398.0f;
-    private static final float SAVE_TOP_WITH_SETTINGS = 365.0f;
-    private static final float SAVE_BOTTOM_WITH_SETTINGS = 423.0f;
-    private static final float STATUS_BASELINE = 445.0f;
+    private static final SpeedDisplayMode[] SPEED_MODES = {
+            SpeedDisplayMode.REAL,
+            SpeedDisplayMode.FACTORY_PLUS_4_5_PERCENT,
+            SpeedDisplayMode.FACTORY_PLUS_5_KPH,
+    };
+    private static final String[] SPEED_MODE_TITLES = {
+            "Реальная",
+            "Как в авто +4,5%",
+            "Как в авто +5 км/ч",
+    };
+    private static final float CONFIGURE_TOP = 318.0f;
+    private static final float CONFIGURE_BOTTOM = 360.0f;
+    private static final float SAVE_TOP = 368.0f;
+    private static final float SAVE_BOTTOM = 416.0f;
+    private static final float STATUS_BASELINE = 440.0f;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final SkinSettingsSession session;
@@ -98,25 +107,20 @@ public final class SettingsView extends View {
                 false);
 
         drawSkinSelector(canvas);
+        drawSpeedControl(canvas);
 
         boolean configurable = selectedDefinition().hasSettings();
         if (configurable) {
             drawConfigureButton(canvas);
         }
 
-        float saveTop = configurable
-                ? SAVE_TOP_WITH_SETTINGS
-                : SAVE_TOP_DEFAULT;
-        float saveBottom = configurable
-                ? SAVE_BOTTOM_WITH_SETTINGS
-                : SAVE_BOTTOM_DEFAULT;
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_ACCENT);
         canvas.drawRoundRect(
                 255.0f,
-                saveTop,
+                SAVE_TOP,
                 705.0f,
-                saveBottom,
+                SAVE_BOTTOM,
                 14.0f,
                 14.0f,
                 paint);
@@ -124,7 +128,7 @@ public final class SettingsView extends View {
                 canvas,
                 saveButtonTitle(),
                 480.0f,
-                saveTop + 36.0f,
+                SAVE_TOP + 36.0f,
                 19.0f,
                 Color.BLACK,
                 true);
@@ -239,19 +243,19 @@ public final class SettingsView extends View {
         SkinRegistry.Definition option = selectedDefinition();
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_CARD_SELECTED);
-        canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 280.0f, 16.0f, 16.0f, paint);
+        canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 252.0f, 16.0f, 16.0f, paint);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(2.0f);
         paint.setColor(COLOR_ACCENT);
-        canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 280.0f, 16.0f, 16.0f, paint);
+        canvas.drawRoundRect(110.0f, 160.0f, 850.0f, 252.0f, 16.0f, 16.0f, paint);
 
-        drawLeftText(canvas, "Тема приборной панели", 140.0f, 192.0f, 15.0f, COLOR_MUTED, false);
-        drawLeftText(canvas, option.title, 140.0f, 226.0f, 21.0f, COLOR_TEXT, true);
+        drawLeftText(canvas, "Тема приборной панели", 140.0f, 184.0f, 15.0f, COLOR_MUTED, false);
+        drawLeftText(canvas, option.title, 140.0f, 212.0f, 21.0f, COLOR_TEXT, true);
         drawLeftText(
                 canvas,
                 option.description,
                 140.0f,
-                254.0f,
+                236.0f,
                 15.0f,
                 COLOR_MUTED,
                 false);
@@ -259,8 +263,59 @@ public final class SettingsView extends View {
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(2.0f);
         paint.setColor(COLOR_ACCENT);
-        canvas.drawLine(794.0f, 211.0f, 808.0f, 225.0f, paint);
-        canvas.drawLine(808.0f, 225.0f, 822.0f, 211.0f, paint);
+        canvas.drawLine(794.0f, 198.0f, 808.0f, 212.0f, paint);
+        canvas.drawLine(808.0f, 212.0f, 822.0f, 198.0f, paint);
+    }
+
+    private void drawSpeedControl(Canvas canvas) {
+        drawLeftText(
+                canvas,
+                "Спидометр",
+                SettingsSpeedControl.LABEL_X,
+                SettingsSpeedControl.LABEL_BASELINE,
+                15.0f,
+                COLOR_MUTED,
+                false);
+
+        SpeedDisplayMode current = session.snapshot().speedDisplayMode;
+        for (int index = 0;
+                index < SettingsSpeedControl.SEGMENT_COUNT;
+                index++) {
+            boolean selected = SPEED_MODES[index] == current;
+            float left = SettingsSpeedControl.segmentLeft(index);
+            float right = SettingsSpeedControl.segmentRight(index);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(selected ? COLOR_ACCENT : COLOR_CARD_SELECTED);
+            canvas.drawRoundRect(
+                    left,
+                    SettingsSpeedControl.TOP,
+                    right,
+                    SettingsSpeedControl.BOTTOM,
+                    12.0f,
+                    12.0f,
+                    paint);
+            if (!selected) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.0f);
+                paint.setColor(COLOR_CARD_SELECTED);
+                canvas.drawRoundRect(
+                        left,
+                        SettingsSpeedControl.TOP,
+                        right,
+                        SettingsSpeedControl.BOTTOM,
+                        12.0f,
+                        12.0f,
+                        paint);
+            }
+            drawCenteredText(
+                    canvas,
+                    SPEED_MODE_TITLES[index],
+                    SettingsSpeedControl.segmentCenterX(index),
+                    SettingsSpeedControl.TEXT_BASELINE,
+                    15.0f,
+                    selected ? Color.BLACK : COLOR_TEXT,
+                    selected);
+        }
     }
 
     @Override
@@ -271,8 +326,13 @@ public final class SettingsView extends View {
         performClick();
         float x = (event.getX() - contentOffsetX) / contentScale;
         float y = (event.getY() - contentOffsetY) / contentScale;
-        if (x >= 110.0f && x <= 850.0f && y >= 160.0f && y <= 280.0f) {
+        if (x >= 110.0f && x <= 850.0f && y >= 160.0f && y <= 252.0f) {
             showSkinPicker();
+            return true;
+        }
+        int speedSegment = SettingsSpeedControl.segmentAt(x, y);
+        if (speedSegment >= 0) {
+            selectSpeedDisplayMode(SPEED_MODES[speedSegment]);
             return true;
         }
         boolean configurable = selectedDefinition().hasSettings();
@@ -284,16 +344,10 @@ public final class SettingsView extends View {
             showSettingsEditor();
             return true;
         }
-        float saveTop = configurable
-                ? SAVE_TOP_WITH_SETTINGS
-                : SAVE_TOP_DEFAULT;
-        float saveBottom = configurable
-                ? SAVE_BOTTOM_WITH_SETTINGS
-                : SAVE_BOTTOM_DEFAULT;
         if (x >= 255.0f
                 && x <= 705.0f
-                && y >= saveTop
-                && y <= saveBottom) {
+                && y >= SAVE_TOP
+                && y <= SAVE_BOTTOM) {
             listener.onSaveRequested(session.snapshot());
             return true;
         }
@@ -356,6 +410,16 @@ public final class SettingsView extends View {
                         })
                 .setNegativeButton("Отмена", null)
                 .show();
+    }
+
+    private void selectSpeedDisplayMode(SpeedDisplayMode mode) {
+        if (mode == session.snapshot().speedDisplayMode) {
+            return;
+        }
+        session.selectSpeedDisplayMode(mode);
+        status = "Предпросмотр режима спидометра изменён";
+        listener.onDraftChanged(session.snapshot());
+        invalidate();
     }
 
     private int getSelectedSkinIndex() {
