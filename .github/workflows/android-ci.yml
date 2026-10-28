@@ -88,6 +88,8 @@ jobs:
               python tools/build_forum_design_template.py \
                 --output-dir "${smoke_dir}/forum-kit" \
                 --gradient-source app/src/main/assets/dashboard/skins/common/calibrated_edge_background.png
+              python -m unittest discover -s tools/tests -p test_skin_design_template.py
+              python tools/package_skin_design_kit.py --check
               python tools/edit_classic_background.py \
                 --input app/src/main/assets/dashboard/skins/classic/background.png \
                 --output "${smoke_dir}/background-classic.png" \

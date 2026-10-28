@@ -431,13 +431,16 @@ Connected to read-only TBOX temperature source
 Каталог `docs/` содержит:
 
 - инструкцию подготовки JDK, Android SDK, Python и локального Codex;
-- готовые промпты для трёх этапов разработки темы;
+- процесс «компоновка → оформление и подгонка → нативный Demo → реальные
+  данные», полный состав показаний и готовые задания для разработки темы;
 - актуальный шаблон `1920×720` с откалиброванной на автомобиле чёрной
-  подложкой и маской системных иконок v2.4
+  подложкой и точными полями v2.4: строгие нижние левые зоны отделены от полей,
+  под которыми разрешён декор; есть цветное наложение и `system_fields.json`
   ([каталог](docs/H9_Cluster_Neutral_Design_Template_1920x720),
   [ZIP](docs/H9_Cluster_Neutral_Design_Template_1920x720.zip));
-- актуальный автономный Demo-проект
-  `H9_Cluster_Dashboard_Demo_Base_Source_v3.zip` с тестовыми значениями;
+- учебный автономный Demo v8.0.7 в
+  `H9_Cluster_Dashboard_Demo_Base_Source_v3.zip`; для нового скина используйте
+  build type `demo` текущего репозитория, чтобы сохранить актуальный контракт;
 - `H9_Cluster_Codex_Forum_Kit_v3.zip` для передачи полного комплекта другому
   разработчику.
 
@@ -445,6 +448,8 @@ Connected to read-only TBOX temperature source
 
 - `build_forum_design_template.py` — пересобирает актуальный комплект шаблона
   без изменения публичных имён файлов;
+- `package_skin_design_kit.py` — синхронизирует три публичных ZIP с документацией
+  и шаблоном; `--check` проверяет содержимое без записи;
 - `edit_classic_background.py` — формирует подложку и независимый overlay
   Classic с утверждённой геометрией.
 
@@ -452,7 +457,7 @@ Connected to read-only TBOX temperature source
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install Pillow numpy
+.venv/bin/python -m pip install -r requirements-tools.txt
 ```
 
 Подробный процесс описан в
