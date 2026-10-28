@@ -27,6 +27,7 @@ public final class ProductionSystemIconsContractTest {
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.ION_AURORA));
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.CLASSIC));
         assertNull(PreviewSystemIcons.create(context, SkinRegistry.SCULPTED_TITANIUM));
+        assertNull(PreviewSystemIcons.create(context, SkinRegistry.APEX_SPORT));
     }
 
     @Test
@@ -41,7 +42,8 @@ public final class ProductionSystemIconsContractTest {
 
     @Test
     public void productionDoesNotPackageTheSimulatedFactoryLayers() {
-        for (String name : new String[]{"DemoSystemIconsView", "TitaniumDemoSystemView"}) {
+        for (String name : new String[]{"DemoSystemIconsView", "TitaniumDemoSystemView",
+                "ApexSportDemoSystemView"}) {
             try {
                 Class.forName("net.adminrunet.h9cluster." + name);
                 fail("Demo-only factory layer leaked into production: " + name);

@@ -9,6 +9,9 @@ final class PreviewSystemIcons {
     private PreviewSystemIcons() { }
 
     static View create(Context context, String skinId) {
+        if (SkinRegistry.APEX_SPORT.equals(skinId)) {
+            return new ApexSportDemoSystemView(context);
+        }
         if (SkinRegistry.SCULPTED_TITANIUM.equals(skinId)) {
             return new TitaniumDemoSystemView(context);
         }

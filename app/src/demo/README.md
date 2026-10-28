@@ -1,5 +1,12 @@
 # Demo system-icon preview
 
+APEX SPORT uses `ApexSportDemoSystemView` as its separate upper layer. It reuses
+the existing factory-only `TitaniumDemoSystemView` lamp/selector/mode simulation
+and adds the approved mockup label. No APEX artwork is included in that overlay;
+the renderer remains transparent and production contains neither the label nor
+simulated factory symbols. The shared PreviewActivity already supplies the Demo
+window background and places the system layer above the selected renderer.
+
 Sculpted Titanium uses `TitaniumDemoSystemView` above its approved artwork.
 This Demo-only layer includes the existing 24 lamp-test glyphs, the simulated
 factory selector/manual caption and the lower-right drive mode. In D, the skin
