@@ -15,6 +15,26 @@ import java.util.Map;
 
 public final class SkinSettingsSessionTest {
     @Test
+    public void tankDraftIsGlobalAndPartOfSnapshotIdentity() {
+        SkinSettingsSession session = new SkinSettingsSession(
+                SkinRegistry.CLASSIC, emptyLoader(), passThroughNormalizer());
+        SkinSettingsSession.Snapshot original = session.snapshot();
+        assertEquals(80, original.fuelTankCapacityLiters);
+        session.selectFuelTankCapacity(60);
+        assertFalse(original.equals(session.snapshot()));
+        for (SkinRegistry.Definition skin : SkinRegistry.getDefinitions()) {
+            session.selectSkin(skin.id);
+            assertEquals(60, session.snapshot().fuelTankCapacityLiters);
+        }
+        session.selectSkin(SkinRegistry.CLASSIC);
+        session.selectFuelTankCapacity(80);
+        assertEquals(original, session.snapshot());
+        assertEquals(original.hashCode(), session.snapshot().hashCode());
+        session.selectFuelTankCapacity(42);
+        assertEquals(80, session.snapshot().fuelTankCapacityLiters);
+    }
+
+    @Test
     public void draftsRemainIndependentWhileSwitchingSkins() {
         final Map<String, Integer> loadCounts = new LinkedHashMap<>();
         SkinSettingsSession session = new SkinSettingsSession(

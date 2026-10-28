@@ -36,7 +36,6 @@ import java.util.Locale;
 public final class HorizonClusterView extends View implements ClusterRenderer {
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
-    private static final float TANK_CAPACITY_LITERS = 80.0f;
 
     private static final int COLOR_TEXT = 0xFFF4FBFC;
     private static final int COLOR_MUTED = 0xFF82969D;
@@ -306,7 +305,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         configureText(14.0f, Paint.Align.CENTER, COLOR_MUTED, true);
         canvas.drawText("FUEL", card.centerX(), 145.0f, textPaint);
 
-        float fraction = clamp(displayedFuel / TANK_CAPACITY_LITERS, 0.0f, 1.0f);
+        float fraction = clamp(displayedFuel / state.fuelTankCapacityLiters, 0.0f, 1.0f);
         int accent = fraction < 0.15f ? COLOR_WARNING : COLOR_ACCENT;
         RectF rail = new RectF(615.0f, 174.0f, 631.0f, 348.0f);
         drawRail(canvas, rail, fraction, accent);

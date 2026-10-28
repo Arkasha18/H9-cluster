@@ -17,6 +17,27 @@ import org.robolectric.annotation.Config;
 @Config(sdk = 28)
 public final class SkinPreferencesDefaultTest {
     @Test
+    public void tankDefaultsToEightyAndPersistsIndependentlyOfSkin() {
+        Context context = RuntimeEnvironment.getApplication();
+        context.getSharedPreferences(SkinPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit().clear().commit();
+
+        assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
+        SkinPreferences.setFuelTankCapacityLiters(context, 60);
+        for (SkinRegistry.Definition skin : SkinRegistry.getDefinitions()) {
+            SkinPreferences.setSelectedSkin(context, skin.id);
+            assertEquals(60, SkinPreferences.getFuelTankCapacityLiters(context));
+        }
+        SkinPreferences.setFuelTankCapacityLiters(context, 80);
+        assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
+        SkinPreferences.setFuelTankCapacityLiters(context, 0);
+        assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
+        context.getSharedPreferences(SkinPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit().putInt("fuel_tank_capacity_liters", 100).commit();
+        assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
+    }
+
+    @Test
     public void freshDemoInstallStartsWithIonAurora() {
         Context context = RuntimeEnvironment.getApplication();
         context.getSharedPreferences(

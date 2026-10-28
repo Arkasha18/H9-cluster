@@ -15,6 +15,7 @@ import android.view.View;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.FuelTankCapacity;
 import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.RpmReadoutStabilizer;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
@@ -188,9 +189,11 @@ public final class ApexSportClusterView extends View implements ClusterRenderer 
     private void drawSmallDial(Canvas canvas, boolean fuel) {
         float cx = fuel ? 466 : 1454;
         float minimum = fuel ? 0 : 40;
-        float maximum = fuel ? 80 : 130;
+        float maximum = fuel
+                ? (state == null ? FuelTankCapacity.DEFAULT_LITERS : state.fuelTankCapacityLiters)
+                : 130;
         arc(canvas, cx, 238, 53, 140, 260, 0xFF3F4A54, 4);
-        arc(canvas, cx, 238, 53, fuel ? 140 : 358, fuel ? 33 : 42, RED, 4);
+        arc(canvas, cx, 238, 53, fuel ? 140 : 358, fuel ? 260 * 10 / maximum : 42, RED, 4);
         for (int i = 0; i <= 8; i++) {
             radialLine(canvas, cx, 238, 46, 50, 140 + i / 8.0f * 260, 0xFFCCD5DB, 1);
         }
