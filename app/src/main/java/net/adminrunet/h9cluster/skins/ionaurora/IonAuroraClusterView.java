@@ -31,7 +31,6 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float TAPE_OFFSET_Y = 0.0f;
-    private static final float TANK_CAPACITY_LITERS = 80.0f;
     private static final long ATF_STALE_AFTER_MS = 15_000L;
     private static final int COLOR_WHITE = 0xFFFAFDFF;
     private static final int COLOR_MUTED = 0xFF9EB9CE;
@@ -439,7 +438,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
 
     private void drawFuelRail(Canvas canvas, float liters, float reveal) {
         float proportion = Float.isFinite(liters)
-                ? clamp(liters / TANK_CAPACITY_LITERS, 0, 1) : 0;
+                ? clamp(liters / targetState.fuelTankCapacityLiters, 0, 1) : 0;
         for (int i = 0; i < 16; i++) {
             shapePaint.setColor(i < Math.round(proportion * 16)
                     ? (liters < 10 ? COLOR_WARNING : COLOR_CYAN) : 0xFF21394F);

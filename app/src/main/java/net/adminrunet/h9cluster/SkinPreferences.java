@@ -11,6 +11,7 @@ public final class SkinPreferences {
     static final String PREFERENCES_NAME = "cluster_settings";
     private static final String KEY_SELECTED_SKIN = "selected_skin";
     private static final String KEY_SPEED_DISPLAY_MODE = "speed_display_mode";
+    private static final String KEY_FUEL_TANK_CAPACITY = "fuel_tank_capacity_liters";
 
     private SkinPreferences() {
     }
@@ -32,6 +33,20 @@ public final class SkinPreferences {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEY_SELECTED_SKIN, safeSkin)
+                .apply();
+    }
+
+    /** Tank size is shared by every skin; existing installations keep 80 liters. */
+    public static int getFuelTankCapacityLiters(Context context) {
+        return FuelTankCapacity.normalize(context.getSharedPreferences(
+                PREFERENCES_NAME, Context.MODE_PRIVATE).getInt(
+                KEY_FUEL_TANK_CAPACITY, FuelTankCapacity.DEFAULT_LITERS));
+    }
+
+    public static void setFuelTankCapacityLiters(Context context, int capacity) {
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putInt(KEY_FUEL_TANK_CAPACITY, FuelTankCapacity.normalize(capacity))
                 .apply();
     }
 

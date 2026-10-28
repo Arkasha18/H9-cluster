@@ -11,7 +11,7 @@ import android.net.NetworkCapabilities;
 /** Cached Wi-Fi transport state and a small programmatic status glyph. */
 public final class WifiIndicator {
     private static final long REFRESH_INTERVAL_MS = 1_000L;
-    private static final int COLOR_CONNECTED = 0xFFF7F7F5;
+    private static final int COLOR_CONNECTED = 0xFF24C04A;
     private static final int COLOR_DISCONNECTED = 0xFF596168;
 
     private final ConnectivityManager connectivityManager;
