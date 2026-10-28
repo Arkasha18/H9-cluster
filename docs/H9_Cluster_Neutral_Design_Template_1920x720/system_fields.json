@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "canvas": {
+    "width": 1920,
+    "height": 720
+  },
+  "coordinate_convention": "[left, top, right, bottom); right and bottom excluded",
+  "system_mask_version": "2.4",
+  "sources": {
+    "03_system_icons_forbidden_mask.png": "654f12772eecdf9cd5f581387acb964d5f06a15d13b7e36fb1f2b96a498f47a2",
+    "04_yandex_map_black_gradient_rgba.png": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260"
+  },
+  "nonzero_alpha_is_reserved": true,
+  "lower_left": {
+    "mask": "06_lower_left_reserved_mask.png",
+    "source_alpha_intersect_rois": [
+      [
+        387,
+        373,
+        498,
+        442
+      ],
+      [
+        230,
+        494,
+        548,
+        642
+      ]
+    ],
+    "nonzero_pixels": 40651,
+    "foreground_alpha": 0,
+    "clearance_px": 1,
+    "composite_rule": "preserve calibrated base alpha, do not force composite alpha to zero"
+  },
+  "factory_overlay": {
+    "mask": "07_factory_overlay_fields_mask.png",
+    "decorative_underlay_allowed": true,
+    "critical_readouts_allowed": false,
+    "selector_letters_and_drive_mode": "factory owned; no production duplicates"
+  },
+  "automatic_gear_exception": {
+    "bounds": [
+      982,
+      28,
+      1018,
+      66
+    ],
+    "center_x": 1000,
+    "baseline_y": 63,
+    "font": "Rajdhani-Medium.ttf",
+    "font_size_px": 44,
+    "selector": "D",
+    "valid_ratios": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  "map": {
+    "calibrated_clear_core": [
+      672,
+      80,
+      1096,
+      720
+    ],
+    "artwork_corridor": "design-specific; record in the skin layout specification",
+    "source_04_immutable": true,
+    "derived_edge_treatment": "allowed with documented transform and alpha tests",
+    "legacy_02_is_not_a_map_boundary": true
+  },
+  "overlay": "05_system_fields_overlay.png",
+  "masks_are_validation_only": true
+}
