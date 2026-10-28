@@ -16,6 +16,15 @@ All renderers receive the same immutable `ClusterState` through the shared
 `ClusterRenderer` interface. Vehicle services, polling and decoding stay outside
 the skin folders.
 
+For a new skin, follow the complete
+[design workflow](../../../../../../../../docs/FORUM_DESIGN_PROMPTS_RU.md):
+inventory all readouts, freeze their anchors before styling, and review both
+the native render and the coloured technical-field overlay. The template now
+separates strict lower-left reservations from factory fields that permit a
+decorative underlay. This does not relax any existing skin's stricter tests.
+Keep the original calibrated PNG intact; document and test any derived edge
+treatment. Validate foreground alpha separately from the full composition.
+
 ## Sculpted Titanium
 
 The titanium/glass/amber sketch uses a 1920×720 design canvas. Its sculpted

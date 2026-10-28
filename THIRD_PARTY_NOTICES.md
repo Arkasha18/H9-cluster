@@ -6,6 +6,20 @@ components remain under their respective licenses.
 
 ## Fonts
 
+### Noto Sans (design tooling only)
+
+- File: `tools/assets/fonts/NotoSans.ttf`; not included in Android assets
+- Copyright: Copyright 2022 The Noto Project Authors
+- Project: <https://github.com/notofonts/latin-greek-cyrillic>
+- Source: Google Fonts `ofl/notosans/NotoSans[wdth,wght].ttf`, revision
+  `8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5`
+- SHA-256: `bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d`
+- License: SIL Open Font License 1.1
+- License text: `third_party/licenses/NotoSans-OFL-1.1.txt`
+
+The unchanged font supplies Cyrillic glyphs for the generated technical guide
+on Windows, macOS and Linux. It does not change the application's typography.
+
 ### Inter Regular
 
 - File: `app/src/main/assets/fonts/Inter-Regular.ttf`
