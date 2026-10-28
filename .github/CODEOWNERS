@@ -1,1 +1,8 @@
 * @Arkasha18
+
+# Production release control plane
+/.github/workflows/ @Arkasha18
+/tools/release/ @Arkasha18
+/tools/verify_demo_apk_secrets.sh @Arkasha18
+/app/build.gradle.kts @Arkasha18
+/docs/RELEASING_RU.md @Arkasha18

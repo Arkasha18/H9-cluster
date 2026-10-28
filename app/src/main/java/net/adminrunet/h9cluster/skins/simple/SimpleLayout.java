@@ -10,8 +10,6 @@ final class SimpleLayout {
     static final float MAX_SPEED_KPH = 200.0f;
     static final float MAX_RPM = 6000.0f;
     static final int SPEED_LABEL_STEP_KPH = 20;
-    /** Measured-to-indicated speed ratio; see indicatedSpeedFraction. */
-    static final float SPEED_INDICATION_FACTOR = 1.045f;
     static final int RPM_LABEL_STEP = 1000;
     static final boolean DRAW_SCALE_UNITS = false;
     static final float LEFT_GAUGE_CENTER_X = 290.0f;
@@ -136,13 +134,13 @@ final class SimpleLayout {
     static final float GEAR_NUMBER_X = 1000.0f;
     static final float GEAR_NUMBER_BASELINE = 63.0f;
 
-    static final float TYRE_LEFT_X = 1748.0f;
-    static final float TYRE_RIGHT_X = 1852.0f;
+    static final float TYRE_LEFT_X = 68.0f;
+    static final float TYRE_RIGHT_X = 172.0f;
     static final float TYRE_TEXT_SIZE = 22.0f;
     static final float TYRE_TOP_Y = 40.0f;
     static final float TYRE_BOTTOM_Y = 65.0f;
     /** The wheel sits between the four pressures, so it centres them. */
-    static final float STEERING_ICON_X = 1800.0f;
+    static final float STEERING_ICON_X = 120.0f;
     static final float STEERING_ICON_VERTICAL_OFFSET = -3.0f;
     static final float STEERING_ICON_Y =
             (TYRE_TOP_Y + TYRE_BOTTOM_Y) * 0.5f
@@ -156,6 +154,8 @@ final class SimpleLayout {
     static final float STEERING_T_BAR_Y_OFFSET = -1.0f;
     static final float STEERING_T_STEM_LENGTH = 15.0f;
     static final int STEERING_COLOR = 0xFFF9F9F7;
+    static final float WIFI_X = 1850.0f;
+    static final float WIFI_Y = 42.0f;
 
     static final float FACTORY_SCALE_BASELINE = 690.0f;
     static final float CONSUMPTION_X = 24.0f;
@@ -369,19 +369,13 @@ final class SimpleLayout {
         return -clamp(angleDeg, -1080.0f, 1080.0f);
     }
 
-    /** Where a speed sits on the scale. Labels are placed by this too. */
+    /**
+     * Where a speed sits on the scale. Labels are placed by this too. Any
+     * factory-style correction is applied by the caller before the value
+     * reaches this method, so the printed scale stays untouched.
+     */
     static float speedFraction(float speedKph) {
         return clamp(speedKph / MAX_SPEED_KPH, 0.0f, 1.0f);
-    }
-
-    /**
-     * Where the band sits for a measured speed. The bus reports a speed
-     * derived from GPS while the factory speedometer reads the wheels, so
-     * the band is scaled to agree with the dial the driver is used to.
-     * Tune this one constant if the two still disagree.
-     */
-    static float indicatedSpeedFraction(float measuredKph) {
-        return speedFraction(measuredKph * SPEED_INDICATION_FACTOR);
     }
 
     static float rpmFraction(float rpm) {

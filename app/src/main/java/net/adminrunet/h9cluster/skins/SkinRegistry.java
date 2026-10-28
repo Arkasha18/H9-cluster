@@ -4,9 +4,11 @@ import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
+import net.adminrunet.h9cluster.skins.ionaurora.IonAuroraClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleClusterView;
 import net.adminrunet.h9cluster.skins.simple.SimpleSettingsProvider;
 import net.adminrunet.h9cluster.skins.sport.SportClusterView;
+import net.adminrunet.h9cluster.skins.sculptedtitanium.SculptedTitaniumClusterView;
 
 import android.content.Context;
 import android.view.View;
@@ -21,12 +23,17 @@ import android.view.View;
 public final class SkinRegistry {
     public static final String CLASSIC = "classic";
     public static final String HORIZON = "horizon";
+    public static final String ION_AURORA = "ionaurora";
     public static final String SIMPLE = "simple";
     public static final String SPORT = "sport";
     public static final String STOCK = "stock";
+    public static final String SCULPTED_TITANIUM = "sculptedtitanium";
 
     private interface RendererFactory {
-        View create(Context context, SkinSettings settings);
+        View create(
+                Context context,
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode);
     }
 
     public static final class Definition {
@@ -97,16 +104,38 @@ public final class SkinRegistry {
 
         private View createRenderer(
                 Context context,
-                SkinSettings settings) {
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode) {
             if (factory == null) {
                 throw new IllegalStateException(
                         "Skin draws nothing and has no renderer: " + id);
             }
-            return factory.create(context, normalizeSettings(settings));
+            return factory.create(
+                    context,
+                    normalizeSettings(settings),
+                    speedDisplayMode == null
+                            ? SpeedDisplayMode.REAL
+                            : speedDisplayMode);
         }
     }
 
     private static final Definition[] DEFINITIONS = {
+        new Definition(
+                ION_AURORA,
+                "ION AURORA — rolling tape",
+                "Космический кокпит с вертикальными барабанами скорости и RPM",
+                new RendererFactory() {
+                    @Override
+                    public View create(
+                            Context context,
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new IonAuroraClusterView(
+                                context,
+                                speedDisplayMode);
+                    }
+                },
+                null),
         new Definition(
                 CLASSIC,
                 "Classic — утверждённый дизайн",
@@ -115,8 +144,9 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new ClassicClusterView(context);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new ClassicClusterView(context, speedDisplayMode);
                     }
                 },
                 null),
@@ -128,8 +158,9 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new SportClusterView(context);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new SportClusterView(context, speedDisplayMode);
                     }
                 },
                 null),
@@ -141,11 +172,13 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
                         return new SimpleClusterView(
                                 context,
                                 SimpleSettingsProvider.scaleColor(
-                                        settings));
+                                        settings),
+                                speedDisplayMode);
                     }
                 },
                 new SimpleSettingsProvider()),
@@ -157,11 +190,27 @@ public final class SkinRegistry {
                     @Override
                     public View create(
                             Context context,
-                            SkinSettings settings) {
-                        return new HorizonClusterView(context, settings);
+                            SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new HorizonClusterView(
+                                context,
+                                settings,
+                                speedDisplayMode);
                     }
                 },
                 new HorizonSettingsProvider()),
+        new Definition(
+                SCULPTED_TITANIUM,
+                "Sculpted Titanium — титановая приборка",
+                "Рельефный титан, янтарная подсветка и горизонтальные шкалы",
+                new RendererFactory() {
+                    @Override
+                    public View create(Context context, SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new SculptedTitaniumClusterView(context, speedDisplayMode);
+                    }
+                },
+                null),
         new Definition(
                 STOCK,
                 "Штатная панель — без наложения",
@@ -222,8 +271,23 @@ public final class SkinRegistry {
             Context context,
             String id,
             SkinSettings settings) {
+        return createRenderer(
+                context,
+                id,
+                settings,
+                SpeedDisplayMode.REAL);
+    }
+
+    public static View createRenderer(
+            Context context,
+            String id,
+            SkinSettings settings,
+            SpeedDisplayMode speedDisplayMode) {
         Definition definition = getDefinition(id);
-        View view = definition.createRenderer(context, settings);
+        View view = definition.createRenderer(
+                context,
+                settings,
+                speedDisplayMode);
         if (!(view instanceof ClusterRenderer)) {
             throw new IllegalStateException(
                     "Skin renderer must implement ClusterRenderer: " + definition.id);

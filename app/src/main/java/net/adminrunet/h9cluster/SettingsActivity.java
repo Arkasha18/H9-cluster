@@ -34,6 +34,8 @@ public final class SettingsActivity extends Activity {
                                 skinId);
                     }
                 });
+        session.selectSpeedDisplayMode(
+                SkinPreferences.getSpeedDisplayMode(this));
         settingsView = new SettingsView(
                 this,
                 session,
@@ -54,6 +56,9 @@ public final class SettingsActivity extends Activity {
                         SkinPreferences.setSelectedSkin(
                                 SettingsActivity.this,
                                 draft.skinId);
+                        SkinPreferences.setSpeedDisplayMode(
+                                SettingsActivity.this,
+                                draft.speedDisplayMode);
                         for (Map.Entry<String, SkinSettings> entry
                                 : session.drafts().entrySet()) {
                             SkinSettingsStore.save(
@@ -135,6 +140,7 @@ public final class SettingsActivity extends Activity {
     private void exitApplication() {
         unsavedPreviewActive = false;
         AutostartPreferences.setAutostartSuspended(this, true);
+        ClusterDisplayRecovery.cancel();
         ClusterWindowRegistry.closeAll();
         finishAndRemoveTask();
     }

@@ -6,6 +6,8 @@ import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.GearSelector;
 import net.adminrunet.h9cluster.PredictiveMotionFilter;
 import net.adminrunet.h9cluster.TransmissionTemperatureAlert;
+import net.adminrunet.h9cluster.skins.SpeedDisplayMode;
+import net.adminrunet.h9cluster.skins.WifiIndicator;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -35,6 +37,7 @@ public final class SimpleClusterView extends View
             Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint wifiPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     /**
      * The stretched band is no longer an arc Canvas can draw, so it is
      * sampled into a path. Reused and rewound every frame to keep this
@@ -51,6 +54,8 @@ public final class SimpleClusterView extends View
      */
     private final SimpleScaleColor scaleColor;
     private final Shader tipBloomShader;
+    private final WifiIndicator wifiIndicator;
+    private final SpeedDisplayMode speedDisplayMode;
 
     private final Typeface dataTypeface;
     private final Typeface gaugeTypeface;
@@ -77,11 +82,22 @@ public final class SimpleClusterView extends View
     public SimpleClusterView(
             Context context,
             SimpleScaleColor scaleColor) {
+        this(context, scaleColor, SpeedDisplayMode.REAL);
+    }
+
+    public SimpleClusterView(
+            Context context,
+            SimpleScaleColor scaleColor,
+            SpeedDisplayMode speedDisplayMode) {
         super(context);
         this.scaleColor = scaleColor == null
                 ? SimpleScaleColor.defaultColor()
                 : scaleColor;
+        this.speedDisplayMode = speedDisplayMode == null
+                ? SpeedDisplayMode.REAL
+                : speedDisplayMode;
         tipBloomShader = createTipBloomShader(this.scaleColor);
+        wifiIndicator = new WifiIndicator(context);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setBackgroundColor(Color.TRANSPARENT);
 
@@ -120,7 +136,7 @@ public final class SimpleClusterView extends View
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        staticBackground = w > 0 && h > 0
+        staticBackground = scaleColor.drawsScales() && w > 0 && h > 0
                 ? renderStaticLayer(w, h, BuildConfig.DEMO_MODE, scaleColor)
                 : null;
     }
@@ -175,6 +191,9 @@ public final class SimpleClusterView extends View
     }
 
     private void drawStaticLayer(Canvas canvas) {
+        if (!scaleColor.drawsScales()) {
+            return;
+        }
         if (staticBackground == null) {
             // Detaching releases the bitmap, and a re-attach at an unchanged
             // size never calls onSizeChanged, so rebuilding has to happen
@@ -208,8 +227,12 @@ public final class SimpleClusterView extends View
     }
 
     private void drawProgressLayer(Canvas canvas) {
+        if (!scaleColor.drawsScales()) {
+            return;
+        }
         float speedFraction = clamp(
-                SimpleLayout.indicatedSpeedFraction(displayedSpeed),
+                SimpleLayout.speedFraction(
+                        speedDisplayMode.indicatedKph(displayedSpeed)),
                 0.0f,
                 1.0f);
         float rpmFraction = clamp(
@@ -398,9 +421,17 @@ public final class SimpleClusterView extends View
             long frameAtMs) {
         ClusterState state = targetState;
 
-        drawScaleLabels(canvas);
+        if (scaleColor.drawsScales()) {
+            drawScaleLabels(canvas);
+        }
         drawCurrentGear(canvas, state);
         drawTyrePressures(canvas, state);
+        wifiIndicator.draw(
+                canvas,
+                wifiPaint,
+                SimpleLayout.WIFI_X,
+                SimpleLayout.WIFI_Y,
+                frameAtMs);
         drawBottomValues(
                 canvas,
                 state,

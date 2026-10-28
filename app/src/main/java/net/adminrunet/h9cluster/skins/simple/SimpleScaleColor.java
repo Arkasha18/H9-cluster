@@ -20,7 +20,8 @@ public enum SimpleScaleColor {
     LIGHT_GREEN("light_green", "Светло-зелёный", 0xFF9CE23A, 0xFFD6F49B),
     GREEN("green", "Зелёный", 0xFF24C04A, 0xFF8FE6A6),
     CYAN("cyan", "Голубой", 0xFF2FC4E8, 0xFFA6ECF8),
-    BLUE("blue", "Синий", 0xFF2F6BFF, 0xFF9FBBFF);
+    BLUE("blue", "Синий", 0xFF2F6BFF, 0xFF9FBBFF),
+    NONE("none", "Без шкал", 0xFF000000, 0xFFFFFFFF);
 
     private static final int GLOW_ALPHA = 0xDC;
     private static final int BAND_BODY_ALPHA = 0xAA;
@@ -42,6 +43,10 @@ public enum SimpleScaleColor {
 
     public static SimpleScaleColor defaultColor() {
         return RED;
+    }
+
+    public boolean drawsScales() {
+        return this != NONE;
     }
 
     /**

@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public final class SimpleScaleColorTest {
     @Test
-    public void theEightChoicesArriveInTheOrderTheyAreOffered() {
+    public void theNineChoicesArriveInTheOrderTheyAreOffered() {
         String[] expected = {
             "red",
             "white",
@@ -21,7 +21,8 @@ public final class SimpleScaleColorTest {
             "light_green",
             "green",
             "cyan",
-            "blue"
+            "blue",
+            "none"
         };
         assertEquals(expected.length, SimpleScaleColor.values().length);
         for (int index = 0; index < expected.length; index++) {
@@ -122,6 +123,16 @@ public final class SimpleScaleColorTest {
     public void knownIdsRoundTrip() {
         for (SimpleScaleColor color : SimpleScaleColor.values()) {
             assertSame(color, SimpleScaleColor.byId(color.id));
+        }
+    }
+
+    @Test
+    public void noneIsTheOnlyChoiceThatSuppressesScaleRendering() {
+        for (SimpleScaleColor color : SimpleScaleColor.values()) {
+            assertEquals(
+                    color.id,
+                    color != SimpleScaleColor.NONE,
+                    color.drawsScales());
         }
     }
 

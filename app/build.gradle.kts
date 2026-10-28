@@ -47,8 +47,8 @@ android {
         applicationId = "net.adminrunet.h9cluster"
         minSdk = 28
         targetSdk = 28
-        versionCode = 2026082801
-        versionName = "9.5.2"
+        versionCode = 2026102801
+        versionName = "9.7.0"
         manifestPlaceholders["bootReceiverEnabled"] = "true"
         manifestPlaceholders["fdbusProbeEnabled"] = "false"
         buildConfigField(
@@ -126,6 +126,10 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         disable += "ExpiredTargetSdkVersion"
         // Keep update compatibility with production builds already installed
@@ -139,5 +143,14 @@ dependencies {
     implementation("com.jcraft:jsch:0.1.55")
     implementation("io.noties.markwon:core:4.6.2")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+}
+
+// Demo uses synthetic telemetry and never loads the vehicle's ARM64 FDBus
+// libraries. Leaving them in the APK prevents installation on x86 emulators.
+// Production and diagnostic variants retain their original native payload.
+androidComponents {
+    onVariants(selector().withBuildType("demo")) { variant ->
+        variant.packaging.jniLibs.excludes.add("**/*.so")
+    }
 }
