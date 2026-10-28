@@ -10,6 +10,7 @@ Each skin owns its complete rendering code and design assets:
 | Simple | `simple/SimpleClusterView.java` | Asset-free Canvas renderer |
 | Sport | `sport/SportClusterView.java` | `assets/dashboard/skins/sport/` |
 | Sculpted Titanium | `sculptedtitanium/SculptedTitaniumClusterView.java` | `assets/dashboard/skins/sculptedtitanium/` |
+| APEX SPORT | `apexsport/ApexSportClusterView.java` | `assets/dashboard/skins/apexsport/` |
 | Stock | none, the factory is `null` | Nothing is drawn |
 
 All renderers receive the same immutable `ClusterState` through the shared
@@ -24,6 +25,26 @@ separates strict lower-left reservations from factory fields that permit a
 decorative underlay. This does not relax any existing skin's stricter tests.
 Keep the original calibrated PNG intact; document and test any derived edge
 treatment. Validate foreground alpha separately from the full composition.
+
+## APEX SPORT
+
+The independent circular sports instruments follow
+[`tools/assets/apex_sport/layout.json`](../../../../../../../../tools/assets/apex_sport/layout.json).
+Only housings/rails and the immutable calibrated map PNG are bitmap artwork.
+Canvas draws every caption, scale, value and moving pointer with bundled
+Rajdhani and Noto Sans fonts. The main dial centres are (228,330) and (1692,330);
+fuel and coolant have separate arcs. The 800-pixel artwork-free map corridor,
+clear calibrated core and lower-left reservations retain the approved geometry.
+The entire calibrated backdrop keeps its original pixels so factory clock and
+odometer fragments cannot show through. No alpha transitions are added, and
+no technical mask is loaded by the renderer.
+
+The skin consumes only `ClusterState` and uses the shared `SpeedDisplayMode`,
+`RpmReadoutStabilizer`, `DashboardClock` and `WifiIndicator`. Missing readings
+use dashes; ATF expires after 15 seconds of monotonic time. The wall clock is
+injectable only through a package-private test constructor. The View remains
+transparent in both production and Demo. Demo's separate upper layer supplies
+the factory lamps, selector/manual caption, drive mode and mockup label.
 
 ## Sculpted Titanium
 

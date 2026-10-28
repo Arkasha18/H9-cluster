@@ -1,0 +1,1890 @@
+{
+  "name": "APEX SPORT",
+  "status": "User-approved layout, implemented by independent ApexSportClusterView; review data remain fictional",
+  "upstreamCommit": "242a66b0b51a7cac7e54a4d528f899a154238f76",
+  "canvas": [
+    1920,
+    720
+  ],
+  "map": {
+    "noArtworkCorridor": [
+      560,
+      80,
+      1360,
+      720
+    ],
+    "transparentCore": [
+      672,
+      80,
+      1096,
+      720
+    ],
+    "base": "04_yandex_map_black_gradient_rgba.png",
+    "originalSha256": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+    "workingCopyTransform": [
+      "No alpha or RGB transform: the complete calibrated04 PNG is embedded byte-identically.",
+      "Revision9.7.1 removed the y40..79 header fade; revision9.7.2 also removes the y647+ bottom fade after ghost digits were visible behind Day/Trip.",
+      "The original bottom shelf and its sharp edge are intentional calibration. No mask clipping, new cover rectangle, or background regeneration is used."
+    ]
+  },
+  "typography": {
+    "centering": "Actual glyph ink bounds, fixed baseline; font size fixed; no text clipping",
+    "fonts": [
+      "Rajdhani-Medium.ttf",
+      "NotoSans.ttf"
+    ],
+    "revision": "2026-10-28 vehicle readability refinement: +1 logical px for every text size except the contract-fixed currentGear44 and unchanged shared WifiIndicator.",
+    "dayTrip": {
+      "layout": "Two horizontal rows: caption, numeric value, unit",
+      "captionToValueInkGapMinPx": 8,
+      "valueToUnitInkGapMinPx": 4,
+      "numericCenterX": 490,
+      "numericMaxWidthPx": 88
+    }
+  },
+  "systemFields": {
+    "overlay": "05_system_fields_overlay.png",
+    "strict": "06_lower_left_reserved_mask.png",
+    "clearancePx": 1,
+    "allAlphaAboveZero": true,
+    "use": "validation only, never clipping",
+    "preserveBaseAlphaUnder06": true
+  },
+  "semantics": {
+    "rpm": "Smooth pointer; stabilized digits: >=160 ms, 10 rpm steps, hysteresis 8 rpm; display only",
+    "speed": "Shared SpeedDisplayMode; numeric and arc use same indicated rounded speed; preserve 0 at stop",
+    "fuel": "0..80 L calibration from current GwmClusterDataSource.TANK_CAPACITY_LITERS and Classic/Sport",
+    "coolant": "40..130 C existing Classic/Sport scale; design marks, not newly defined vehicle warning thresholds",
+    "missing": "Nonfinite/negative values on unsigned fields show dash and no pointer/fill. Signed torque/temperature/steering allow negative. Invalid gear is empty.",
+    "rendererScope": "Design source for the independent registered apexsport renderer. Native Canvas and APK evidence is recorded separately in IMPLEMENTATION_RU.md and artifacts/skin-review/apex-sport/native/.",
+    "sampleMeaning": "Every displayed value, clock, Wi-Fi, needle and map is fictional review data, marked МАКЕТ."
+  },
+  "refinement": {
+    "fixed": "Numeric anchors/baselines remain at pass1 coordinates except user-requested Day/Trip horizontal reflow: numeric centerX453→490; baselines675/707 unchanged.",
+    "typographyOnly": [
+      "Original speed refinement100→92, then vehicle readability revision92→93; fixed anchor(228,349)",
+      "Fuel-range andATF captions baseline309→316 to clear bezel; values unchanged",
+      "Steering caption moved alongside fixed value to clear bezel",
+      "Day/Trip use separate caption, value and km columns, with gaps validated for extreme samples",
+      "Cyrillic captions use bundled NotoSans instead of Latin-onlyInter",
+      "All text sizes increased by1 logical px after the stationary car review; currentGear44 and WifiIndicator unchanged"
+    ]
+  },
+  "readouts": [
+    {
+      "source": "speedKph",
+      "sample": "86",
+      "unit": "км/ч",
+      "format": "Nonnegative whole indicated speed; dial0…240 only; numeric design envelope0…999; SpeedDisplayMode once",
+      "bounds": [
+        124,
+        256,
+        332,
+        354
+      ],
+      "anchor": [
+        228,
+        349
+      ],
+      "center": [
+        228,
+        305
+      ],
+      "baseline": 349,
+      "visualTextCenter": [
+        228,
+        318.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 93,
+      "maxChars": 3,
+      "noData": "—",
+      "label": "СКОРОСТЬ",
+      "samples": [
+        "0",
+        "8",
+        "86",
+        "240",
+        "999"
+      ],
+      "labelAt": [
+        228,
+        285
+      ],
+      "unitAt": [
+        228,
+        377
+      ],
+      "typography": {
+        "caption": {
+          "text": "СКОРОСТЬ",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            228,
+            285
+          ],
+          "baseline": 285,
+          "color": "#9ba8b3",
+          "bounds": [
+            192.024,
+            275,
+            263.976,
+            285
+          ],
+          "visualCenter": [
+            228,
+            280
+          ]
+        },
+        "unit": {
+          "text": "км/ч",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            228,
+            377
+          ],
+          "baseline": 377,
+          "color": "#9ba8b3",
+          "bounds": [
+            210.632,
+            365,
+            245.368,
+            377
+          ],
+          "visualCenter": [
+            228,
+            371
+          ]
+        }
+      }
+    },
+    {
+      "source": "rpm",
+      "sample": "2640",
+      "unit": "об/мин",
+      "format": "0…8000; shared RpmReadoutStabilizer",
+      "bounds": [
+        1585,
+        273,
+        1799,
+        351
+      ],
+      "anchor": [
+        1692,
+        346
+      ],
+      "center": [
+        1692,
+        312
+      ],
+      "baseline": 346,
+      "visualTextCenter": [
+        1692,
+        322.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 73,
+      "maxChars": 4,
+      "noData": "—",
+      "label": "ОБОРОТЫ",
+      "samples": [
+        "0",
+        "10",
+        "2640",
+        "8000"
+      ],
+      "labelAt": [
+        1692,
+        285
+      ],
+      "unitAt": [
+        1692,
+        377
+      ],
+      "typography": {
+        "caption": {
+          "text": "ОБОРОТЫ",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1692,
+            285
+          ],
+          "baseline": 285,
+          "color": "#9ba8b3",
+          "bounds": [
+            1658.234,
+            275,
+            1725.766,
+            285
+          ],
+          "visualCenter": [
+            1692,
+            280
+          ]
+        },
+        "unit": {
+          "text": "об/мин",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            1692,
+            377
+          ],
+          "baseline": 377,
+          "color": "#9ba8b3",
+          "bounds": [
+            1663.884,
+            363,
+            1720.116,
+            377
+          ],
+          "visualCenter": [
+            1692,
+            370
+          ]
+        }
+      }
+    },
+    {
+      "source": "currentGear",
+      "sample": "6",
+      "unit": "",
+      "format": "1…8 only if gearSelector==D",
+      "bounds": [
+        982,
+        28,
+        1018,
+        66
+      ],
+      "anchor": [
+        1000,
+        63
+      ],
+      "center": [
+        1000,
+        47
+      ],
+      "baseline": 63,
+      "visualTextCenter": [
+        1000,
+        48.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 44,
+      "maxChars": 1,
+      "noData": "",
+      "label": "",
+      "samples": [
+        "1",
+        "8"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "fuelLiters",
+      "sample": "54",
+      "unit": "л",
+      "format": "finite >=0; whole",
+      "bounds": [
+        416,
+        207,
+        516,
+        255
+      ],
+      "anchor": [
+        466,
+        250
+      ],
+      "center": [
+        466,
+        231
+      ],
+      "baseline": 250,
+      "visualTextCenter": [
+        466,
+        236
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 43,
+      "maxChars": 3,
+      "noData": "—",
+      "label": "ТОПЛИВО",
+      "labelAt": [
+        466,
+        143
+      ],
+      "unitAt": [
+        466,
+        274
+      ],
+      "samples": [
+        "0",
+        "54",
+        "80"
+      ],
+      "typography": {
+        "caption": {
+          "text": "ТОПЛИВО",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            466,
+            143
+          ],
+          "baseline": 143,
+          "color": "#9ba8b3",
+          "bounds": [
+            432.062,
+            133,
+            499.938,
+            143
+          ],
+          "visualCenter": [
+            466,
+            138
+          ]
+        },
+        "unit": {
+          "text": "л",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            466,
+            274
+          ],
+          "baseline": 274,
+          "color": "#9ba8b3",
+          "bounds": [
+            461.5,
+            265,
+            470.5,
+            274
+          ],
+          "visualCenter": [
+            466,
+            269.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "rangeKm",
+      "sample": "540",
+      "unit": "км",
+      "format": "integer >=0",
+      "bounds": [
+        390,
+        308,
+        542,
+        348
+      ],
+      "anchor": [
+        466,
+        343
+      ],
+      "center": [
+        466,
+        328
+      ],
+      "baseline": 343,
+      "visualTextCenter": [
+        466,
+        331.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 35,
+      "maxChars": 4,
+      "noData": "—",
+      "label": "ЗАПАС ХОДА",
+      "labelAt": [
+        466,
+        316
+      ],
+      "unitAt": [
+        466,
+        365
+      ],
+      "samples": [
+        "0",
+        "9999"
+      ],
+      "typography": {
+        "caption": {
+          "text": "ЗАПАС ХОДА",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            466,
+            316
+          ],
+          "baseline": 316,
+          "color": "#9ba8b3",
+          "bounds": [
+            422.902,
+            306,
+            509.098,
+            319
+          ],
+          "visualCenter": [
+            466,
+            312.5
+          ]
+        },
+        "unit": {
+          "text": "км",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            466,
+            365
+          ],
+          "baseline": 365,
+          "color": "#9ba8b3",
+          "bounds": [
+            456.752,
+            356,
+            475.248,
+            365
+          ],
+          "visualCenter": [
+            466,
+            360.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "coolantC",
+      "sample": "88",
+      "unit": "°C",
+      "format": "40…130 dial; integer numeric",
+      "bounds": [
+        1404,
+        207,
+        1504,
+        255
+      ],
+      "anchor": [
+        1454,
+        250
+      ],
+      "center": [
+        1454,
+        231
+      ],
+      "baseline": 250,
+      "visualTextCenter": [
+        1454,
+        236
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 43,
+      "maxChars": 4,
+      "noData": "—",
+      "label": "ДВИГАТЕЛЬ",
+      "labelAt": [
+        1454,
+        143
+      ],
+      "unitAt": [
+        1454,
+        274
+      ],
+      "samples": [
+        "-40",
+        "130"
+      ],
+      "typography": {
+        "caption": {
+          "text": "ДВИГАТЕЛЬ",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1454,
+            143
+          ],
+          "baseline": 143,
+          "color": "#9ba8b3",
+          "bounds": [
+            1415.336,
+            133,
+            1492.664,
+            146
+          ],
+          "visualCenter": [
+            1454,
+            139.5
+          ]
+        },
+        "unit": {
+          "text": "°C",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            1454,
+            274
+          ],
+          "baseline": 274,
+          "color": "#9ba8b3",
+          "bounds": [
+            1445.576,
+            262,
+            1462.424,
+            274
+          ],
+          "visualCenter": [
+            1454,
+            268
+          ]
+        }
+      }
+    },
+    {
+      "source": "transmissionTemperatureC",
+      "sample": "76",
+      "unit": "°C",
+      "format": "finite; age <=15000 ms, positive timestamp <=now",
+      "bounds": [
+        1386.5,
+        308,
+        1521.5,
+        348
+      ],
+      "anchor": [
+        1454,
+        343
+      ],
+      "center": [
+        1454,
+        328
+      ],
+      "baseline": 343,
+      "visualTextCenter": [
+        1454,
+        331.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 35,
+      "maxChars": 4,
+      "noData": "—",
+      "label": "ATF / °C",
+      "labelAt": [
+        1454,
+        316
+      ],
+      "samples": [
+        "-40",
+        "140"
+      ],
+      "typography": {
+        "caption": {
+          "text": "ATF / °C",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1454,
+            316
+          ],
+          "baseline": 316,
+          "color": "#9ba8b3",
+          "bounds": [
+            1428.752,
+            305,
+            1479.248,
+            316
+          ],
+          "visualCenter": [
+            1454,
+            310.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "outsideTemperatureC",
+      "sample": "+12.5",
+      "unit": "°C",
+      "format": "signed one decimal; finite",
+      "bounds": [
+        1376,
+        381,
+        1532,
+        417
+      ],
+      "anchor": [
+        1454,
+        412
+      ],
+      "center": [
+        1454,
+        399
+      ],
+      "baseline": 412,
+      "visualTextCenter": [
+        1454,
+        402
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 31,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "СНАРУЖИ / °C",
+      "labelAt": [
+        1454,
+        381
+      ],
+      "samples": [
+        "-50.0",
+        "+60.0"
+      ],
+      "typography": {
+        "caption": {
+          "text": "СНАРУЖИ / °C",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1454,
+            381
+          ],
+          "baseline": 381,
+          "color": "#9ba8b3",
+          "bounds": [
+            1410.575,
+            370,
+            1497.425,
+            381
+          ],
+          "visualCenter": [
+            1454,
+            375.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "engineFlywheelTorque",
+      "sample": "248",
+      "unit": "Н·м",
+      "format": "signed rounded; finite",
+      "bounds": [
+        1377,
+        442,
+        1531,
+        480
+      ],
+      "anchor": [
+        1454,
+        475
+      ],
+      "center": [
+        1454,
+        461
+      ],
+      "baseline": 475,
+      "visualTextCenter": [
+        1454,
+        464.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 33,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "МОМЕНТ / Н·м",
+      "labelAt": [
+        1454,
+        444
+      ],
+      "samples": [
+        "-2000",
+        "2000"
+      ],
+      "typography": {
+        "caption": {
+          "text": "МОМЕНТ / Н·м",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1454,
+            444
+          ],
+          "baseline": 444,
+          "color": "#9ba8b3",
+          "bounds": [
+            1405.169,
+            434,
+            1502.831,
+            444
+          ],
+          "visualCenter": [
+            1454,
+            439
+          ]
+        }
+      }
+    },
+    {
+      "source": "instantFuelConsumption",
+      "sample": "8.4",
+      "unit": "л/100 км",
+      "format": "one decimal; measured speed<=1 switches to л/ч",
+      "bounds": [
+        74,
+        516,
+        216,
+        560
+      ],
+      "anchor": [
+        145,
+        555
+      ],
+      "center": [
+        145,
+        538
+      ],
+      "baseline": 555,
+      "visualTextCenter": [
+        145,
+        542.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 39,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "МГНОВ. РАСХОД",
+      "labelAt": [
+        145,
+        517
+      ],
+      "unitAt": [
+        145,
+        576
+      ],
+      "samples": [
+        "0.0",
+        "99.9",
+        "199.9"
+      ],
+      "typography": {
+        "caption": {
+          "text": "МГНОВ. РАСХОД",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            145,
+            517
+          ],
+          "baseline": 517,
+          "color": "#9ba8b3",
+          "bounds": [
+            89.39,
+            507,
+            200.61,
+            520
+          ],
+          "visualCenter": [
+            145,
+            513.5
+          ]
+        },
+        "unit": {
+          "text": "л/100 км",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            145,
+            576
+          ],
+          "baseline": 576,
+          "color": "#9ba8b3",
+          "bounds": [
+            111.772,
+            564,
+            178.228,
+            576
+          ],
+          "visualCenter": [
+            145,
+            570
+          ]
+        }
+      }
+    },
+    {
+      "source": "consumptionLitersPer100Km",
+      "sample": "9.7",
+      "unit": "л/100 км",
+      "format": "one decimal; finite >=0; not journey average",
+      "bounds": [
+        74,
+        586,
+        216,
+        630
+      ],
+      "anchor": [
+        145,
+        625
+      ],
+      "center": [
+        145,
+        608
+      ],
+      "baseline": 625,
+      "visualTextCenter": [
+        145,
+        612.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 39,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "СРЕДНИЙ",
+      "labelAt": [
+        145,
+        593
+      ],
+      "unitAt": [
+        145,
+        646
+      ],
+      "samples": [
+        "0.0",
+        "199.9"
+      ],
+      "typography": {
+        "caption": {
+          "text": "СРЕДНИЙ",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            145,
+            593
+          ],
+          "baseline": 593,
+          "color": "#9ba8b3",
+          "bounds": [
+            111.797,
+            580,
+            178.203,
+            596
+          ],
+          "visualCenter": [
+            145,
+            588
+          ]
+        },
+        "unit": {
+          "text": "л/100 км",
+          "font": "Noto Sans",
+          "fontSizePx": 16,
+          "anchor": [
+            145,
+            646
+          ],
+          "baseline": 646,
+          "color": "#9ba8b3",
+          "bounds": [
+            111.772,
+            634,
+            178.228,
+            646
+          ],
+          "visualCenter": [
+            145,
+            640
+          ]
+        }
+      }
+    },
+    {
+      "source": "voltage",
+      "sample": "14.2",
+      "unit": "В",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        82,
+        665,
+        208,
+        701
+      ],
+      "anchor": [
+        145,
+        696
+      ],
+      "center": [
+        145,
+        683
+      ],
+      "baseline": 696,
+      "visualTextCenter": [
+        145,
+        686
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 31,
+      "maxChars": 4,
+      "noData": "—",
+      "label": "БОРТСЕТЬ / В",
+      "labelAt": [
+        145,
+        667
+      ],
+      "samples": [
+        "0.0",
+        "99.9"
+      ],
+      "typography": {
+        "caption": {
+          "text": "БОРТСЕТЬ / В",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            145,
+            667
+          ],
+          "baseline": 667,
+          "color": "#9ba8b3",
+          "bounds": [
+            100.631,
+            657,
+            189.369,
+            667
+          ],
+          "visualCenter": [
+            145,
+            662
+          ]
+        }
+      }
+    },
+    {
+      "source": "odometerKm",
+      "sample": "124 680",
+      "unit": "км",
+      "format": "whole, thousands separated; finite >=0",
+      "bounds": [
+        244.5,
+        666,
+        397.5,
+        699
+      ],
+      "anchor": [
+        321,
+        694
+      ],
+      "center": [
+        321,
+        682.5
+      ],
+      "baseline": 694,
+      "visualTextCenter": [
+        321,
+        685
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 28,
+      "maxChars": 9,
+      "noData": "—",
+      "label": "ODO / км",
+      "labelAt": [
+        321,
+        666
+      ],
+      "samples": [
+        "0",
+        "9 999 999"
+      ],
+      "typography": {
+        "caption": {
+          "text": "ODO / км",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            321,
+            666
+          ],
+          "baseline": 666,
+          "color": "#9ba8b3",
+          "bounds": [
+            300.532,
+            656,
+            341.468,
+            666
+          ],
+          "visualCenter": [
+            321,
+            661
+          ]
+        }
+      }
+    },
+    {
+      "source": "dayKm",
+      "sample": "42.8",
+      "unit": "км",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        446,
+        649,
+        534,
+        680
+      ],
+      "anchor": [
+        490,
+        675
+      ],
+      "center": [
+        490,
+        664.5
+      ],
+      "baseline": 675,
+      "visualTextCenter": [
+        490,
+        667
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 26,
+      "maxChars": 6,
+      "noData": "—",
+      "label": "DAY",
+      "labelAt": [
+        416,
+        674
+      ],
+      "unitAt": [
+        548,
+        674
+      ],
+      "captionSizePx": 12,
+      "unitSizePx": 12,
+      "samples": [
+        "0.0",
+        "9999.9"
+      ],
+      "typography": {
+        "caption": {
+          "text": "DAY",
+          "font": "Noto Sans",
+          "fontSizePx": 12,
+          "anchor": [
+            416,
+            674
+          ],
+          "baseline": 674,
+          "color": "#9ba8b3",
+          "bounds": [
+            405.266,
+            665,
+            426.734,
+            674
+          ],
+          "visualCenter": [
+            416,
+            669.5
+          ]
+        },
+        "unit": {
+          "text": "км",
+          "font": "Noto Sans",
+          "fontSizePx": 12,
+          "anchor": [
+            548,
+            674
+          ],
+          "baseline": 674,
+          "color": "#f1f4f5",
+          "bounds": [
+            540.814,
+            667,
+            555.186,
+            674
+          ],
+          "visualCenter": [
+            548,
+            670.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "tripKm",
+      "sample": "186.4",
+      "unit": "км",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        446,
+        681,
+        534,
+        712
+      ],
+      "anchor": [
+        490,
+        707
+      ],
+      "center": [
+        490,
+        696.5
+      ],
+      "baseline": 707,
+      "visualTextCenter": [
+        490,
+        699
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 26,
+      "maxChars": 6,
+      "noData": "—",
+      "label": "TRIP",
+      "labelAt": [
+        416,
+        706
+      ],
+      "unitAt": [
+        548,
+        706
+      ],
+      "captionSizePx": 12,
+      "unitSizePx": 12,
+      "samples": [
+        "0.0",
+        "9999.9"
+      ],
+      "typography": {
+        "caption": {
+          "text": "TRIP",
+          "font": "Noto Sans",
+          "fontSizePx": 12,
+          "anchor": [
+            416,
+            706
+          ],
+          "baseline": 706,
+          "color": "#9ba8b3",
+          "bounds": [
+            403.398,
+            697,
+            428.602,
+            706
+          ],
+          "visualCenter": [
+            416,
+            701.5
+          ]
+        },
+        "unit": {
+          "text": "км",
+          "font": "Noto Sans",
+          "fontSizePx": 12,
+          "anchor": [
+            548,
+            706
+          ],
+          "baseline": 706,
+          "color": "#f1f4f5",
+          "bounds": [
+            540.814,
+            699,
+            555.186,
+            706
+          ],
+          "visualCenter": [
+            548,
+            702.5
+          ]
+        }
+      }
+    },
+    {
+      "source": "steeringAngleDeg",
+      "sample": "+12°",
+      "unit": "°",
+      "format": "signed rounded; finite; positive clockwise in mockup; confirm signal convention in implementation",
+      "bounds": [
+        1565,
+        473,
+        1715,
+        511
+      ],
+      "anchor": [
+        1640,
+        506
+      ],
+      "center": [
+        1640,
+        492
+      ],
+      "baseline": 506,
+      "visualTextCenter": [
+        1640,
+        494.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 33,
+      "maxChars": 6,
+      "noData": "—",
+      "label": "РУЛЬ",
+      "labelAt": [
+        1755,
+        504
+      ],
+      "samples": [
+        "-1080°",
+        "+1080°"
+      ],
+      "typography": {
+        "caption": {
+          "text": "РУЛЬ",
+          "font": "Noto Sans",
+          "fontSizePx": 14,
+          "anchor": [
+            1755,
+            504
+          ],
+          "baseline": 504,
+          "color": "#9ba8b3",
+          "bounds": [
+            1738.837,
+            494,
+            1771.163,
+            504
+          ],
+          "visualCenter": [
+            1755,
+            499
+          ]
+        }
+      }
+    },
+    {
+      "source": "tyreFrontLeftBar",
+      "sample": "2.35",
+      "unit": "bar",
+      "format": "two decimals; finite >=0",
+      "bounds": [
+        1565,
+        542,
+        1675,
+        576
+      ],
+      "anchor": [
+        1620,
+        571
+      ],
+      "center": [
+        1620,
+        559
+      ],
+      "baseline": 571,
+      "visualTextCenter": [
+        1620,
+        561.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "FL",
+      "samples": [
+        "0.00",
+        "9.99",
+        "10.00"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "wheelFrontLeftKph",
+      "sample": "86.0",
+      "unit": "км/ч",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        1708,
+        542,
+        1820,
+        576
+      ],
+      "anchor": [
+        1764,
+        571
+      ],
+      "center": [
+        1764,
+        559
+      ],
+      "baseline": 571,
+      "visualTextCenter": [
+        1764,
+        561.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "FL",
+      "samples": [
+        "0.0",
+        "350.0"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "tyreFrontRightBar",
+      "sample": "2.36",
+      "unit": "bar",
+      "format": "two decimals; finite >=0",
+      "bounds": [
+        1565,
+        573,
+        1675,
+        607
+      ],
+      "anchor": [
+        1620,
+        602
+      ],
+      "center": [
+        1620,
+        590
+      ],
+      "baseline": 602,
+      "visualTextCenter": [
+        1620,
+        592.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "FR",
+      "samples": [
+        "0.00",
+        "9.99",
+        "10.00"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "wheelFrontRightKph",
+      "sample": "86.2",
+      "unit": "км/ч",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        1708,
+        573,
+        1820,
+        607
+      ],
+      "anchor": [
+        1764,
+        602
+      ],
+      "center": [
+        1764,
+        590
+      ],
+      "baseline": 602,
+      "visualTextCenter": [
+        1764,
+        592.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "FR",
+      "samples": [
+        "0.0",
+        "350.0"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "tyreRearLeftBar",
+      "sample": "2.32",
+      "unit": "bar",
+      "format": "two decimals; finite >=0",
+      "bounds": [
+        1565,
+        604,
+        1675,
+        638
+      ],
+      "anchor": [
+        1620,
+        633
+      ],
+      "center": [
+        1620,
+        621
+      ],
+      "baseline": 633,
+      "visualTextCenter": [
+        1620,
+        623.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "RL",
+      "samples": [
+        "0.00",
+        "9.99",
+        "10.00"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "wheelRearLeftKph",
+      "sample": "85.9",
+      "unit": "км/ч",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        1708,
+        604,
+        1820,
+        638
+      ],
+      "anchor": [
+        1764,
+        633
+      ],
+      "center": [
+        1764,
+        621
+      ],
+      "baseline": 633,
+      "visualTextCenter": [
+        1764,
+        623.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "RL",
+      "samples": [
+        "0.0",
+        "350.0"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "tyreRearRightBar",
+      "sample": "2.34",
+      "unit": "bar",
+      "format": "two decimals; finite >=0",
+      "bounds": [
+        1565,
+        635,
+        1675,
+        669
+      ],
+      "anchor": [
+        1620,
+        664
+      ],
+      "center": [
+        1620,
+        652
+      ],
+      "baseline": 664,
+      "visualTextCenter": [
+        1620,
+        654.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "RR",
+      "samples": [
+        "0.00",
+        "9.99",
+        "10.00"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "wheelRearRightKph",
+      "sample": "86.1",
+      "unit": "км/ч",
+      "format": "one decimal; finite >=0",
+      "bounds": [
+        1708,
+        635,
+        1820,
+        669
+      ],
+      "anchor": [
+        1764,
+        664
+      ],
+      "center": [
+        1764,
+        652
+      ],
+      "baseline": 664,
+      "visualTextCenter": [
+        1764,
+        654.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 29,
+      "maxChars": 5,
+      "noData": "—",
+      "label": "RR",
+      "samples": [
+        "0.0",
+        "350.0"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "DashboardClock.time",
+      "sample": "14:32",
+      "unit": "",
+      "format": "HH:mm; system clock",
+      "bounds": [
+        1082,
+        21,
+        1214,
+        61
+      ],
+      "anchor": [
+        1148,
+        56
+      ],
+      "center": [
+        1148,
+        41
+      ],
+      "baseline": 56,
+      "visualTextCenter": [
+        1148,
+        44.5
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 35,
+      "maxChars": 5,
+      "noData": "—:—",
+      "label": "",
+      "samples": [
+        "00:00",
+        "23:59"
+      ],
+      "typography": {}
+    },
+    {
+      "source": "DashboardClock.date",
+      "sample": "28.10.2026",
+      "unit": "",
+      "format": "dd.MM.yyyy; system clock",
+      "bounds": [
+        705.5,
+        29,
+        870.5,
+        59
+      ],
+      "anchor": [
+        788,
+        54
+      ],
+      "center": [
+        788,
+        44
+      ],
+      "baseline": 54,
+      "visualTextCenter": [
+        788,
+        46
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 25,
+      "maxChars": 10,
+      "noData": "—",
+      "label": "",
+      "typography": {}
+    },
+    {
+      "source": "WifiIndicator",
+      "sample": "connected",
+      "unit": "",
+      "format": "shared WifiIndicator: connection and signal",
+      "bounds": [
+        864,
+        27,
+        898,
+        57
+      ],
+      "anchor": [
+        881,
+        42
+      ],
+      "center": [
+        881,
+        42
+      ],
+      "baseline": 42,
+      "visualTextCenter": [
+        881,
+        42
+      ],
+      "font": "Rajdhani",
+      "fontSizePx": 0,
+      "maxChars": 0,
+      "noData": "disconnected glyph",
+      "label": "",
+      "stateSamples": [
+        "connected",
+        "disconnected",
+        "unknown"
+      ],
+      "typography": {}
+    }
+  ],
+  "scales": [
+    {
+      "source": "speedKph",
+      "center": [
+        228,
+        330
+      ],
+      "radius": 120,
+      "min": 0,
+      "max": 240,
+      "startDeg": 135,
+      "sweepDeg": 270,
+      "step": 40,
+      "minorStep": 10,
+      "interpolation": "linear angle; clockwise; clamp pointer only, do not clamp numeric reading",
+      "calibration": [
+        {
+          "value": 0,
+          "xy": [
+            143.147,
+            414.853
+          ]
+        },
+        {
+          "value": 40,
+          "xy": [
+            108,
+            330
+          ]
+        },
+        {
+          "value": 80,
+          "xy": [
+            143.147,
+            245.147
+          ]
+        },
+        {
+          "value": 120,
+          "xy": [
+            228,
+            210
+          ]
+        },
+        {
+          "value": 160,
+          "xy": [
+            312.853,
+            245.147
+          ]
+        },
+        {
+          "value": 200,
+          "xy": [
+            348,
+            330
+          ]
+        },
+        {
+          "value": 240,
+          "xy": [
+            312.853,
+            414.853
+          ]
+        }
+      ]
+    },
+    {
+      "source": "rpm",
+      "center": [
+        1692,
+        330
+      ],
+      "radius": 120,
+      "min": 0,
+      "max": 8000,
+      "startDeg": 135,
+      "sweepDeg": 270,
+      "step": 1000,
+      "minorStep": 250,
+      "interpolation": "linear angle; clockwise; clamp pointer only, do not clamp numeric reading",
+      "calibration": [
+        {
+          "value": 0,
+          "xy": [
+            1607.147,
+            414.853
+          ]
+        },
+        {
+          "value": 1000,
+          "xy": [
+            1574.306,
+            353.411
+          ]
+        },
+        {
+          "value": 2000,
+          "xy": [
+            1581.134,
+            284.078
+          ]
+        },
+        {
+          "value": 3000,
+          "xy": [
+            1625.332,
+            230.224
+          ]
+        },
+        {
+          "value": 4000,
+          "xy": [
+            1692,
+            210
+          ]
+        },
+        {
+          "value": 5000,
+          "xy": [
+            1758.668,
+            230.224
+          ]
+        },
+        {
+          "value": 6000,
+          "xy": [
+            1802.866,
+            284.078
+          ]
+        },
+        {
+          "value": 7000,
+          "xy": [
+            1809.694,
+            353.411
+          ]
+        },
+        {
+          "value": 8000,
+          "xy": [
+            1776.853,
+            414.853
+          ]
+        }
+      ]
+    },
+    {
+      "source": "fuelLiters",
+      "center": [
+        466,
+        238
+      ],
+      "radius": 53,
+      "min": 0,
+      "max": 80,
+      "startDeg": 140,
+      "sweepDeg": 260,
+      "step": 20,
+      "interpolation": "linear angle; clockwise; clamp pointer only, do not clamp numeric reading",
+      "calibration": [
+        {
+          "value": 0,
+          "xy": [
+            425.4,
+            272.068
+          ]
+        },
+        {
+          "value": 20,
+          "xy": [
+            417.966,
+            215.601
+          ]
+        },
+        {
+          "value": 40,
+          "xy": [
+            466,
+            185
+          ]
+        },
+        {
+          "value": 60,
+          "xy": [
+            514.034,
+            215.601
+          ]
+        },
+        {
+          "value": 80,
+          "xy": [
+            506.6,
+            272.068
+          ]
+        }
+      ]
+    },
+    {
+      "source": "coolantC",
+      "center": [
+        1454,
+        238
+      ],
+      "radius": 53,
+      "min": 40,
+      "max": 130,
+      "startDeg": 140,
+      "sweepDeg": 260,
+      "step": 30,
+      "interpolation": "linear angle; clockwise; clamp pointer only, do not clamp numeric reading",
+      "calibration": [
+        {
+          "value": 40,
+          "xy": [
+            1413.4,
+            272.068
+          ]
+        },
+        {
+          "value": 70,
+          "xy": [
+            1417.629,
+            199.449
+          ]
+        },
+        {
+          "value": 100,
+          "xy": [
+            1490.371,
+            199.449
+          ]
+        },
+        {
+          "value": 130,
+          "xy": [
+            1494.6,
+            272.068
+          ]
+        }
+      ]
+    }
+  ]
+}

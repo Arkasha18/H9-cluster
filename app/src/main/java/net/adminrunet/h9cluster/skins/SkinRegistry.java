@@ -1,6 +1,7 @@
 package net.adminrunet.h9cluster.skins;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
+import net.adminrunet.h9cluster.skins.apexsport.ApexSportClusterView;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
@@ -28,6 +29,7 @@ public final class SkinRegistry {
     public static final String SPORT = "sport";
     public static final String STOCK = "stock";
     public static final String SCULPTED_TITANIUM = "sculptedtitanium";
+    public static final String APEX_SPORT = "apexsport";
 
     private interface RendererFactory {
         View create(
@@ -208,6 +210,18 @@ public final class SkinRegistry {
                     public View create(Context context, SkinSettings settings,
                             SpeedDisplayMode speedDisplayMode) {
                         return new SculptedTitaniumClusterView(context, speedDisplayMode);
+                    }
+                },
+                null),
+        new Definition(
+                APEX_SPORT,
+                "APEX SPORT — круглые приборы",
+                "Спортивные круглые шкалы, дуговые указатели топлива и ОЖ, широкая карта",
+                new RendererFactory() {
+                    @Override
+                    public View create(Context context, SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new ApexSportClusterView(context, speedDisplayMode);
                     }
                 },
                 null),

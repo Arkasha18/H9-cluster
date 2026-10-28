@@ -20,10 +20,13 @@
 
 ## Скины
 
-Доступны шесть тем. Sculpted Titanium показана контрольным рендером с
-примерными данными, ION AURORA — в Demo с имитацией системных индикаторов;
+Доступны семь тем. APEX SPORT показана нативным Canvas-рендером Robolectric,
+Sculpted Titanium — контрольным рендером с примерными данными,
+ION AURORA — в Demo с имитацией системных индикаторов;
 остальные снимки получены на реальном `Display ID 2`. Разрешение —
 `1920×720`, изображения открываются по клику.
+
+[![H9 Cluster APEX SPORT — нативный Canvas](docs/images/skins/apexsport-1920x720.png)](docs/images/skins/apexsport-1920x720.png)
 
 [![H9 Cluster Sculpted Titanium — контрольный рендер](docs/images/skins/sculptedtitanium-1920x720.png)](docs/images/skins/sculptedtitanium-1920x720.png)
 
@@ -42,12 +45,14 @@
 
 ## Возможности
 
-- независимые темы `Classic`, `Sport`, `Horizon`, `Simple`, `ION AURORA`
-  и `Sculpted Titanium`;
+- независимые темы `Classic`, `Sport`, `Horizon`, `Simple`, `ION AURORA`,
+  `Sculpted Titanium` и `APEX SPORT`;
+- круглые спортивные приборы, графические указатели топлива и ОЖ,
+  широкая карта в `APEX SPORT`;
 - рельефное титановое оформление с янтарной подсветкой, широким центром
   для карты и плавным переходом к ней в `Sculpted Titanium`;
-- плавный тахометр со стабилизированными цифрами в `Sculpted Titanium`
-  и `ION AURORA`;
+- плавный тахометр со стабилизированными цифрами в `Sculpted Titanium`,
+  `ION AURORA` и `APEX SPORT`;
 - анимированные барабанные шкалы скорости и оборотов в `ION AURORA`;
 - отдельно откалиброванные по печатным делениям стрелки спидометра и
   тахометра в темах `Classic` и `Sport`;
@@ -63,7 +68,7 @@
 - момент маховика, средний и мгновенный расход топлива и напряжение бортовой
   сети;
 - индикатор подключения Wi-Fi в темах `Classic`, `Sport`, `Horizon`,
-  `ION AURORA` и `Sculpted Titanium`;
+  `ION AURORA`, `Sculpted Titanium` и `APEX SPORT`;
 - часы под штатной передачей в согласованных рамках в `ION AURORA`, `Classic`
   и `Sport`; текущая дата дополнительно отображается в `ION AURORA`;
   в `Sculpted Titanium` время и дата расположены слева вверху;

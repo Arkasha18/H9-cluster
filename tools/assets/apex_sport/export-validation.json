@@ -1,0 +1,15 @@
+{
+  "canvas": [
+    1920,
+    720
+  ],
+  "protectedPixels": 40651,
+  "overlapsIncludingOnePixelMargin": 0,
+  "mapCorridorOverlap": 0,
+  "assets": {
+    "chrome.png": "45e20a3b3c056cc655cb3e909979973b4aa54262930782653f0e53e01b2576e8",
+    "map_black_gradient.png": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+    "NotoSans.ttf": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d"
+  },
+  "content": "Only static housings/rails, immutable original calibration and font. All captions, scales, values, clock, Wifi and pointers are drawn by Android Canvas."
+}

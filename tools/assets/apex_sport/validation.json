@@ -1,0 +1,63 @@
+{
+  "canvas": [
+    1920,
+    720
+  ],
+  "requiredReadouts": 27,
+  "lowerLeftOverlap": 0,
+  "clearanceOverlap": 0,
+  "criticalOverlap": 0,
+  "criticalCollisionExamples": [],
+  "corridorOverlap": 0,
+  "coreAlpha": 0,
+  "preservedBaseErrors": 0,
+  "fitErrors": [],
+  "calibratedHeaderUnchanged": true,
+  "calibratedBaseUnchanged": true,
+  "dayTripSpacing": [
+    {
+      "field": "dayKm",
+      "sample": "0.0",
+      "captionToValueInkGapPx": 48.484,
+      "valueToUnitInkGapPx": 36.032
+    },
+    {
+      "field": "dayKm",
+      "sample": "9999.9",
+      "captionToValueInkGapPx": 28.984,
+      "valueToUnitInkGapPx": 16.532
+    },
+    {
+      "field": "dayKm",
+      "sample": "—",
+      "captionToValueInkGapPx": 56.766,
+      "valueToUnitInkGapPx": 44.314
+    },
+    {
+      "field": "tripKm",
+      "sample": "0.0",
+      "captionToValueInkGapPx": 46.616,
+      "valueToUnitInkGapPx": 36.032
+    },
+    {
+      "field": "tripKm",
+      "sample": "9999.9",
+      "captionToValueInkGapPx": 27.116,
+      "valueToUnitInkGapPx": 16.532
+    },
+    {
+      "field": "tripKm",
+      "sample": "—",
+      "captionToValueInkGapPx": 54.898,
+      "valueToUnitInkGapPx": 44.314
+    }
+  ],
+  "originalBaseSha256": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+  "embeddedBaseSha256": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+  "foregroundSha256": "dd876207b16e4cd4725567a1781a7c8f99b3de7e615018d3fbc5a83b3d4c570e",
+  "coordinatesSha256": "c1274d7fa4e578819c744df3416fe0e86040c391bc5aa453ed3b3b7198283bd6",
+  "limitations": [
+    "This report validates SVG design only; native Android and APK checks are recorded separately",
+    "Vehicle display compositing and real data require on-device verification"
+  ]
+}
