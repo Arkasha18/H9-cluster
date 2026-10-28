@@ -132,7 +132,7 @@ public final class ClusterState {
                 0.0f,
                 Float.NaN,
                 0.0f,
-                0.0f,
+                Float.NaN,
                 0.0f,
                 Float.NaN,
                 Float.NaN,
