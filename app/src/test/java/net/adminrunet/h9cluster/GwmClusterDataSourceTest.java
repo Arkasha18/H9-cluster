@@ -9,6 +9,22 @@ import org.junit.Test;
 
 public final class GwmClusterDataSourceTest {
     @Test
+    public void adapterTemperatureErrorDoesNotLookLikeRealMinusFifty() {
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("-1001")));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("-1000")));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("NaN")));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("waiting")));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC(null)));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("-50.1")));
+        assertTrue(Float.isNaN(GwmClusterDataSource.outsideTemperatureC("60.1")));
+        assertTrue(Float.isNaN(ClusterState.empty().outsideTemperatureC));
+        assertEquals(11.0f, GwmClusterDataSource.outsideTemperatureC("11.0"), 0.0f);
+        assertEquals(-12.5f, GwmClusterDataSource.outsideTemperatureC("-12.5"), 0.0f);
+        assertEquals(-50.0f, GwmClusterDataSource.outsideTemperatureC("-50"), 0.0f);
+        assertEquals(60.0f, GwmClusterDataSource.outsideTemperatureC("60"), 0.0f);
+    }
+
+    @Test
     public void invalidBinderRpmDoesNotReplaceLastFdbusSample() {
         GwmClusterDataSource.RpmSample sample =
                 GwmClusterDataSource.selectRpmSample(
