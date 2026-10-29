@@ -32,6 +32,7 @@ import java.util.function.LongSupplier;
 
 /** Live APEX SPORT instruments at the anchors in tools/assets/apex_sport/layout.json. */
 public final class ApexSportClusterView extends View implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final String ASSETS = "dashboard/skins/apexsport/";
     private static final String DASH = "—";
     private static final int WHITE = 0xFFF1F4F5;
@@ -101,6 +102,12 @@ public final class ApexSportClusterView extends View implements ClusterRenderer 
     }
 
     @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
+    }
+
+    @Override
     public void setClusterState(ClusterState snapshot) {
         if (snapshot == null) return;
         state = snapshot;
@@ -137,7 +144,9 @@ public final class ApexSportClusterView extends View implements ClusterRenderer 
         text(canvas, clock.getTimeText(), 1148, 56, 35, 132, WHITE, numeric);
         text(canvas, clock.getDateText(), 788, 54, 25, 165, WHITE, numeric);
         wifi.draw(canvas, wifiPaint, 881, 42, now);
-        text(canvas, values.get("currentGear"), 1000, 63, 44, 36, WHITE, numeric);
+        if (gearNumberVisible) {
+            text(canvas, values.get("currentGear"), 1000, 63, 44, 36, WHITE, numeric);
+        }
         text(canvas, "APEX", 174, 56, 32, 160, 0xFFD9E1E6, caption);
         text(canvas, "S P O R T", 174, 77, 12, 160, RED, caption);
     }

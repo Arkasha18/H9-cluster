@@ -12,6 +12,7 @@ public final class SkinPreferences {
     private static final String KEY_SELECTED_SKIN = "selected_skin";
     private static final String KEY_SPEED_DISPLAY_MODE = "speed_display_mode";
     private static final String KEY_FUEL_TANK_CAPACITY = "fuel_tank_capacity_liters";
+    private static final String KEY_GEAR_NUMBER_VISIBLE = "gear_number_visible";
 
     private SkinPreferences() {
     }
@@ -47,6 +48,19 @@ public final class SkinPreferences {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putInt(KEY_FUEL_TANK_CAPACITY, FuelTankCapacity.normalize(capacity))
+                .apply();
+    }
+
+    /** Keep the existing companion numeral until the user hides it for their vehicle. */
+    public static boolean isGearNumberVisible(Context context) {
+        return context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_GEAR_NUMBER_VISIBLE, true);
+    }
+
+    public static void setGearNumberVisible(Context context, boolean visible) {
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_GEAR_NUMBER_VISIBLE, visible)
                 .apply();
     }
 

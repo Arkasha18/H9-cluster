@@ -24,6 +24,7 @@ final class SkinSettingsSession {
         final SkinSettings settings;
         final SpeedDisplayMode speedDisplayMode;
         final int fuelTankCapacityLiters;
+        final boolean gearNumberVisible;
 
         Snapshot(
                 String skinId,
@@ -37,12 +38,22 @@ final class SkinSettingsSession {
                 SkinSettings settings,
                 SpeedDisplayMode speedDisplayMode,
                 int fuelTankCapacityLiters) {
+            this(skinId, settings, speedDisplayMode, fuelTankCapacityLiters, true);
+        }
+
+        Snapshot(
+                String skinId,
+                SkinSettings settings,
+                SpeedDisplayMode speedDisplayMode,
+                int fuelTankCapacityLiters,
+                boolean gearNumberVisible) {
             this.skinId = SkinRegistry.normalize(skinId);
             this.settings = settings == null ? SkinSettings.empty() : settings;
             this.speedDisplayMode = speedDisplayMode == null
                     ? SpeedDisplayMode.REAL
                     : speedDisplayMode;
             this.fuelTankCapacityLiters = FuelTankCapacity.normalize(fuelTankCapacityLiters);
+            this.gearNumberVisible = gearNumberVisible;
         }
 
         @Override
@@ -57,12 +68,14 @@ final class SkinSettingsSession {
             return skinId.equals(that.skinId)
                     && settings.equals(that.settings)
                     && speedDisplayMode == that.speedDisplayMode
-                    && fuelTankCapacityLiters == that.fuelTankCapacityLiters;
+                    && fuelTankCapacityLiters == that.fuelTankCapacityLiters
+                    && gearNumberVisible == that.gearNumberVisible;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(skinId, settings, speedDisplayMode, fuelTankCapacityLiters);
+            return Objects.hash(skinId, settings, speedDisplayMode,
+                    fuelTankCapacityLiters, gearNumberVisible);
         }
     }
 
@@ -72,6 +85,7 @@ final class SkinSettingsSession {
     private String selectedSkinId;
     private SpeedDisplayMode speedDisplayMode = SpeedDisplayMode.REAL;
     private int fuelTankCapacityLiters = FuelTankCapacity.DEFAULT_LITERS;
+    private boolean gearNumberVisible = true;
 
     SkinSettingsSession(String selectedSkinId, Loader loader) {
         this(
@@ -122,12 +136,17 @@ final class SkinSettingsSession {
         fuelTankCapacityLiters = FuelTankCapacity.normalize(capacity);
     }
 
+    void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+    }
+
     Snapshot snapshot() {
         return new Snapshot(
                 selectedSkinId,
                 drafts.get(selectedSkinId),
                 speedDisplayMode,
-                fuelTankCapacityLiters);
+                fuelTankCapacityLiters,
+                gearNumberVisible);
     }
 
     Map<String, SkinSettings> drafts() {

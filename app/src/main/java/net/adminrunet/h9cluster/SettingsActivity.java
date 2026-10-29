@@ -38,6 +38,7 @@ public final class SettingsActivity extends Activity {
                 SkinPreferences.getSpeedDisplayMode(this));
         session.selectFuelTankCapacity(
                 SkinPreferences.getFuelTankCapacityLiters(this));
+        session.setGearNumberVisible(SkinPreferences.isGearNumberVisible(this));
         settingsView = new SettingsView(
                 this,
                 session,
@@ -64,6 +65,9 @@ public final class SettingsActivity extends Activity {
                         SkinPreferences.setFuelTankCapacityLiters(
                                 SettingsActivity.this,
                                 draft.fuelTankCapacityLiters);
+                        SkinPreferences.setGearNumberVisible(
+                                SettingsActivity.this,
+                                draft.gearNumberVisible);
                         for (Map.Entry<String, SkinSettings> entry
                                 : session.drafts().entrySet()) {
                             SkinSettingsStore.save(

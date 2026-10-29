@@ -91,6 +91,9 @@ public final class ClusterLauncher {
             intent.putExtra(
                     PreviewActivity.EXTRA_DRAFT_FUEL_TANK_CAPACITY,
                     draft.fuelTankCapacityLiters);
+            intent.putExtra(
+                    PreviewActivity.EXTRA_DRAFT_GEAR_NUMBER_VISIBLE,
+                    draft.gearNumberVisible);
         }
         intent.putExtra(PreviewActivity.EXTRA_USER_REQUESTED, userRequested);
         intent.putExtra(

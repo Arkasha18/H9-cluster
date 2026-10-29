@@ -28,6 +28,7 @@ import java.util.Locale;
 
 /** Approved titanium artwork with independently rendered, live 1920x720 readouts. */
 public final class SculptedTitaniumClusterView extends View implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final int WHITE = 0xFFF0EEE7;
     private static final int MUTED = 0xFFA4B0B5;
     private static final int AMBER = 0xFFFFB153;
@@ -85,6 +86,12 @@ public final class SculptedTitaniumClusterView extends View implements ClusterRe
         wifi = new WifiIndicator(context);
         staticBase = buildStaticBase(context);
         updateReadouts();
+    }
+
+    @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
     }
 
     @Override
@@ -146,7 +153,9 @@ public final class SculptedTitaniumClusterView extends View implements ClusterRe
         text(canvas, outside, 1825, 64, 31, 162, Paint.Align.CENTER, WHITE, true);
         // The car owns the selector/manual caption. Demo adds that caption in
         // its own upper system layer, never in the production skin.
-        if (!gear.isEmpty()) text(canvas, gear, 1000, 63, 44, 32, Paint.Align.CENTER, WHITE, true);
+        if (gearNumberVisible && !gear.isEmpty()) {
+            text(canvas, gear, 1000, 63, 44, 32, Paint.Align.CENTER, WHITE, true);
+        }
     }
 
     private void drawGauges(Canvas canvas) {

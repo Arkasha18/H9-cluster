@@ -27,6 +27,7 @@ import android.view.View;
 /** Simple skin renderer that preserves the factory indicator zones. */
 public final class SimpleClusterView extends View
         implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private final Paint bitmapPaint = new Paint(
@@ -116,6 +117,12 @@ public final class SimpleClusterView extends View
         linePaint.setStrokeCap(Paint.Cap.ROUND);
         progressPaint.setStyle(Paint.Style.STROKE);
         progressPaint.setStrokeCap(Paint.Cap.BUTT);
+    }
+
+    @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
     }
 
     @Override
@@ -515,6 +522,7 @@ public final class SimpleClusterView extends View
     }
 
     private void drawCurrentGear(Canvas canvas, ClusterState state) {
+        if (!gearNumberVisible) return;
         configureText(
                 gaugeTypeface,
                 44.0f,

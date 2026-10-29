@@ -30,6 +30,11 @@ final class DemoSystemIconsView extends View implements ClusterRenderer {
     }
 
     @Override
+    public void setGearNumberVisible(boolean visible) {
+        // This layer imitates the factory panel, not the skin's added numeral.
+    }
+
+    @Override
     public void setClusterState(ClusterState state) {
         // Static lamp test only. Selector letters and drive mode are never imitated.
     }
