@@ -46,6 +46,8 @@ public final class PreviewActivity extends Activity
             "draft_speed_display_mode";
     public static final String EXTRA_DRAFT_FUEL_TANK_CAPACITY =
             "draft_fuel_tank_capacity_liters";
+    public static final String EXTRA_DRAFT_GEAR_NUMBER_VISIBLE =
+            "draft_gear_number_visible";
     public static final String EXTRA_DEMO_INVALID_CONSUMPTION =
             "demo_invalid_consumption";
     private static final String STATE_USER_REQUEST_CONSUMED =
@@ -265,7 +267,9 @@ public final class PreviewActivity extends Activity
                                 intent.getStringExtra(
                                         EXTRA_DRAFT_SPEED_DISPLAY_MODE)),
                         intent.getIntExtra(EXTRA_DRAFT_FUEL_TANK_CAPACITY,
-                                SkinPreferences.getFuelTankCapacityLiters(this)));
+                                SkinPreferences.getFuelTankCapacityLiters(this)),
+                        intent.getBooleanExtra(EXTRA_DRAFT_GEAR_NUMBER_VISIBLE,
+                                SkinPreferences.isGearNumberVisible(this)));
             }
         }
         String persistedSkin = SkinPreferences.getSelectedSkin(this);
@@ -273,7 +277,8 @@ public final class PreviewActivity extends Activity
                 persistedSkin,
                 SkinSettingsStore.load(this, persistedSkin),
                 SkinPreferences.getSpeedDisplayMode(this),
-                SkinPreferences.getFuelTankCapacityLiters(this));
+                SkinPreferences.getFuelTankCapacityLiters(this),
+                SkinPreferences.isGearNumberVisible(this));
     }
 
     private void applySnapshot(
@@ -288,6 +293,7 @@ public final class PreviewActivity extends Activity
                 snapshot.settings,
                 snapshot.speedDisplayMode);
         clusterRenderer = (ClusterRenderer) replacement;
+        clusterRenderer.setGearNumberVisible(snapshot.gearNumberVisible);
         activeSnapshot = snapshot;
         replacement.setBackgroundColor(
                 PreviewAppearance.backgroundColor(BuildConfig.DEMO_MODE));

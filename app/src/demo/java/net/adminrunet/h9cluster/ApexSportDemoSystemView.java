@@ -35,6 +35,11 @@ final class ApexSportDemoSystemView extends FrameLayout implements ClusterRender
     }
 
     @Override
+    public void setGearNumberVisible(boolean visible) {
+        // This layer imitates the factory panel, not the skin's added numeral.
+    }
+
+    @Override
     public void setClusterState(ClusterState snapshot) {
         if (snapshot == null) return;
         factoryLayer.setClusterState(snapshot);

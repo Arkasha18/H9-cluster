@@ -32,6 +32,7 @@ import java.util.Locale;
  * every changing needle, number, status and indicator is drawn in this class.
  */
 public final class ClassicClusterView extends View implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float MAIN_DIAL_CENTER_Y = 426.0f;
@@ -129,6 +130,12 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
         bitmapPaint.setAlpha(255);
         linePaint.setStyle(Paint.Style.STROKE);
         linePaint.setStrokeCap(Paint.Cap.ROUND);
+    }
+
+    @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
     }
 
     @Override
@@ -608,7 +615,7 @@ public final class ClassicClusterView extends View implements ClusterRenderer {
     private void drawCurrentGear(Canvas canvas, ClusterState state) {
         // Match ION AURORA: the factory owns selector letters and manual-mode text.
         // No lower GEAR card, frame, or duplicate D/M caption is drawn by the skin.
-        if (!GearSelector.DRIVE.equals(state.gearSelector)) {
+        if (!gearNumberVisible || !GearSelector.DRIVE.equals(state.gearSelector)) {
             return;
         }
         String ratio = GearSelector.ratio(state.currentGear);
