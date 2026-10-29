@@ -134,6 +134,8 @@ public final class UpdateManager {
 
                 JSONObject release = new JSONObject(readResponse(connection));
                 String latestVersion = release.getString("tag_name");
+                Log.i(TAG, "Release check succeeded: current=" + currentVersion
+                        + ", latest=" + latestVersion);
                 if (!isNewerVersion(currentVersion, latestVersion)) {
                     if (userInitiated) {
                         showToast("Установлена актуальная версия");
@@ -221,10 +223,11 @@ public final class UpdateManager {
         }
         NetworkCapabilities capabilities =
                 manager.getNetworkCapabilities(manager.getActiveNetwork());
+        // A VPN may expose only TRANSPORT_VPN, even when it uses Wi-Fi.
+        // Server reachability is determined by the update request itself.
         return capabilities != null
-                && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+                && capabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     private void showUpdateDialog(
