@@ -143,7 +143,7 @@ dependencies {
     implementation("com.jcraft:jsch:0.1.55")
     implementation("io.noties.markwon:core:4.6.2")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("org.robolectric:robolectric:4.17")
 }
 
 // Demo uses synthetic telemetry and never loads the vehicle's ARM64 FDBus
