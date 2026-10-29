@@ -25,6 +25,11 @@ final class TitaniumDemoSystemView extends FrameLayout implements ClusterRendere
     }
 
     @Override
+    public void setGearNumberVisible(boolean visible) {
+        // This layer imitates the factory panel, not the skin's added numeral.
+    }
+
+    @Override
     public void setClusterState(ClusterState snapshot) {
         if (snapshot == null) return;
         state = snapshot;

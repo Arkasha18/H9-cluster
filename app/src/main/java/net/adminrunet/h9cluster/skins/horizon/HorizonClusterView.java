@@ -34,6 +34,7 @@ import java.util.Locale;
  * navigation and transmission layers remain visible underneath.
  */
 public final class HorizonClusterView extends View implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
 
@@ -96,6 +97,12 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         wifiIndicator = new WifiIndicator(context);
         setBackgroundColor(Color.TRANSPARENT);
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
+    }
+
+    @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
     }
 
     @Override
@@ -425,7 +432,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         canvas.drawText("GEAR", bounds.centerX(), 96.0f, textPaint);
         configureText(29.0f, Paint.Align.CENTER, COLOR_TEXT, true);
         canvas.drawText(
-                GearSelector.label(state.gearSelector, state.currentGear),
+                GearSelector.label(state.gearSelector, gearNumberVisible ? state.currentGear : 0),
                 bounds.centerX(),
                 130.0f,
                 textPaint);

@@ -28,6 +28,7 @@ import java.util.Locale;
 
 /** ION AURORA spacecraft cockpit with two animated cylindrical rolling tapes. */
 public final class IonAuroraClusterView extends View implements ClusterRenderer {
+    private boolean gearNumberVisible = true;
     private static final float LOGICAL_WIDTH = 1920.0f;
     private static final float LOGICAL_HEIGHT = 720.0f;
     private static final float TAPE_OFFSET_Y = 0.0f;
@@ -181,6 +182,12 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         shapePaint.setStyle(Paint.Style.FILL);
         bitmapPaint.setAlpha(255);
 
+    }
+
+    @Override
+    public void setGearNumberVisible(boolean visible) {
+        gearNumberVisible = visible;
+        invalidate();
     }
 
     @Override
@@ -350,7 +357,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     }
 
     private void drawCurrentGear(Canvas canvas, float reveal) {
-        if (currentGearText.isEmpty()) return;
+        if (!gearNumberVisible || currentGearText.isEmpty()) return;
         // Same numeric position as Simple: the vehicle owns the selector letter.
         // The sole user-authorized mask03 exception is this small 1..8 readout.
         configureText(gaugeTypeface, 44, Paint.Align.CENTER, COLOR_WHITE, true);

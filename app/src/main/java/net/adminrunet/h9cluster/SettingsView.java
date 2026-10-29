@@ -47,6 +47,8 @@ public final class SettingsView extends View {
     private static final float CONFIGURE_RIGHT = 850.0f;
     private static final float CONFIGURE_TOP = 318.0f;
     private static final float CONFIGURE_BOTTOM = 360.0f;
+    private static final float SAVE_LEFT = 350.0f;
+    private static final float SAVE_RIGHT = 850.0f;
     private static final float SAVE_TOP = 368.0f;
     private static final float SAVE_BOTTOM = 416.0f;
     private static final float STATUS_BASELINE = 440.0f;
@@ -115,6 +117,7 @@ public final class SettingsView extends View {
         drawSkinSelector(canvas);
         drawSpeedControl(canvas);
         drawFuelControl(canvas);
+        drawGearControl(canvas);
 
         boolean configurable = selectedDefinition().hasSettings();
         if (configurable) {
@@ -124,9 +127,9 @@ public final class SettingsView extends View {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(COLOR_ACCENT);
         canvas.drawRoundRect(
-                255.0f,
+                SAVE_LEFT,
                 SAVE_TOP,
-                705.0f,
+                SAVE_RIGHT,
                 SAVE_BOTTOM,
                 14.0f,
                 14.0f,
@@ -134,7 +137,7 @@ public final class SettingsView extends View {
         drawCenteredText(
                 canvas,
                 saveButtonTitle(),
-                480.0f,
+                (SAVE_LEFT + SAVE_RIGHT) * 0.5f,
                 SAVE_TOP + 36.0f,
                 19.0f,
                 Color.BLACK,
@@ -344,6 +347,29 @@ public final class SettingsView extends View {
         }
     }
 
+    private void drawGearControl(Canvas canvas) {
+        boolean visible = session.snapshot().gearNumberVisible;
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(COLOR_CARD_SELECTED);
+        canvas.drawRoundRect(SettingsGearControl.LEFT, SettingsGearControl.TOP,
+                SettingsGearControl.RIGHT, SettingsGearControl.BOTTOM,
+                12.0f, 12.0f, paint);
+        paint.setStyle(visible ? Paint.Style.FILL : Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(visible ? COLOR_ACCENT : COLOR_MUTED);
+        canvas.drawRoundRect(123.0f, 380.0f, 147.0f, 404.0f, 4.0f, 4.0f, paint);
+        if (visible) {
+            paint.setColor(Color.BLACK);
+            paint.setStrokeWidth(2.5f);
+            canvas.drawLine(128.0f, 392.0f, 133.0f, 397.0f, paint);
+            canvas.drawLine(133.0f, 397.0f, 142.0f, 386.0f, paint);
+        }
+        drawLeftText(canvas, "Номер передачи", 158.0f, 389.0f,
+                15.0f, COLOR_TEXT, true);
+        drawLeftText(canvas, "в теме", 158.0f, 407.0f,
+                13.0f, COLOR_MUTED, false);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() != MotionEvent.ACTION_UP) {
@@ -381,8 +407,16 @@ public final class SettingsView extends View {
             showSettingsEditor();
             return true;
         }
-        if (x >= 255.0f
-                && x <= 705.0f
+        if (SettingsGearControl.contains(x, y)) {
+            boolean visible = !session.snapshot().gearNumberVisible;
+            session.setGearNumberVisible(visible);
+            status = visible ? "Номер передачи темы включён" : "Номер передачи темы скрыт";
+            listener.onDraftChanged(session.snapshot());
+            invalidate();
+            return true;
+        }
+        if (x >= SAVE_LEFT
+                && x <= SAVE_RIGHT
                 && y >= SAVE_TOP
                 && y <= SAVE_BOTTOM) {
             listener.onSaveRequested(session.snapshot());
