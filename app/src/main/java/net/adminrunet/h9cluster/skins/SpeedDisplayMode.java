@@ -3,8 +3,8 @@ package net.adminrunet.h9cluster.skins;
 /**
  * How the renderers translate the measured bus speed into the indicated one.
  *
- * <p>The bus reports a GPS-derived speed while factory speedometers read the
- * wheels and deliberately over-read a little. The selected mode is global:
+ * <p>The measured vehicle speed can differ from the factory indication.
+ * The selected mode is global:
  * every skin applies it to its pointer, tape and digital readout together.</p>
  */
 public enum SpeedDisplayMode {

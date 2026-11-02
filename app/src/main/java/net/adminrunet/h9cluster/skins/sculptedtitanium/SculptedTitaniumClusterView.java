@@ -311,7 +311,7 @@ public final class SculptedTitaniumClusterView extends View implements ClusterRe
 
     private void updateReadouts() {
         indicatedSpeed = Math.round(speedDisplayMode.indicatedKph(Math.max(0, state.speedKph)));
-        speed = Integer.toString(Math.round(indicatedSpeed));
+        speed = state.speedKph < 0 ? "—" : Integer.toString(Math.round(indicatedSpeed));
         gear = currentGearLabel(state.gearSelector, state.currentGear);
         outside = Float.isFinite(state.outsideTemperatureC)
                 ? String.format(Locale.US, "%+.1f °C", state.outsideTemperatureC) : "— °C";

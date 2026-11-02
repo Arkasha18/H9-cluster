@@ -336,12 +336,13 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
     private void updateVisualValues(long nowMs) {
         // Speed shares its whole reading. RPM tape remains continuous while
         // the digits hold briefly, so animation frames do not make them flicker.
-        visualSpeed = Math.round(speedDisplayMode.indicatedKph(displayedSpeed));
+        visualSpeed = targetState.speedKph < 0 ? 0
+                : Math.round(speedDisplayMode.indicatedKph(displayedSpeed));
         visualRpm = displayedRpm;
-        int speed = Math.round(visualSpeed);
+        int speed = targetState.speedKph < 0 ? -1 : Math.round(visualSpeed);
         if (speed != cachedSpeed) {
             cachedSpeed = speed;
-            cachedSpeedText = Integer.toString(speed);
+            cachedSpeedText = speed < 0 ? "—" : Integer.toString(speed);
         }
         int rpm = rpmReadout.update(displayedRpm, nowMs);
         if (rpm != cachedRpm) {

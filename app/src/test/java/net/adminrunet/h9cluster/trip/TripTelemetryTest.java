@@ -10,6 +10,18 @@ import org.junit.Test;
 
 public final class TripTelemetryTest {
     @Test
+    public void unavailableSpeedCannotConfirmTripStop() {
+        TripTelemetry telemetry = TripTelemetry.from(
+                state(-1, 42.75f, 9_000L, 8.4f, 9_000L, 9.0f), 10_000L);
+        assertEquals(-1, telemetry.speedKph);
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(EngineRunDetector.Event.NONE,
+                detector.update(0, telemetry.speedKph, 10_000L, 10_000L));
+        assertEquals(EngineRunDetector.Event.NONE,
+                detector.update(0, telemetry.speedKph, 12_000L, 12_000L));
+    }
+
+    @Test
     public void acceptsFreshFiniteTripValues() {
         TripTelemetry telemetry = TripTelemetry.from(
                 state(62, 42.75f, 9_000L, 8.4f, 9_000L, 9.0f),
