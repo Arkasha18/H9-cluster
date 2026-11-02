@@ -19,13 +19,16 @@ import ipc.fdbus.SubscribeItem;
  * The service broadcasts protobuf-wrapped raw CAN frames as event 0x0100.
  * Haval H9 engine speed is a big-endian 16-bit value in bytes 5-6 of CAN
  * frame 0x111, scaled at eight counts per RPM. ECM2 frame 0x271 carries the
- * cumulative fuel counter used to derive live fuel flow.
+ * cumulative fuel counter used to derive live fuel flow. ABS3 frame 0x265
+ * supplies an independent, validity-checked vehicle speed.
  */
 final class FdbusRpmReader implements FdbusClientListener {
     interface Listener {
         void onFdbusRpm(int rpm, long receivedAtMs);
 
         void onFdbusFuelConsumptionCounter(int counter, long receivedAtMs);
+
+        void onFdbusVehicleSpeed(float speedKph, long receivedAtMs);
     }
 
     private static final String TAG = "FdbusRpmReader";
@@ -42,12 +45,40 @@ final class FdbusRpmReader implements FdbusClientListener {
     private Fdbus runtime;
     private volatile FdbusClient client;
     private volatile boolean started;
+    private volatile boolean online;
+    private volatile long lastSpeedStreamFrameAtMs;
+    private volatile long speedSessionStartedAtMs;
+    private volatile long deliveredSpeedAtMs;
     private boolean deliveryScheduled;
     private int pendingRpm;
     private long pendingReceivedAtMs;
     private boolean fuelDeliveryScheduled;
     private int pendingFuelCounter;
     private long pendingFuelReceivedAtMs;
+    private boolean speedDeliveryScheduled;
+    private float pendingSpeedKph;
+    private long pendingSpeedReceivedAtMs;
+
+    private final Runnable deliverPendingSpeed = new Runnable() {
+        @Override
+        public void run() {
+            float speed;
+            long receivedAtMs;
+            synchronized (pendingLock) {
+                speedDeliveryScheduled = false;
+                speed = pendingSpeedKph;
+                receivedAtMs = pendingSpeedReceivedAtMs;
+            }
+            if (started) {
+                if (!online || receivedAtMs < speedSessionStartedAtMs) {
+                    speed = Float.NaN;
+                    receivedAtMs = 0;
+                }
+                deliveredSpeedAtMs = Float.isFinite(speed) ? receivedAtMs : 0;
+                listener.onFdbusVehicleSpeed(speed, receivedAtMs);
+            }
+        }
+    };
 
     private final Runnable deliverPendingRpm = new Runnable() {
         @Override
@@ -106,11 +137,16 @@ final class FdbusRpmReader implements FdbusClientListener {
 
     void stop() {
         started = false;
+        online = false;
+        lastSpeedStreamFrameAtMs = 0;
+        deliveredSpeedAtMs = 0;
         mainHandler.removeCallbacks(deliverPendingRpm);
         mainHandler.removeCallbacks(deliverPendingFuelCounter);
+        mainHandler.removeCallbacks(deliverPendingSpeed);
         synchronized (pendingLock) {
             deliveryScheduled = false;
             fuelDeliveryScheduled = false;
+            speedDeliveryScheduled = false;
         }
 
         FdbusClient oldClient = client;
@@ -139,11 +175,20 @@ final class FdbusRpmReader implements FdbusClientListener {
         ArrayList<SubscribeItem> subscriptions = new ArrayList<>(1);
         subscriptions.add(SubscribeItem.newEvent(MCU_CAN_EVENT));
         boolean accepted = currentClient.subscribe(subscriptions);
+        lastSpeedStreamFrameAtMs = 0;
+        speedSessionStartedAtMs = SystemClock.elapsedRealtime();
+        deliveredSpeedAtMs = 0;
+        online = accepted;
+        scheduleSpeedDelivery(Float.NaN, 0);
         Log.i(TAG, "Online sid=" + sessionId + " subscribeAccepted=" + accepted);
     }
 
     @Override
     public void onOffline(int sessionId) {
+        online = false;
+        lastSpeedStreamFrameAtMs = 0;
+        deliveredSpeedAtMs = 0;
+        scheduleSpeedDelivery(Float.NaN, 0);
         Log.w(TAG, "Offline sid=" + sessionId + "; Binder fallback will take over");
     }
 
@@ -152,12 +197,25 @@ final class FdbusRpmReader implements FdbusClientListener {
         if (!started || message.code() != MCU_CAN_EVENT) {
             return;
         }
-        McuCanFrame frame = decodeMcuCanFrame(message.byteArray());
+        McuCanFrame frame = McuCanFrame.decode(message.byteArray());
         if (frame == null) {
             return;
         }
 
         long receivedAtMs = SystemClock.elapsedRealtime();
+        if (online && frame.channel == McuVehicleSpeed.CHANNEL) {
+            if (lastSpeedStreamFrameAtMs > 0
+                    && receivedAtMs - lastSpeedStreamFrameAtMs
+                            > VehicleSpeedSelector.MCU_STREAM_STALE_MS) {
+                speedSessionStartedAtMs = receivedAtMs;
+                deliveredSpeedAtMs = 0;
+                scheduleSpeedDelivery(Float.NaN, 0);
+            }
+            lastSpeedStreamFrameAtMs = receivedAtMs;
+            if (frame.id == McuVehicleSpeed.CAN_ID) {
+                scheduleSpeedDelivery(McuVehicleSpeed.decode(frame.data), receivedAtMs);
+            }
+        }
         if (frame.id == FUEL_CONSUMPTION_CAN_ID) {
             int counter = decodeFuelConsumptionCounter(frame.data);
             if (counter >= 0) {
@@ -188,6 +246,24 @@ final class FdbusRpmReader implements FdbusClientListener {
     @Override
     public void onReply(FdbusMessage message) {
         // This source never invokes methods.
+    }
+
+    long speedStreamFrameAtMs() {
+        return started && online && deliveredSpeedAtMs > 0
+                && deliveredSpeedAtMs >= speedSessionStartedAtMs
+                ? lastSpeedStreamFrameAtMs : 0;
+    }
+
+    private void scheduleSpeedDelivery(float speedKph, long receivedAtMs) {
+        synchronized (pendingLock) {
+            pendingSpeedKph = speedKph;
+            pendingSpeedReceivedAtMs = receivedAtMs;
+            if (speedDeliveryScheduled) return;
+            speedDeliveryScheduled = true;
+        }
+        if (!mainHandler.post(deliverPendingSpeed)) {
+            synchronized (pendingLock) { speedDeliveryScheduled = false; }
+        }
     }
 
     private void scheduleDelivery(int rpm, long receivedAtMs) {
@@ -232,51 +308,4 @@ final class FdbusRpmReader implements FdbusClientListener {
         return ((canData[1] & 0xff) << 8) | (canData[2] & 0xff);
     }
 
-    /**
-     * Event 0x0100 is a protobuf envelope. Field 1 contains:
-     * [channel, flags, DLC, flags, CAN ID (BE24), data].
-     */
-    private static McuCanFrame decodeMcuCanFrame(byte[] payload) {
-        if (payload == null || payload.length < 10 || payload[0] != 0x0A) {
-            return null;
-        }
-
-        int cursor = 1;
-        int rawLength = 0;
-        int shift = 0;
-        boolean completeLength = false;
-        while (cursor < payload.length && shift <= 28) {
-            int current = payload[cursor++] & 0xff;
-            rawLength |= (current & 0x7f) << shift;
-            if ((current & 0x80) == 0) {
-                completeLength = true;
-                break;
-            }
-            shift += 7;
-        }
-        if (!completeLength || rawLength < 7 || cursor + rawLength > payload.length) {
-            return null;
-        }
-
-        int dlc = payload[cursor + 2] & 0xff;
-        if (dlc > rawLength - 7) {
-            return null;
-        }
-        int id = ((payload[cursor + 4] & 0xff) << 16)
-                | ((payload[cursor + 5] & 0xff) << 8)
-                | (payload[cursor + 6] & 0xff);
-        byte[] data = new byte[dlc];
-        System.arraycopy(payload, cursor + 7, data, 0, dlc);
-        return new McuCanFrame(id, data);
-    }
-
-    private static final class McuCanFrame {
-        final int id;
-        final byte[] data;
-
-        McuCanFrame(int id, byte[] data) {
-            this.id = id;
-            this.data = data;
-        }
-    }
 }

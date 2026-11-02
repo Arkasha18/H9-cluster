@@ -6,6 +6,7 @@ import android.os.Binder;
 import android.os.Looper;
 import android.os.Parcel;
 import android.os.RemoteException;
+import ipc.fdbus.FdbusMessage;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayDeque;
@@ -26,6 +27,81 @@ import static org.robolectric.Shadows.shadowOf;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public final class GwmLiveRefreshTest {
+    @Test
+    public void transportGapRequiresNewAbs3BeforeOtherFramesCanRenewSpeed() throws Exception {
+        Fixture f = new Fixture(true);
+        FdbusRpmReader reader = (FdbusRpmReader) get(f.source, "fdbusRpmReader");
+        set(reader, "started", true);
+        set(reader, "online", true);
+        f.source.onDataChanged("car.basic.vehicle_speed", "-1");
+        broadcast(reader, "0A1700001000000265002040042200000000000000000000001017");
+        assertEquals(4, f.latest().speedKph);
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1100));
+        broadcast(reader, "0A0F000008000001110000000200178440100F");
+        assertEquals(-1, f.latest().speedKph);
+        assertEquals(0, reader.speedStreamFrameAtMs());
+        broadcast(reader, "0A1700001000000265002000042200000000000000000000001017");
+        assertEquals(0, f.latest().speedKph);
+        f.source.stop();
+    }
+
+    @Test
+    public void mcuSpeedBypassesFreshFrozenGwmCallbacksAndExpiresWithoutBinder() throws Exception {
+        Fixture f = new Fixture(true);
+        FdbusRpmReader reader = (FdbusRpmReader) get(f.source, "fdbusRpmReader");
+        set(reader, "started", true);
+        set(reader, "online", true);
+        broadcast(reader, "0A1700001000000265002040042200000000000000000000001017");
+        for (int i = 0; i < 30; i++) {
+            f.source.onDataChanged("car.basic.vehicle_speed", "0");
+            // ABS3 is quiet at constant speed; unrelated MCU frames keep the stream live.
+            broadcast(reader, "0A0F000008000001110000000200178440100F");
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100));
+        }
+        assertEquals(4, f.latest().speedKph);
+        broadcast(reader, "0A1700001000000265002000042200000000000000000000001017");
+        assertEquals(0, f.latest().speedKph);
+        f.source.onServiceDisconnected(new ComponentName("test.adapter", "Service"));
+        reader.onOffline(1);
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2500));
+        assertEquals(-1, f.latest().speedKph);
+        assertTrue(Float.isNaN(f.latest().instantFuelConsumption));
+        f.source.stop();
+    }
+
+    @Test
+    public void wrongCanChannelAndInvalidSpeedFlagCannotSupplyFallback() throws Exception {
+        Fixture f = new Fixture(true);
+        FdbusRpmReader reader = (FdbusRpmReader) get(f.source, "fdbusRpmReader");
+        set(reader, "started", true);
+        set(reader, "online", true);
+        f.source.onDataChanged("car.basic.vehicle_speed", "-1");
+        broadcast(reader, "0A1701001000000265002040042200000000000000000000001017");
+        assertEquals(-1, f.latest().speedKph);
+        broadcast(reader, "0A1700001000000265002040042200000000000000000000001017");
+        assertEquals(4, f.latest().speedKph);
+        broadcast(reader, "0A1700001000000265000040042200000000000000000000001017");
+        assertEquals(-1, f.latest().speedKph);
+        f.source.stop();
+    }
+
+    @Test
+    public void invalidCallbackWinsAgainstAnOlderSuccessfulSnapshot() throws Exception {
+        Fixture f = new Fixture(false);
+        f.adapter.speed = "48";
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500));
+        f.executor.runNext();
+        f.source.onDataChanged("car.basic.vehicle_speed", "-1");
+        shadowOf(Looper.getMainLooper()).idle();
+        assertEquals(-1, f.latest().speedKph);
+        f.source.stop();
+    }
+
+    private static void broadcast(FdbusRpmReader reader, String hex) {
+        reader.onBroadcast(new FdbusMessage(1, 0x0100, McuVehicleSpeedTest.hex(hex)));
+        shadowOf(Looper.getMainLooper()).idle();
+    }
+
     @Test
     public void outsideTemperatureErrorClearsWhenAdapterRecovers() throws Exception {
         Fixture f = new Fixture(true);
@@ -85,10 +161,10 @@ public final class GwmLiveRefreshTest {
         Fixture f = new Fixture(false);
         f.source.onDataChanged("car.basic.vehicle_speed", "48");
         f.source.onDataChanged("car.basic.vehicle_speed", "-1");
-        assertEquals(48, f.latest().speedKph);
+        assertEquals(-1, f.latest().speedKph);
         f.adapter.speed = "-1";
         f.poll();
-        assertEquals(48, f.latest().speedKph);
+        assertEquals(-1, f.latest().speedKph);
         f.adapter.speed = "60";
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500));
         f.executor.runNext();
@@ -110,6 +186,7 @@ public final class GwmLiveRefreshTest {
             set(source, "listener", (ClusterDataSource.Listener) received::add);
             source.onServiceConnected(new ComponentName("test.adapter", "Service"), adapter);
             set(source, "adapterRefreshExecutor", executor);
+            ((Runnable) get(source, "speedWatchdog")).run();
         }
         ClusterState latest() { return received.get(received.size() - 1); }
         void poll() {
@@ -169,5 +246,11 @@ public final class GwmLiveRefreshTest {
         Field field = target.getClass().getDeclaredField(name);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    private static Object get(Object target, String name) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(target);
     }
 }

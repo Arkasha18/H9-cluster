@@ -349,7 +349,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
                 0xFFF7F7F5, true, -0.16f);
         drawFittedText(
                 canvas,
-                Integer.toString(Math.round(indicatedSpeed())),
+                targetState.speedKph < 0 ? "—" : Integer.toString(Math.round(indicatedSpeed())),
                 MAIN_SPEED_CENTER_X,
                 435.0f,
                 168.0f,
@@ -588,7 +588,7 @@ public final class SportClusterView extends View implements ClusterRenderer {
 
     /** Smoothed speed after the selected factory-style correction. */
     private float indicatedSpeed() {
-        return speedDisplayMode.indicatedKph(displayedSpeed);
+        return targetState.speedKph < 0 ? 0 : speedDisplayMode.indicatedKph(Math.max(0, displayedSpeed));
     }
 
     private void configureText(

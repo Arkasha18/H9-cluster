@@ -142,7 +142,9 @@ public final class FdbusProbeService extends Service
                                 + " dlc="
                                 + frame.data.length
                                 + " data="
-                                + toHex(frame.data, frame.data.length));
+                                + toHex(frame.data, frame.data.length)
+                                + " raw="
+                                + toHex(payload, MAX_HEX_BYTES));
                 return;
             }
         }

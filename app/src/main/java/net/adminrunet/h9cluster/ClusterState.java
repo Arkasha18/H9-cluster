@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster;
 
 /** One complete, immutable snapshot of values shown by the cluster. */
 public final class ClusterState {
+    /** Measured speed in km/h; -1 means no trustworthy source is available. */
     public final int speedKph;
     public final int rpm;
     public final int currentGear;
