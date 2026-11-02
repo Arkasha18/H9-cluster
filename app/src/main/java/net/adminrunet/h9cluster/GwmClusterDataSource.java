@@ -22,10 +22,10 @@ import java.util.regex.Pattern;
  * Read-only source backed by the factory GWM adapter service.
  *
  * On the Binder side only GET_DATA, listener registration and listener
- * removal are used. A separate read-only FDBus reader supplies high-rate RPM
- * and the cumulative ECM2 fuel counter; transmission temperature is read from
- * the snapshot already maintained by the stock TBOX. None of these paths sends
- * vehicle commands.
+ * removal are used. A separate read-only FDBus reader supplies high-rate RPM,
+ * ABS3 speed and the cumulative ECM2 fuel counter. Transmission temperature
+ * comes from the snapshot already maintained by the stock TBOX. None of these
+ * paths sends vehicle commands.
  */
 public final class GwmClusterDataSource
         implements ClusterDataSource,
@@ -124,6 +124,8 @@ public final class GwmClusterDataSource
     private final long[] valueRevisions = new long[DATA_IDS.length];
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
+    private final VehicleSpeedSelector vehicleSpeed = new VehicleSpeedSelector();
+    private VehicleSpeedSelector.Source speedSource = VehicleSpeedSelector.Source.UNAVAILABLE;
     private final FuelConsumptionEstimator fuelConsumptionEstimator =
             new FuelConsumptionEstimator();
     private final TransmissionTemperatureReader transmissionTemperatureReader;
@@ -151,6 +153,13 @@ public final class GwmClusterDataSource
     private int adapterGeneration;
     private boolean refreshPending;
     private ExecutorService adapterRefreshExecutor;
+    private final Runnable speedWatchdog = new Runnable() {
+        @Override public void run() {
+            if (!started) return;
+            publishState();
+            mainHandler.postDelayed(this, LIVE_REFRESH_MS);
+        }
+    };
     private final Runnable liveRefresh = new Runnable() {
         @Override
         public void run() {
@@ -216,6 +225,10 @@ public final class GwmClusterDataSource
     public void start(Listener listener) {
         this.listener = listener;
         started = true;
+        vehicleSpeed.reset();
+        speedSource = VehicleSpeedSelector.Source.UNAVAILABLE;
+        mainHandler.removeCallbacks(speedWatchdog);
+        mainHandler.postDelayed(speedWatchdog, LIVE_REFRESH_MS);
         fuelConsumptionEstimator.reset();
         fdbusFuelFlowLitersPerHour = Float.NaN;
         fdbusFuelFlowUpdatedAtMs = 0L;
@@ -228,6 +241,8 @@ public final class GwmClusterDataSource
     @Override
     public void stop() {
         started = false;
+        mainHandler.removeCallbacks(speedWatchdog);
+        vehicleSpeed.reset();
         mainHandler.removeCallbacks(rebindTask);
         mainHandler.removeCallbacks(factoryNotificationTimeout);
         stopLiveRefresh();
@@ -331,9 +346,12 @@ public final class GwmClusterDataSource
                 long now = SystemClock.elapsedRealtime();
                 if (index == INDEX_SPEED) {
                     if (!validSpeed(normalized)) {
+                        storeValue(index, null, now);
                         speedCallbackAtMs = 0;
+                        publishState();
                         return;
                     }
+                    vehicleSpeed.onGwm(parseFloat(normalized, Float.NaN), now, true);
                     speedCallbackAtMs = now;
                 }
                 storeValue(index, normalized, now);
@@ -350,7 +368,9 @@ public final class GwmClusterDataSource
     private void storeValue(int index, String value, long nowMs) {
         values[index] = value;
         valueRevisions[index]++;
-        if (index == INDEX_RPM) {
+        if (index == INDEX_SPEED) {
+            vehicleSpeed.onGwm(parseFloat(value, Float.NaN), nowMs, false);
+        } else if (index == INDEX_RPM) {
             binderRpmUpdatedAtMs = engineRpm(value) >= 0 ? nowMs : 0L;
         } else if (index == INDEX_DAY) {
             journeyOdometerUpdatedAtMs =
@@ -609,11 +629,13 @@ public final class GwmClusterDataSource
                 values[INDEX_AVG_CONSUMPTION_A],
                 values[INDEX_AVG_CONSUMPTION_B],
                 lastState.consumptionLitersPer100Km);
+        long mcuStreamAt = fdbusRpmReader.speedStreamFrameAtMs();
         long now = SystemClock.elapsedRealtime();
-        int speedKph = clamp(
-                parseInt(values[INDEX_SPEED], lastState.speedKph),
-                0,
-                220);
+        int speedKph = Math.min(220, vehicleSpeed.select(now, mcuStreamAt));
+        if (speedSource != vehicleSpeed.source()) {
+            speedSource = vehicleSpeed.source();
+            Log.i(TAG, "Vehicle speed source=" + speedSource);
+        }
         float instantConsumption = selectInstantFuelConsumption(
                 now,
                 speedKph,
@@ -687,6 +709,13 @@ public final class GwmClusterDataSource
                 lastState.driveMode);
         lastState = state;
         currentListener.onClusterState(state);
+    }
+
+    @Override
+    public void onFdbusVehicleSpeed(float speedKph, long receivedAtMs) {
+        if (!started) return;
+        vehicleSpeed.onMcu(speedKph, receivedAtMs);
+        publishState();
     }
 
     @Override
@@ -885,6 +914,7 @@ public final class GwmClusterDataSource
             float fdbusFlowLitersPerHour,
             long fdbusUpdatedAtMs,
             String binderValue) {
+        if (speedKph < 0) return Float.NaN;
         boolean fdbusFresh = Float.isFinite(fdbusFlowLitersPerHour)
                 && fdbusFlowLitersPerHour >= 0.0f
                 && fdbusUpdatedAtMs > 0L

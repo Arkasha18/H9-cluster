@@ -69,7 +69,7 @@ public final class TripTelemetry {
                         nowMs);
         return new TripTelemetry(
                 nowMs,
-                Math.max(0, state.speedKph),
+                Math.max(-1, state.speedKph),
                 state.dayKm,
                 journeyKm,
                 journeyValid,

@@ -135,7 +135,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
                 canvas,
                 speedCenterX,
                 315.0f,
-                speedDisplayMode.indicatedKph(displayedSpeed),
+                targetState.speedKph < 0 ? 0 : speedDisplayMode.indicatedKph(Math.max(0, displayedSpeed)),
                 220.0f,
                 false);
         drawGauge(canvas, rpmCenterX, 315.0f, displayedRpm, 8000.0f, true);
@@ -263,7 +263,7 @@ public final class HorizonClusterView extends View implements ClusterRenderer {
         configureText(122.0f, Paint.Align.CENTER, COLOR_TEXT, true);
         String valueText = tachometer
                 ? String.format(Locale.US, "%.1f", value / 1000.0f)
-                : Integer.toString(Math.round(value));
+                : targetState.speedKph < 0 ? "—" : Integer.toString(Math.round(value));
         canvas.drawText(valueText, centerX, centerY + 34.0f, textPaint);
 
         configureText(24.0f, Paint.Align.CENTER, COLOR_MUTED, false);
