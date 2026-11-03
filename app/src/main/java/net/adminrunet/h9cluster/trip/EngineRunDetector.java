@@ -7,6 +7,7 @@ public final class EngineRunDetector {
     private static final long RPM_FRESH_MS = 1_000L;
     private static final long START_HOLD_MS = 1_000L;
     private static final long STOP_HOLD_MS = 1_500L;
+    private static final long STOP_SPEED_EVIDENCE_MS = 2_000L;
 
     public enum Event {
         NONE,
@@ -24,6 +25,7 @@ public final class EngineRunDetector {
 
     private State state;
     private long candidateSinceMs = -1L;
+    private long lastStationaryAtMs = -1L;
 
     public EngineRunDetector(boolean initiallyRunning) {
         state = initiallyRunning ? State.RUNNING : State.OFF;
@@ -39,12 +41,28 @@ public final class EngineRunDetector {
         boolean freshRpm = observedRpm
                 && nowMs - rpmUpdatedAtMs <= RPM_FRESH_MS;
         boolean startCondition = freshRpm && rpm >= START_RPM;
+        // Do not carry stationary evidence into another engine run. Expiry of
+        // the speed indication is not a new movement measurement, though: the
+        // speed and final RPM packets can stop arriving in either order.
+        if (state == State.OFF || speedKph > 0) {
+            lastStationaryAtMs = -1L;
+        }
+        if (speedKph == 0) {
+            lastStationaryAtMs = nowMs;
+        }
+        boolean observedStationary = speedKph == 0
+                || (speedKph < 0 && lastStationaryAtMs >= 0L
+                        && nowMs >= lastStationaryAtMs
+                        && (state == State.STOPPING
+                                || nowMs - lastStationaryAtMs <= STOP_SPEED_EVIDENCE_MS));
         // Only an RPM value the bus actually delivered can prove shutdown.
         // Silence is not evidence: while the engine idles, updates may pause
         // for an arbitrarily long time, and treating that as a stop would end
         // the trip under a running engine.
         boolean lastObservedRpmStopped = observedRpm && rpm <= STOP_RPM;
-        boolean stopCondition = speedKph == 0 && lastObservedRpmStopped;
+        // Once both stop signals were observed, transport silence must not
+        // cancel the hold. New movement or nonzero RPM still cancels it.
+        boolean stopCondition = observedStationary && lastObservedRpmStopped;
 
         switch (state) {
             case OFF:

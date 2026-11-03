@@ -237,7 +237,7 @@ public final class IonAuroraClusterView extends View implements ClusterRenderer 
         // follows measured vehicle values, never a time-driven fictitious reading.
         // 200 s = exactly 21 energy cycles: continuous wrap and stable float precision.
         float energyPhase = targetState.rpm > 0 ? (frameAtMs % 200_000L) * 0.001f : 0.0f;
-        speedGauge.draw(canvas, visualSpeed, speedVelocity, tapeReveal, energyPhase);
+        speedGauge.draw(canvas, visualSpeed, speedVelocity, tapeReveal, energyPhase, cachedSpeed);
         rpmGauge.draw(canvas, visualRpm, rpmVelocity, tapeReveal, energyPhase, cachedRpm);
 
         float breath = 0.04f * (float) Math.sin(frameAtMs * Math.PI / 1000.0);
