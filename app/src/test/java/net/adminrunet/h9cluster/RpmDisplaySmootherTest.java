@@ -8,6 +8,20 @@ import org.junit.Test;
 
 public final class RpmDisplaySmootherTest {
     @Test
+    public void unavailableSpeedDoesNotActivateTheStationaryIdleFilter() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        assertEquals(845.0f, smoother.update(845, -1, 1_000L), 0.0f);
+        assertEquals(875.0f, smoother.update(875, -1, 1_050L), 0.0f);
+    }
+
+    @Test
+    public void lossOfSpeedReleasesAnAlreadyActiveIdleFilter() {
+        RpmDisplaySmoother smoother = new RpmDisplaySmoother();
+        assertEquals(800.0f, smoother.update(845, 0, 1_000L), 0.0f);
+        assertEquals(845.0f, smoother.update(845, -1, 1_050L), 0.0f);
+    }
+
+    @Test
     public void alternatingIdleSamplesDoNotFlickerBetweenTenths() {
         RpmDisplaySmoother smoother = new RpmDisplaySmoother();
         long nowMs = 1_000L;

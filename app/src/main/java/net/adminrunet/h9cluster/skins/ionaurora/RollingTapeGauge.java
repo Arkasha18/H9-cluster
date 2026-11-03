@@ -153,7 +153,7 @@ final class RollingTapeGauge {
         float safeReveal = clamp(reveal, 0.0f, 1.0f);
         float safeVelocity = Float.isFinite(velocityPerSecond) ? velocityPerSecond : 0.0f;
         float safePhase = Float.isFinite(phaseSeconds) ? phaseSeconds : 0.0f;
-        updateFocusValue(sanitizeValue(readoutValue, minimum, maximum));
+        updateFocusValue(readoutValue);
         if (safeReveal <= 0.0f) {
             return;
         }
@@ -294,7 +294,12 @@ final class RollingTapeGauge {
     }
 
     private void updateFocusValue(float value) {
-        int quantized = Math.round(value * quantizer);
+        if (!Float.isFinite(value) || value < minimum) {
+            cachedQuantizedValue = Integer.MIN_VALUE;
+            cachedFocusValue = "—";
+            return;
+        }
+        int quantized = Math.round(sanitizeValue(value, minimum, maximum) * quantizer);
         if (quantized != cachedQuantizedValue) {
             cachedQuantizedValue = quantized;
             cachedFocusValue = formatFocusValue(quantized, focusDecimals);
