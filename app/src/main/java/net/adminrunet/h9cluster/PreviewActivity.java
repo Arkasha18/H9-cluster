@@ -114,8 +114,7 @@ public final class PreviewActivity extends Activity
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setDimAmount(0.0f);
         getWindow().setFormat(PreviewAppearance.usesOpaqueWindow(BuildConfig.DEMO_MODE)
@@ -143,6 +142,7 @@ public final class PreviewActivity extends Activity
                     public void onEngineStartSignal() {
                         tripSummaryLayers.onSummaryDismissed();
                         removeTripSummary();
+                        syncRendererVisibility();
                     }
 
                     @Override
@@ -230,6 +230,7 @@ public final class PreviewActivity extends Activity
         if (dataSource != null) {
             dataSource.stop();
         }
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     /**
@@ -392,6 +393,13 @@ public final class PreviewActivity extends Activity
     }
 
     private void syncRendererVisibility() {
+        boolean keepScreenOn = !clusterWorkStopped && tripSummaryLayers != null
+                && (tripSummaryLayers.isRendererVisible() || tripSummaryLayers.isSummaryVisible());
+        if (keepScreenOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
         if (rendererView == null) {
             return;
         }

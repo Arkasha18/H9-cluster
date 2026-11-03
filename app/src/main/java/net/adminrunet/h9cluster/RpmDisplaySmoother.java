@@ -61,7 +61,7 @@ public final class RpmDisplaySmoother {
     }
 
     private static boolean isIdleFilterActive(float rpm, int speedKph) {
-        return speedKph <= IDLE_MAX_SPEED_KPH
+        return speedKph >= 0 && speedKph <= IDLE_MAX_SPEED_KPH
                 && rpm >= IDLE_FILTER_MIN_RPM
                 && rpm < IDLE_FILTER_MAX_RPM;
     }

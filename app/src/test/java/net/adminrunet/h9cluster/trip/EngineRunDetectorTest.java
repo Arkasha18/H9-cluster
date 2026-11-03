@@ -10,6 +10,65 @@ import org.junit.Test;
 
 public final class EngineRunDetectorTest {
     @Test
+    public void pendingStopSurvivesSpeedExpiry() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(0, 0, 10_000L, 10_000L));
+        assertEquals(NONE, detector.update(0, -1, 10_000L, 11_100L));
+        assertEquals(STOPPED, detector.update(0, -1, 10_000L, 11_500L));
+    }
+
+    @Test
+    public void recentStationaryEvidenceAllowsFinalRpmPacketToArriveAfterSpeedExpiry() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(800, 0, 10_000L, 10_000L));
+        assertEquals(NONE, detector.update(0, -1, 11_000L, 11_000L));
+        assertEquals(STOPPED, detector.update(0, -1, 11_000L, 12_500L));
+    }
+
+    @Test
+    public void unknownSpeedAloneCannotStartAStopCandidate() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(0, -1, 10_000L, 10_000L));
+        assertEquals(NONE, detector.update(0, -1, 10_000L, 60_000L));
+    }
+
+    @Test
+    public void oldStationaryEvidenceCannotStartAStopAfterProlongedDataLoss() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(800, 0, 1_000L, 1_000L));
+        assertEquals(NONE, detector.update(0, -1, 3_001L, 3_001L));
+        assertEquals(NONE, detector.update(0, -1, 3_001L, 10_000L));
+    }
+
+    @Test
+    public void newMovementRevokesStationaryEvidenceEvenIfSpeedDisappearsAgain() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(0, 0, 1_000L, 1_000L));
+        assertEquals(NONE, detector.update(0, 1, 1_000L, 1_500L));
+        assertEquals(NONE, detector.update(0, -1, 1_000L, 3_000L));
+        assertEquals(NONE, detector.update(0, -1, 1_000L, 10_000L));
+    }
+
+    @Test
+    public void runningRpmStillCancelsStopAndSilenceNeverManufacturesStoppedRpm() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(0, 0, 1_000L, 1_000L));
+        assertEquals(NONE, detector.update(800, -1, 1_500L, 1_500L));
+        assertEquals(NONE, detector.update(800, -1, 1_500L, 60_000L));
+    }
+
+    @Test
+    public void nextEngineRunCannotReusePreviousRunsStationaryEvidence() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(0, 0, 1_000L, 1_000L));
+        assertEquals(STOPPED, detector.update(0, -1, 1_000L, 2_500L));
+        assertEquals(STARTING, detector.update(800, -1, 3_000L, 3_000L));
+        assertEquals(STARTED, detector.update(800, -1, 4_000L, 4_000L));
+        assertEquals(NONE, detector.update(0, -1, 4_500L, 4_500L));
+        assertEquals(NONE, detector.update(0, -1, 4_500L, 6_000L));
+    }
+
+    @Test
     public void startsAtExactThresholdAfterContinuousHold() {
         EngineRunDetector detector = new EngineRunDetector(false);
 
