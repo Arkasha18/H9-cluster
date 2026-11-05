@@ -27,6 +27,8 @@ public final class TboxCanSnapshotDecoderTest {
         assertTrue(result.epbValid);
         assertTrue(result.epbEngaged);
         assertEquals(0x261105123456L, result.generation);
+        assertEquals("261105123456", result.generationSignature);
+        assertEquals("0,0,0,0,0,0,0,0,0,120", result.temperatureRecordsRaw);
     }
 
     @Test
@@ -42,12 +44,15 @@ public final class TboxCanSnapshotDecoderTest {
 
     @Test
     public void unavailableTemperatureDoesNotDiscardVehicleState() {
-        TboxCanSnapshotDecoder.Result result =
-                TboxCanSnapshotDecoder.decode(snapshot(0, 0, 1, 0xff));
+        byte[] snapshot = snapshot(0, 0, 1, 0xff);
+        putRawTemperature(snapshot, 0, 85);
+        putRawTemperature(snapshot, 8, 110);
+        TboxCanSnapshotDecoder.Result result = TboxCanSnapshotDecoder.decode(snapshot);
 
         assertTrue(result.validSnapshot);
         assertEquals("source_unavailable", result.temperatureStatus);
         assertFalse(result.hasTemperature());
+        assertEquals("85,0,0,0,0,0,0,0,110,255", result.temperatureRecordsRaw);
         assertTrue(result.hasEngineState());
         assertTrue(result.parkValid);
         assertTrue(result.inPark);
@@ -90,6 +95,8 @@ public final class TboxCanSnapshotDecoderTest {
         TboxCanSnapshotDecoder.Result timestamp = TboxCanSnapshotDecoder.decode(snapshot);
         assertFalse(timestamp.validSnapshot);
         assertEquals("timestamp", timestamp.failureReason);
+        assertEquals("261a05123456", timestamp.generationSignature);
+        assertEquals("unavailable", timestamp.temperatureRecordsRaw);
 
         snapshot = snapshot(2, 0, 1, 100);
         snapshot[0] = 0;
@@ -102,6 +109,16 @@ public final class TboxCanSnapshotDecoderTest {
         assertFalse(shortSnapshot.validSnapshot);
         assertEquals("length", shortSnapshot.failureReason);
         assertEquals(32, shortSnapshot.observedLength);
+        assertEquals("000000000000", shortSnapshot.generationSignature);
+
+        byte[] extended = new byte[2300];
+        putLittleEndianInt(extended, 0, 2296);
+        TboxCanSnapshotDecoder.Result extendedSnapshot =
+                TboxCanSnapshotDecoder.decode(extended);
+        assertFalse(extendedSnapshot.validSnapshot);
+        assertEquals("length", extendedSnapshot.failureReason);
+        assertEquals(2300, extendedSnapshot.observedLength);
+        assertEquals(2296, extendedSnapshot.declaredLength);
     }
 
     @Test
@@ -136,9 +153,19 @@ public final class TboxCanSnapshotDecoderTest {
         putPackedMsb(snapshot, 0, 2, engineState);
         putPackedMsb(snapshot, 736, 2, parkState);
         putPackedMsb(snapshot, 1484, 2, epbState);
-        snapshot[RECORD_OFFSET + 0x45] = (byte) ((rawTemperature >>> 3) & 0x1f);
-        snapshot[RECORD_OFFSET + 0x46] = (byte) ((rawTemperature & 0x07) << 5);
+        putRawTemperature(snapshot, 9, rawTemperature);
         return snapshot;
+    }
+
+    private static void putRawTemperature(
+            byte[] snapshot,
+            int recordIndex,
+            int rawTemperature) {
+        int recordOffset = 16 + recordIndex * 214;
+        snapshot[recordOffset + 0x45] =
+                (byte) ((rawTemperature >>> 3) & 0x1f);
+        snapshot[recordOffset + 0x46] =
+                (byte) ((rawTemperature & 0x07) << 5);
     }
 
     private static void putPackedMsb(
