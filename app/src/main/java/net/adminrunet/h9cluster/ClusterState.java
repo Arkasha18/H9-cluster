@@ -130,6 +130,7 @@ public final class ClusterState {
         this(
                 source,
                 fuelTankCapacityLiters,
+                source.speedKph,
                 source.engineState,
                 source.engineStateUpdatedAtMs,
                 source.parkStateValid,
@@ -140,12 +141,13 @@ public final class ClusterState {
     private ClusterState(
             ClusterState source,
             int fuelTankCapacityLiters,
+            int speedKph,
             int engineState,
             long engineStateUpdatedAtMs,
             boolean parkStateValid,
             boolean inPark,
             long parkStateUpdatedAtMs) {
-        speedKph = source.speedKph;
+        this.speedKph = speedKph;
         rpm = source.rpm;
         this.engineState = engineState;
         this.engineStateUpdatedAtMs = engineStateUpdatedAtMs;
@@ -201,6 +203,26 @@ public final class ClusterState {
                 : new ClusterState(this, normalized);
     }
 
+    /**
+     * Creates a renderer-only stationary projection when measured speed is
+     * unavailable. The returned snapshot must not be used for trip accounting
+     * or as evidence that the vehicle has stopped.
+     */
+    ClusterState withStationaryDisplaySpeed() {
+        if (speedKph >= 0) {
+            return this;
+        }
+        return new ClusterState(
+                this,
+                fuelTankCapacityLiters,
+                0,
+                engineState,
+                engineStateUpdatedAtMs,
+                parkStateValid,
+                inPark,
+                parkStateUpdatedAtMs);
+    }
+
     /** Adds independent read-only engine/Park evidence without changing display telemetry. */
     public ClusterState withTboxVehicleState(
             int engineState,
@@ -229,6 +251,7 @@ public final class ClusterState {
         return new ClusterState(
                 this,
                 fuelTankCapacityLiters,
+                speedKph,
                 normalizedEngineState,
                 normalizedEngineUpdatedAtMs,
                 normalizedParkValid,

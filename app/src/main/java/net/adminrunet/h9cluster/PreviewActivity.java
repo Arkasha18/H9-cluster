@@ -83,6 +83,7 @@ public final class PreviewActivity extends Activity
     private boolean displayMismatchHandled;
     private boolean keepScreenStateInitialized;
     private boolean lastKeepScreenOn;
+    private boolean stationarySpeedDisplayFallbackActive;
     private final Runnable tripHeartbeat = new Runnable() {
         @Override
         public void run() {
@@ -343,9 +344,29 @@ public final class PreviewActivity extends Activity
 
     private void updateRendererState() {
         // Keep raw telemetry for future previews and trip accounting. Project
-        // liters and capacity together, including before the next bus update.
-        clusterRenderer.setClusterState(
-                lastState.withFuelTankCapacity(activeSnapshot.fuelTankCapacityLiters));
+        // only the display state, including before the next bus update.
+        long nowMs = SystemClock.elapsedRealtime();
+        boolean fallbackActive = StationarySpeedDisplayFallback.isActive(lastState, nowMs);
+        ClusterState displayState = lastState.withFuelTankCapacity(
+                activeSnapshot.fuelTankCapacityLiters);
+        if (fallbackActive) {
+            displayState = displayState.withStationaryDisplaySpeed();
+        }
+        if (stationarySpeedDisplayFallbackActive != fallbackActive) {
+            stationarySpeedDisplayFallbackActive = fallbackActive;
+            DiagnosticLog.info(
+                    "vehicle_speed",
+                    "stationary_display_fallback_changed",
+                    "active", String.valueOf(fallbackActive),
+                    "raw_speed_kph", String.valueOf(lastState.speedKph),
+                    "display_speed_kph", String.valueOf(displayState.speedKph),
+                    "engine_state", String.valueOf(lastState.engineState),
+                    "engine_state_age_ms", age(nowMs, lastState.engineStateUpdatedAtMs),
+                    "park_valid", String.valueOf(lastState.parkStateValid),
+                    "in_park", String.valueOf(lastState.inPark),
+                    "park_state_age_ms", age(nowMs, lastState.parkStateUpdatedAtMs));
+        }
+        clusterRenderer.setClusterState(displayState);
     }
 
     private void addDemoTouchLayer() {
@@ -501,6 +522,10 @@ public final class PreviewActivity extends Activity
                 "cluster_state",
                 "snapshot",
                 "speed_kph", String.valueOf(state.speedKph),
+                "display_speed_kph", String.valueOf(
+                        StationarySpeedDisplayFallback.resolveSpeedKph(state, nowMs)),
+                "stationary_display_fallback", String.valueOf(
+                        StationarySpeedDisplayFallback.isActive(state, nowMs)),
                 "rpm", String.valueOf(state.rpm),
                 "rpm_age_ms", age(nowMs, state.rpmUpdatedAtMs),
                 "journey_km", String.valueOf(state.dayKm),
