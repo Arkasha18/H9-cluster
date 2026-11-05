@@ -55,6 +55,7 @@ public final class PreviewActivity extends Activity
     private static final String TAG = "H9Cluster";
     private static final String TRIP_TELEMETRY_TAG = "H9TripTelemetry";
     private static final long TRIP_HEARTBEAT_MS = 500L;
+    private static final long DIAGNOSTIC_SNAPSHOT_MS = 60_000L;
     private static final int IMMERSIVE_FLAGS =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -77,8 +78,11 @@ public final class PreviewActivity extends Activity
     private UserRequestedRendererEvent userRequestedRendererEvent;
     private ClusterState lastState = ClusterState.empty();
     private long lastTripTelemetryLogAtMs = -1L;
+    private long lastDiagnosticSnapshotAtMs = -1L;
     private boolean clusterWorkStopped;
     private boolean displayMismatchHandled;
+    private boolean keepScreenStateInitialized;
+    private boolean lastKeepScreenOn;
     private final Runnable tripHeartbeat = new Runnable() {
         @Override
         public void run() {
@@ -93,6 +97,10 @@ public final class PreviewActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        DiagnosticLog.info(
+                "cluster_activity",
+                "create",
+                "restored", String.valueOf(savedInstanceState != null));
         userRequestedRendererEvent = new UserRequestedRendererEvent(
                 savedInstanceState != null
                         && savedInstanceState.getBoolean(
@@ -140,6 +148,7 @@ public final class PreviewActivity extends Activity
                 new TripSummaryCoordinator.Listener() {
                     @Override
                     public void onEngineStartSignal() {
+                        DiagnosticLog.info("cluster_activity", "engine_start_signal");
                         tripSummaryLayers.onSummaryDismissed();
                         removeTripSummary();
                         syncRendererVisibility();
@@ -147,6 +156,7 @@ public final class PreviewActivity extends Activity
 
                     @Override
                     public void onEngineStarted() {
+                        DiagnosticLog.info("cluster_activity", "engine_started");
                         tripSummaryLayerStore.setRendererSuppressed(false);
                         tripSummaryLayers.onEngineStarted();
                         syncRendererVisibility();
@@ -154,6 +164,7 @@ public final class PreviewActivity extends Activity
 
                     @Override
                     public void onTripSummary(TripSummary summary) {
+                        DiagnosticLog.info("cluster_activity", "trip_summary_callback");
                         showTripSummary(summary);
                     }
                 },
@@ -175,11 +186,16 @@ public final class PreviewActivity extends Activity
                 updateRendererState();
                 PreviewSystemIcons.update(demoSystemIconsView, state);
                 logTripTelemetryIfDue(state);
+                logDiagnosticSnapshotIfDue(state);
                 tripCoordinator.onClusterState(state);
             }
 
             @Override
             public void onFactoryNotificationVisibilityChanged(boolean visible) {
+                DiagnosticLog.info(
+                        "gwm_adapter",
+                        "factory_notification_visibility",
+                        "visible", String.valueOf(visible));
                 rootView.setFactoryNotificationVisible(visible);
             }
         });
@@ -191,6 +207,11 @@ public final class PreviewActivity extends Activity
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        DiagnosticLog.info(
+                "cluster_activity",
+                "new_intent",
+                "user_requested", String.valueOf(intent != null
+                        && intent.getBooleanExtra(EXTRA_USER_REQUESTED, false)));
         setIntent(intent);
         if (!ensureCorrectDisplay()) {
             return;
@@ -214,6 +235,7 @@ public final class PreviewActivity extends Activity
      */
     @Override
     public void closeClusterWindow() {
+        DiagnosticLog.info("cluster_activity", "close_requested");
         stopClusterWork();
         finish();
     }
@@ -222,6 +244,11 @@ public final class PreviewActivity extends Activity
         if (clusterWorkStopped) {
             return;
         }
+        DiagnosticLog.info(
+                "cluster_activity",
+                "stop_work",
+                "trip_active", String.valueOf(
+                        tripCoordinator != null && tripCoordinator.isTripActive()));
         clusterWorkStopped = true;
         mainHandler.removeCallbacks(tripHeartbeat);
         if (tripCoordinator != null) {
@@ -351,6 +378,14 @@ public final class PreviewActivity extends Activity
     }
 
     private void showTripSummary(TripSummary summary) {
+        DiagnosticLog.info(
+                "trip",
+                "summary_shown",
+                "distance_km", String.valueOf(summary.distanceKm),
+                "distance_valid", String.valueOf(summary.distanceValid),
+                "duration_ms", String.valueOf(summary.durationMs),
+                "duration_valid", String.valueOf(summary.durationValid),
+                "consumption_valid", String.valueOf(summary.consumptionValid));
         removeTripSummary();
         tripSummaryLayerStore.setRendererSuppressed(true);
         tripSummaryLayers.onSummaryShown();
@@ -363,6 +398,7 @@ public final class PreviewActivity extends Activity
                     @Override
                     public void onDismiss() {
                         if (tripSummaryView == summaryView) {
+                            DiagnosticLog.info("trip", "summary_dismissed");
                             tripSummaryLayers.onSummaryDismissed();
                             removeTripSummary();
                             syncRendererVisibility();
@@ -388,6 +424,7 @@ public final class PreviewActivity extends Activity
         if (tripSummaryView == null) {
             return;
         }
+        DiagnosticLog.info("trip", "summary_view_removed");
         rootView.removeView(tripSummaryView);
         tripSummaryView = null;
     }
@@ -399,6 +436,21 @@ public final class PreviewActivity extends Activity
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+        if (!keepScreenStateInitialized || lastKeepScreenOn != keepScreenOn) {
+            keepScreenStateInitialized = true;
+            lastKeepScreenOn = keepScreenOn;
+            DiagnosticLog.info(
+                    "cluster_window",
+                    "keep_screen_on_changed",
+                    "enabled", String.valueOf(keepScreenOn),
+                    "renderer_visible", String.valueOf(
+                            tripSummaryLayers != null
+                                    && tripSummaryLayers.isRendererVisible()),
+                    "summary_visible", String.valueOf(
+                            tripSummaryLayers != null
+                                    && tripSummaryLayers.isSummaryVisible()),
+                    "work_stopped", String.valueOf(clusterWorkStopped));
         }
         if (rendererView == null) {
             return;
@@ -438,6 +490,42 @@ public final class PreviewActivity extends Activity
         lastTripTelemetryLogAtMs = nowMs;
     }
 
+    private void logDiagnosticSnapshotIfDue(ClusterState state) {
+        long nowMs = SystemClock.elapsedRealtime();
+        if (lastDiagnosticSnapshotAtMs >= 0L
+                && nowMs >= lastDiagnosticSnapshotAtMs
+                && nowMs - lastDiagnosticSnapshotAtMs < DIAGNOSTIC_SNAPSHOT_MS) {
+            return;
+        }
+        DiagnosticLog.info(
+                "cluster_state",
+                "snapshot",
+                "speed_kph", String.valueOf(state.speedKph),
+                "rpm", String.valueOf(state.rpm),
+                "rpm_age_ms", age(nowMs, state.rpmUpdatedAtMs),
+                "journey_km", String.valueOf(state.dayKm),
+                "journey_age_ms", age(nowMs, state.journeyOdometerUpdatedAtMs),
+                "journey_consumption", String.valueOf(
+                        state.journeyAverageFuelConsumption),
+                "journey_consumption_age_ms", age(
+                        nowMs,
+                        state.journeyAverageFuelConsumptionUpdatedAtMs),
+                "transmission_temp_c", String.valueOf(
+                        state.transmissionTemperatureC),
+                "transmission_temp_age_ms", age(
+                        nowMs,
+                        state.transmissionTemperatureUpdatedAtMs),
+                "trip_active", String.valueOf(
+                        tripCoordinator != null && tripCoordinator.isTripActive()));
+        lastDiagnosticSnapshotAtMs = nowMs;
+    }
+
+    private static String age(long nowMs, long updatedAtMs) {
+        return updatedAtMs > 0L && nowMs >= updatedAtMs
+                ? String.valueOf(nowMs - updatedAtMs)
+                : "unavailable";
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -455,6 +543,7 @@ public final class PreviewActivity extends Activity
 
     @Override
     protected void onDestroy() {
+        DiagnosticLog.info("cluster_activity", "destroy");
         ClusterWindowRegistry.unregister(this);
         stopClusterWork();
         super.onDestroy();
@@ -505,6 +594,10 @@ public final class PreviewActivity extends Activity
         }
         displayMismatchHandled = true;
         Log.e(TAG, "Rejecting cluster window on Display " + actualDisplayId);
+        DiagnosticLog.error(
+                "cluster_activity",
+                "wrong_display",
+                "actual_display", String.valueOf(actualDisplayId));
         String message = ClusterLauncher.isClusterDisplayAvailable(this)
                 ? "Переносим панель на приборный дисплей"
                 : "Приборный дисплей ещё не готов. Ожидаем подключение";

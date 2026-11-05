@@ -37,6 +37,7 @@ final class FdbusRpmReader implements FdbusClientListener {
     private static final int ENGINE_SPEED_CAN_ID = 0x111;
     private static final int FUEL_CONSUMPTION_CAN_ID = 0x271;
     private static final int MAX_RPM = 8000;
+    private static final long DIAGNOSTIC_INTERVAL_MS = 60_000L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object pendingLock = new Object();
@@ -58,6 +59,14 @@ final class FdbusRpmReader implements FdbusClientListener {
     private boolean speedDeliveryScheduled;
     private float pendingSpeedKph;
     private long pendingSpeedReceivedAtMs;
+    private long broadcastCount;
+    private long decodeFailureCount;
+    private long speedFrameCount;
+    private long rpmFrameCount;
+    private long fuelFrameCount;
+    private long speedGapCount;
+    private long lastDiagnosticAtMs;
+    private long lastSpeedGapLogAtMs;
 
     private final Runnable deliverPendingSpeed = new Runnable() {
         @Override
@@ -121,21 +130,44 @@ final class FdbusRpmReader implements FdbusClientListener {
             return;
         }
         started = true;
+        broadcastCount = decodeFailureCount = speedFrameCount = rpmFrameCount = 0L;
+        fuelFrameCount = speedGapCount = 0L;
+        lastDiagnosticAtMs = lastSpeedGapLogAtMs = 0L;
+        DiagnosticLog.info("fdbus", "source_start", "service", SERVICE_URL);
         try {
             runtime = new Fdbus();
             client = new FdbusClient("h9_cluster_vehicle", this);
             boolean accepted = client.connect(SERVICE_URL);
             Log.i(TAG, "Connect accepted=" + accepted);
+            DiagnosticLog.info(
+                    "fdbus",
+                    "connect_requested",
+                    "accepted", String.valueOf(accepted));
             if (!accepted) {
                 stop();
             }
         } catch (Throwable error) {
             Log.e(TAG, "FDBus vehicle source unavailable; Binder fallback remains active", error);
+            DiagnosticLog.error(
+                    "fdbus",
+                    "source_unavailable",
+                    "error", error.getClass().getSimpleName());
             stop();
         }
     }
 
     void stop() {
+        if (started) {
+            DiagnosticLog.info(
+                    "fdbus",
+                    "source_stop",
+                    "online", String.valueOf(online),
+                    "broadcasts", String.valueOf(broadcastCount),
+                    "decode_failures", String.valueOf(decodeFailureCount),
+                    "speed_frames", String.valueOf(speedFrameCount),
+                    "rpm_frames", String.valueOf(rpmFrameCount),
+                    "fuel_frames", String.valueOf(fuelFrameCount));
+        }
         started = false;
         online = false;
         lastSpeedStreamFrameAtMs = 0;
@@ -156,11 +188,19 @@ final class FdbusRpmReader implements FdbusClientListener {
                 oldClient.disconnect();
             } catch (Throwable error) {
                 Log.w(TAG, "Disconnect failed", error);
+                DiagnosticLog.warn(
+                        "fdbus",
+                        "disconnect_failed",
+                        "error", error.getClass().getSimpleName());
             }
             try {
                 oldClient.destroy();
             } catch (Throwable error) {
                 Log.w(TAG, "Destroy failed", error);
+                DiagnosticLog.warn(
+                        "fdbus",
+                        "destroy_failed",
+                        "error", error.getClass().getSimpleName());
             }
         }
         runtime = null;
@@ -181,6 +221,11 @@ final class FdbusRpmReader implements FdbusClientListener {
         online = accepted;
         scheduleSpeedDelivery(Float.NaN, 0);
         Log.i(TAG, "Online sid=" + sessionId + " subscribeAccepted=" + accepted);
+        DiagnosticLog.info(
+                "fdbus",
+                "online",
+                "session_id", String.valueOf(sessionId),
+                "subscribe_accepted", String.valueOf(accepted));
     }
 
     @Override
@@ -190,6 +235,10 @@ final class FdbusRpmReader implements FdbusClientListener {
         deliveredSpeedAtMs = 0;
         scheduleSpeedDelivery(Float.NaN, 0);
         Log.w(TAG, "Offline sid=" + sessionId + "; Binder fallback will take over");
+        DiagnosticLog.warn(
+                "fdbus",
+                "offline",
+                "session_id", String.valueOf(sessionId));
     }
 
     @Override
@@ -197,26 +246,44 @@ final class FdbusRpmReader implements FdbusClientListener {
         if (!started || message.code() != MCU_CAN_EVENT) {
             return;
         }
+        broadcastCount++;
         McuCanFrame frame = McuCanFrame.decode(message.byteArray());
         if (frame == null) {
+            decodeFailureCount++;
+            maybeLogHealth(SystemClock.elapsedRealtime());
             return;
         }
 
         long receivedAtMs = SystemClock.elapsedRealtime();
+        maybeLogHealth(receivedAtMs);
         if (online && frame.channel == McuVehicleSpeed.CHANNEL) {
             if (lastSpeedStreamFrameAtMs > 0
                     && receivedAtMs - lastSpeedStreamFrameAtMs
                             > VehicleSpeedSelector.MCU_STREAM_STALE_MS) {
+                speedGapCount++;
+                if (lastSpeedGapLogAtMs == 0L
+                        || receivedAtMs - lastSpeedGapLogAtMs
+                                >= DIAGNOSTIC_INTERVAL_MS) {
+                    DiagnosticLog.warn(
+                            "fdbus",
+                            "speed_stream_gap",
+                            "gap_ms", String.valueOf(
+                                    receivedAtMs - lastSpeedStreamFrameAtMs),
+                            "gap_count", String.valueOf(speedGapCount));
+                    lastSpeedGapLogAtMs = receivedAtMs;
+                }
                 speedSessionStartedAtMs = receivedAtMs;
                 deliveredSpeedAtMs = 0;
                 scheduleSpeedDelivery(Float.NaN, 0);
             }
             lastSpeedStreamFrameAtMs = receivedAtMs;
             if (frame.id == McuVehicleSpeed.CAN_ID) {
+                speedFrameCount++;
                 scheduleSpeedDelivery(McuVehicleSpeed.decode(frame.data), receivedAtMs);
             }
         }
         if (frame.id == FUEL_CONSUMPTION_CAN_ID) {
+            fuelFrameCount++;
             int counter = decodeFuelConsumptionCounter(frame.data);
             if (counter >= 0) {
                 scheduleFuelDelivery(counter, receivedAtMs);
@@ -235,6 +302,7 @@ final class FdbusRpmReader implements FdbusClientListener {
         if (rpm < 0 || rpm > MAX_RPM) {
             return;
         }
+        rpmFrameCount++;
         scheduleDelivery(rpm, receivedAtMs);
     }
 
@@ -306,6 +374,29 @@ final class FdbusRpmReader implements FdbusClientListener {
             return -1;
         }
         return ((canData[1] & 0xff) << 8) | (canData[2] & 0xff);
+    }
+
+    private void maybeLogHealth(long nowMs) {
+        if (lastDiagnosticAtMs > 0L
+                && nowMs >= lastDiagnosticAtMs
+                && nowMs - lastDiagnosticAtMs < DIAGNOSTIC_INTERVAL_MS) {
+            return;
+        }
+        DiagnosticLog.info(
+                "fdbus",
+                "health",
+                "online", String.valueOf(online),
+                "broadcasts", String.valueOf(broadcastCount),
+                "decode_failures", String.valueOf(decodeFailureCount),
+                "speed_frames", String.valueOf(speedFrameCount),
+                "rpm_frames", String.valueOf(rpmFrameCount),
+                "fuel_frames", String.valueOf(fuelFrameCount),
+                "speed_gap_count", String.valueOf(speedGapCount),
+                "speed_stream_age_ms", lastSpeedStreamFrameAtMs > 0L
+                        && nowMs >= lastSpeedStreamFrameAtMs
+                        ? String.valueOf(nowMs - lastSpeedStreamFrameAtMs)
+                        : "unavailable");
+        lastDiagnosticAtMs = nowMs;
     }
 
 }

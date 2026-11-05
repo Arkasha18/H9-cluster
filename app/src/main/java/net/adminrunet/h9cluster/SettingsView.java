@@ -57,6 +57,7 @@ public final class SettingsView extends View {
     private final SkinSettingsSession session;
     private final Listener listener;
     private String status = "";
+    private MachineIdentity.Identity machineIdentity;
     private float contentScale = 1.0f;
     private float contentOffsetX;
     private float contentOffsetY;
@@ -68,6 +69,8 @@ public final class SettingsView extends View {
 
         void onCheckForUpdatesRequested();
 
+        void onSendLogsRequested();
+
         void onExitRequested();
     }
 
@@ -78,6 +81,7 @@ public final class SettingsView extends View {
         super(context);
         this.session = session;
         this.listener = listener;
+        machineIdentity = MachineIdentity.current(context);
         setBackgroundColor(COLOR_BACKGROUND);
     }
 
@@ -105,12 +109,21 @@ public final class SettingsView extends View {
                 false);
         drawCenteredText(
                 canvas,
+                "Код машины: " + machineIdentity.code
+                        + (machineIdentity.isVinBased() ? " · VIN" : " · код установки"),
+                480.0f,
+                111.0f,
+                17.0f,
+                machineIdentity.isVinBased() ? COLOR_ACCENT : COLOR_TEXT,
+                true);
+        drawCenteredText(
+                canvas,
                 BuildConfig.DEMO_MODE
                         ? "Выберите тему для автономного Demo"
-                        : "Выберите тему, которая будет автоматически запускаться на дисплее 2",
+                        : "Выберите тему; этот код сообщите после отправки логов",
                 480.0f,
-                125.0f,
-                17.0f,
+                137.0f,
+                14.0f,
                 COLOR_MUTED,
                 false);
 
@@ -157,6 +170,9 @@ public final class SettingsView extends View {
                 false);
 
         drawExitButton(canvas);
+        if (logsEnabled()) {
+            drawLogButton(canvas);
+        }
         if (updatesEnabled()) {
             drawUpdateButton(canvas);
         }
@@ -212,6 +228,28 @@ public final class SettingsView extends View {
                 "Проверить обновление",
                 (SettingsUpdateButton.LEFT + SettingsUpdateButton.RIGHT) * 0.5f,
                 SettingsUpdateButton.TOP + 29.0f,
+                16.0f,
+                COLOR_ACCENT,
+                true);
+    }
+
+    private void drawLogButton(Canvas canvas) {
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2.0f);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                SettingsLogButton.LEFT,
+                SettingsLogButton.TOP,
+                SettingsLogButton.RIGHT,
+                SettingsLogButton.BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        drawCenteredText(
+                canvas,
+                "Отправить логи",
+                (SettingsLogButton.LEFT + SettingsLogButton.RIGHT) * 0.5f,
+                SettingsLogButton.TOP + 29.0f,
                 16.0f,
                 COLOR_ACCENT,
                 true);
@@ -426,6 +464,10 @@ public final class SettingsView extends View {
             confirmExit();
             return true;
         }
+        if (logsEnabled() && SettingsLogButton.contains(x, y)) {
+            listener.onSendLogsRequested();
+            return true;
+        }
         if (updatesEnabled() && SettingsUpdateButton.contains(x, y)) {
             listener.onCheckForUpdatesRequested();
             return true;
@@ -434,6 +476,10 @@ public final class SettingsView extends View {
     }
 
     private static boolean updatesEnabled() {
+        return !BuildConfig.DEBUG && !BuildConfig.DEMO_MODE;
+    }
+
+    private static boolean logsEnabled() {
         return !BuildConfig.DEBUG && !BuildConfig.DEMO_MODE;
     }
 
@@ -544,6 +590,26 @@ public final class SettingsView extends View {
                 : BuildConfig.DEMO_MODE
                         ? "Настройки сохранены. Не удалось запустить Demo"
                         : "Настройки сохранены. Ждём дисплей 2 и запустим автоматически";
+        invalidate();
+    }
+
+    void setMachineIdentity(MachineIdentity.Identity identity) {
+        if (identity == null) {
+            return;
+        }
+        machineIdentity = identity;
+        invalidate();
+    }
+
+    void showLogUploadStarted(String machineId) {
+        status = "Отправляем журнал за 24 часа · " + machineId;
+        invalidate();
+    }
+
+    void showLogUploadResult(LogUploadManager.Result result) {
+        status = result.success
+                ? "Логи отправлены. Сообщите код машины: " + result.machineId
+                : result.message + " · код " + result.machineId;
         invalidate();
     }
 

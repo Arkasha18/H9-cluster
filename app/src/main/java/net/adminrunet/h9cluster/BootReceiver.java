@@ -18,8 +18,16 @@ public final class BootReceiver extends BroadcastReceiver {
         if (!BootStartPolicy.shouldStart(
                 action,
                 AutostartPreferences.isAutostartSuspended(applicationContext))) {
+            DiagnosticLog.info(
+                    "autostart",
+                    "ignored",
+                    "action", action,
+                    "suspended", String.valueOf(
+                            AutostartPreferences.isAutostartSuspended(applicationContext)));
             return;
         }
+
+        DiagnosticLog.info("autostart", "received", "action", action);
 
         final PendingResult pendingResult = goAsync();
         final Handler handler = new Handler(Looper.getMainLooper());
@@ -30,8 +38,13 @@ public final class BootReceiver extends BroadcastReceiver {
             @Override
             public void run() {
                 attempt++;
-                if (ClusterLauncher.startOnClusterDisplay(applicationContext)
-                        || attempt >= MAX_ATTEMPTS) {
+                boolean launched = ClusterLauncher.startOnClusterDisplay(applicationContext);
+                DiagnosticLog.info(
+                        "autostart",
+                        "launch_attempt",
+                        "attempt", String.valueOf(attempt),
+                        "launched", String.valueOf(launched));
+                if (launched || attempt >= MAX_ATTEMPTS) {
                     pendingResult.finish();
                     return;
                 }

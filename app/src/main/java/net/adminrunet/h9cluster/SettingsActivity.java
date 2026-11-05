@@ -15,6 +15,8 @@ public final class SettingsActivity extends Activity {
     private SettingsView settingsView;
     private boolean unsavedPreviewActive;
     private UpdateManager updateManager;
+    private LogUploadManager logUploadManager;
+    private VehicleIdentityReader identityReader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,11 +92,43 @@ public final class SettingsActivity extends Activity {
                     }
 
                     @Override
+                    public void onSendLogsRequested() {
+                        if (logUploadManager != null) {
+                            logUploadManager.uploadLastDay();
+                        }
+                    }
+
+                    @Override
                     public void onExitRequested() {
                         exitApplication();
                     }
                 });
         setContentView(settingsView);
+        settingsView.setMachineIdentity(MachineIdentity.current(this));
+
+        identityReader = new VehicleIdentityReader(
+                this,
+                new VehicleIdentityReader.Listener() {
+                    @Override
+                    public void onIdentity(MachineIdentity.Identity identity) {
+                        settingsView.setMachineIdentity(identity);
+                    }
+                });
+        identityReader.start();
+
+        logUploadManager = new LogUploadManager(
+                this,
+                new LogUploadManager.Listener() {
+                    @Override
+                    public void onUploadStarted(String machineId) {
+                        settingsView.showLogUploadStarted(machineId);
+                    }
+
+                    @Override
+                    public void onUploadFinished(LogUploadManager.Result result) {
+                        settingsView.showLogUploadResult(result);
+                    }
+                });
 
         boolean updatesEnabled = !BuildConfig.DEBUG && !BuildConfig.DEMO_MODE;
         updateManager = new UpdateManager(
@@ -107,6 +141,7 @@ public final class SettingsActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        settingsView.setMachineIdentity(MachineIdentity.current(this));
         if (updateManager != null) {
             updateManager.onResume();
         }
@@ -131,6 +166,12 @@ public final class SettingsActivity extends Activity {
         if (updateManager != null) {
             updateManager.destroy();
         }
+        if (logUploadManager != null) {
+            logUploadManager.destroy();
+        }
+        if (identityReader != null) {
+            identityReader.stop();
+        }
         super.onDestroy();
     }
 
@@ -147,6 +188,7 @@ public final class SettingsActivity extends Activity {
      * preview is dropped so leaving the screen cannot restart the cluster.
      */
     private void exitApplication() {
+        DiagnosticLog.info("settings", "exit_application_requested");
         unsavedPreviewActive = false;
         AutostartPreferences.setAutostartSuspended(this, true);
         ClusterDisplayRecovery.cancel();
