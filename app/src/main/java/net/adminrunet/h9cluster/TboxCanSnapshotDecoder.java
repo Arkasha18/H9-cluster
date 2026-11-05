@@ -32,6 +32,8 @@ final class TboxCanSnapshotDecoder {
         final int observedLength;
         final int declaredLength;
         final String headerSignature;
+        final String generationSignature;
+        final String temperatureRecordsRaw;
         final long generation;
         final float temperatureC;
         final int rawTemperature;
@@ -51,6 +53,8 @@ final class TboxCanSnapshotDecoder {
                 int observedLength,
                 int declaredLength,
                 String headerSignature,
+                String generationSignature,
+                String temperatureRecordsRaw,
                 long generation,
                 float temperatureC,
                 int rawTemperature,
@@ -68,6 +72,8 @@ final class TboxCanSnapshotDecoder {
             this.observedLength = observedLength;
             this.declaredLength = declaredLength;
             this.headerSignature = headerSignature;
+            this.generationSignature = generationSignature;
+            this.temperatureRecordsRaw = temperatureRecordsRaw;
             this.generation = generation;
             this.temperatureC = temperatureC;
             this.rawTemperature = rawTemperature;
@@ -99,19 +105,22 @@ final class TboxCanSnapshotDecoder {
                 ? littleEndianInt(snapshot, 0)
                 : -1;
         String headerSignature = headerSignature(snapshot);
+        String generationSignature = generationSignature(snapshot);
         if (snapshot == null || snapshot.length != SNAPSHOT_LENGTH) {
             return invalid(
                     "length",
                     observedLength,
                     declaredLength,
-                    headerSignature);
+                    headerSignature,
+                    generationSignature);
         }
         if (declaredLength != DECLARED_PAYLOAD_LENGTH) {
             return invalid(
                     "declared_length",
                     observedLength,
                     declaredLength,
-                    headerSignature);
+                    headerSignature,
+                    generationSignature);
         }
         if ((snapshot[4] & 0xff) != 0x07
                 || (snapshot[5] & 0xff) != 0x94
@@ -123,7 +132,8 @@ final class TboxCanSnapshotDecoder {
                     "header",
                     observedLength,
                     declaredLength,
-                    headerSignature);
+                    headerSignature,
+                    generationSignature);
         }
         if (!validBcd(snapshot[6], 0, 99)
                 || !validBcd(snapshot[7], 1, 12)
@@ -135,14 +145,16 @@ final class TboxCanSnapshotDecoder {
                     "timestamp",
                     observedLength,
                     declaredLength,
-                    headerSignature);
+                    headerSignature,
+                    generationSignature);
         }
         if (RECORDS_OFFSET + RECORD_SIZE * RECORD_COUNT != snapshot.length) {
             return invalid(
                     "record_layout",
                     observedLength,
                     declaredLength,
-                    headerSignature);
+                    headerSignature,
+                    generationSignature);
         }
 
         int recordOffset = RECORDS_OFFSET + NEWEST_RECORD_INDEX * RECORD_SIZE;
@@ -170,9 +182,7 @@ final class TboxCanSnapshotDecoder {
         boolean epbValid = rawEpbState == 0 || rawEpbState == 1;
         boolean epbEngaged = epbValid && rawEpbState == 1;
 
-        int first = snapshot[recordOffset + TEMPERATURE_BYTE_1] & 0xff;
-        int second = snapshot[recordOffset + TEMPERATURE_BYTE_2] & 0xff;
-        int rawTemperature = ((first & 0x1f) << 3) | ((second >>> 5) & 0x07);
+        int rawTemperature = rawTemperature(snapshot, recordOffset);
         float temperatureC = Float.NaN;
         String temperatureStatus;
         if (rawTemperature == INVALID_RAW_TEMPERATURE) {
@@ -195,6 +205,8 @@ final class TboxCanSnapshotDecoder {
                 observedLength,
                 declaredLength,
                 headerSignature,
+                generationSignature,
+                temperatureRecordsRaw(snapshot),
                 generation(snapshot),
                 temperatureC,
                 rawTemperature,
@@ -212,7 +224,8 @@ final class TboxCanSnapshotDecoder {
             String reason,
             int observedLength,
             int declaredLength,
-            String headerSignature) {
+            String headerSignature,
+            String generationSignature) {
         return new Result(
                 false,
                 reason,
@@ -220,6 +233,8 @@ final class TboxCanSnapshotDecoder {
                 observedLength,
                 declaredLength,
                 headerSignature,
+                generationSignature,
+                "unavailable",
                 -1L,
                 Float.NaN,
                 -1,
@@ -270,6 +285,25 @@ final class TboxCanSnapshotDecoder {
         return result;
     }
 
+    private static int rawTemperature(byte[] snapshot, int recordOffset) {
+        int first = snapshot[recordOffset + TEMPERATURE_BYTE_1] & 0xff;
+        int second = snapshot[recordOffset + TEMPERATURE_BYTE_2] & 0xff;
+        return ((first & 0x1f) << 3) | ((second >>> 5) & 0x07);
+    }
+
+    /** Derived temperature fields for records 0..9; no raw packet is retained. */
+    private static String temperatureRecordsRaw(byte[] snapshot) {
+        StringBuilder result = new StringBuilder(RECORD_COUNT * 4);
+        for (int index = 0; index < RECORD_COUNT; index++) {
+            if (index > 0) {
+                result.append(',');
+            }
+            int recordOffset = RECORDS_OFFSET + index * RECORD_SIZE;
+            result.append(rawTemperature(snapshot, recordOffset));
+        }
+        return result.toString();
+    }
+
     private static String headerSignature(byte[] snapshot) {
         if (snapshot == null || snapshot.length < 16) {
             return "unavailable";
@@ -277,6 +311,17 @@ final class TboxCanSnapshotDecoder {
         return hex(snapshot[4]) + hex(snapshot[5]) + "/"
                 + hex(snapshot[12]) + hex(snapshot[13])
                 + hex(snapshot[14]) + hex(snapshot[15]);
+    }
+
+    private static String generationSignature(byte[] snapshot) {
+        if (snapshot == null || snapshot.length < 12) {
+            return "unavailable";
+        }
+        StringBuilder result = new StringBuilder(12);
+        for (int index = 6; index <= 11; index++) {
+            result.append(hex(snapshot[index]));
+        }
+        return result.toString();
     }
 
     private static String hex(byte value) {

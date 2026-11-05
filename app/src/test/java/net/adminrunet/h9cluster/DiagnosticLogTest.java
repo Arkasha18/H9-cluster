@@ -30,4 +30,29 @@ public final class DiagnosticLogTest {
     public void missingTimestampIsRejectedByExporterParser() {
         assertEquals(-1L, DiagnosticLog.timestampFromLine("{\"event\":\"x\"}"));
     }
+
+    @Test
+    public void tboxTemperatureDiagnosticRemainsCompact() {
+        String line = DiagnosticLog.formatLine(
+                1_800_000_000_000L,
+                1234L,
+                "INFO",
+                "tbox_temperature",
+                "status_changed",
+                "previous_status", "source_unavailable",
+                "temperature_status", "available",
+                "temperature_available", "true",
+                "temperature_c", "79.0",
+                "temperature_raw", "119",
+                "temperature_records_raw",
+                        "255,255,255,255,255,255,255,255,255,119",
+                "generation", "261105143843",
+                "engine_state", "2",
+                "park", "false");
+
+        assertTrue(line.length() < 1024);
+        assertTrue(line.contains(
+                "\"temperature_records_raw\":"
+                        + "\"255,255,255,255,255,255,255,255,255,119\""));
+    }
 }
