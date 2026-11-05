@@ -232,6 +232,36 @@ public final class TripSummaryCoordinatorTest {
     }
 
     @Test
+    public void tboxEngineStopInParkFlowsThroughCoordinatorWithMissingRpmAndSpeed() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+        confirmStart(coordinator, clock, 10.0f);
+
+        clock.now = 10_000L;
+        ClusterState stoppedInPark = state(
+                800,
+                -1,
+                10.1f,
+                9.0f,
+                2_000L,
+                clock.nowMs()).withTboxVehicleState(
+                        ClusterState.ENGINE_STATE_STOPPED,
+                        clock.nowMs(),
+                        true,
+                        true,
+                        clock.nowMs());
+        coordinator.onClusterState(stoppedInPark);
+        clock.now = 11_500L;
+        coordinator.onClockTick();
+
+        assertEquals(1, listener.summaries.size());
+        assertFalse(coordinator.isTripActive());
+    }
+
+    @Test
     public void retriesFailedSessionClearBeforeEmittingSummary() {
         MutableClock clock = new MutableClock(1_000L);
         MemoryPersistence persistence = new MemoryPersistence();

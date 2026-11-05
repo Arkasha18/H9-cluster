@@ -2,9 +2,19 @@ package net.adminrunet.h9cluster;
 
 /** One complete, immutable snapshot of values shown by the cluster. */
 public final class ClusterState {
+    public static final int ENGINE_STATE_UNKNOWN = -1;
+    public static final int ENGINE_STATE_STOPPED = 0;
+    public static final int ENGINE_STATE_RUNNING = 2;
+
     /** Measured speed in km/h; -1 means no trustworthy source is available. */
     public final int speedKph;
     public final int rpm;
+    /** Independently decoded TBOX engine state: -1 unknown, 0 stopped, 2 running. */
+    public final int engineState;
+    public final long engineStateUpdatedAtMs;
+    public final boolean parkStateValid;
+    public final boolean inPark;
+    public final long parkStateUpdatedAtMs;
     public final int currentGear;
     public final String gearSelector;
     public final int coolantC;
@@ -73,6 +83,11 @@ public final class ClusterState {
             String driveMode) {
         this.speedKph = speedKph;
         this.rpm = rpm;
+        this.engineState = ENGINE_STATE_UNKNOWN;
+        this.engineStateUpdatedAtMs = 0L;
+        this.parkStateValid = false;
+        this.inPark = false;
+        this.parkStateUpdatedAtMs = 0L;
         this.currentGear = currentGear;
         this.gearSelector = gearSelector == null
                 ? GearSelector.UNKNOWN
@@ -112,14 +127,39 @@ public final class ClusterState {
     }
 
     private ClusterState(ClusterState source, int fuelTankCapacityLiters) {
+        this(
+                source,
+                fuelTankCapacityLiters,
+                source.engineState,
+                source.engineStateUpdatedAtMs,
+                source.parkStateValid,
+                source.inPark,
+                source.parkStateUpdatedAtMs);
+    }
+
+    private ClusterState(
+            ClusterState source,
+            int fuelTankCapacityLiters,
+            int engineState,
+            long engineStateUpdatedAtMs,
+            boolean parkStateValid,
+            boolean inPark,
+            long parkStateUpdatedAtMs) {
         speedKph = source.speedKph;
         rpm = source.rpm;
+        this.engineState = engineState;
+        this.engineStateUpdatedAtMs = engineStateUpdatedAtMs;
+        this.parkStateValid = parkStateValid;
+        this.inPark = inPark;
+        this.parkStateUpdatedAtMs = parkStateUpdatedAtMs;
         currentGear = source.currentGear;
         gearSelector = source.gearSelector;
         coolantC = source.coolantC;
         transmissionTemperatureC = source.transmissionTemperatureC;
-        fuelLiters = source.fuelLiters / source.fuelTankCapacityLiters
-                * fuelTankCapacityLiters;
+        fuelLiters = source.fuelTankCapacityLiters == fuelTankCapacityLiters
+                ? source.fuelLiters
+                : source.fuelLiters / source.fuelTankCapacityLiters
+                        * fuelTankCapacityLiters;
         this.fuelTankCapacityLiters = fuelTankCapacityLiters;
         rangeKm = source.rangeKm;
         odometerKm = source.odometerKm;
@@ -159,6 +199,41 @@ public final class ClusterState {
         return normalized == fuelTankCapacityLiters
                 ? this
                 : new ClusterState(this, normalized);
+    }
+
+    /** Adds independent read-only engine/Park evidence without changing display telemetry. */
+    public ClusterState withTboxVehicleState(
+            int engineState,
+            long engineStateUpdatedAtMs,
+            boolean parkStateValid,
+            boolean inPark,
+            long parkStateUpdatedAtMs) {
+        int normalizedEngineState = engineState == ENGINE_STATE_STOPPED
+                || engineState == ENGINE_STATE_RUNNING
+                ? engineState
+                : ENGINE_STATE_UNKNOWN;
+        long normalizedEngineUpdatedAtMs = normalizedEngineState == ENGINE_STATE_UNKNOWN
+                ? 0L
+                : Math.max(0L, engineStateUpdatedAtMs);
+        boolean normalizedParkValid = parkStateValid && parkStateUpdatedAtMs > 0L;
+        long normalizedParkUpdatedAtMs = normalizedParkValid
+                ? parkStateUpdatedAtMs
+                : 0L;
+        if (this.engineState == normalizedEngineState
+                && this.engineStateUpdatedAtMs == normalizedEngineUpdatedAtMs
+                && this.parkStateValid == normalizedParkValid
+                && this.inPark == (normalizedParkValid && inPark)
+                && this.parkStateUpdatedAtMs == normalizedParkUpdatedAtMs) {
+            return this;
+        }
+        return new ClusterState(
+                this,
+                fuelTankCapacityLiters,
+                normalizedEngineState,
+                normalizedEngineUpdatedAtMs,
+                normalizedParkValid,
+                normalizedParkValid && inPark,
+                normalizedParkUpdatedAtMs);
     }
 
     public boolean hasTransmissionTemperature() {
