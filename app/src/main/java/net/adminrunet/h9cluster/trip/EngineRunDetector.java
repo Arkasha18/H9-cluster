@@ -1,5 +1,6 @@
 package net.adminrunet.h9cluster.trip;
 
+import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.DiagnosticLog;
 
 /** Detects confirmed engine start and stop transitions from fresh RPM samples. */
@@ -9,7 +10,8 @@ public final class EngineRunDetector {
     private static final long RPM_FRESH_MS = 1_000L;
     private static final long START_HOLD_MS = 1_000L;
     private static final long STOP_HOLD_MS = 1_500L;
-    private static final long STOP_SPEED_EVIDENCE_MS = 2_000L;
+    private static final long STOP_SPEED_EVIDENCE_MS = 60_000L;
+    private static final long VEHICLE_STATE_FRESH_MS = 15_000L;
     private static final long TRANSIENT_LOG_INTERVAL_MS = 30_000L;
 
     public enum Event {
@@ -43,6 +45,28 @@ public final class EngineRunDetector {
             int speedKph,
             long rpmUpdatedAtMs,
             long nowMs) {
+        return update(
+                rpm,
+                speedKph,
+                rpmUpdatedAtMs,
+                ClusterState.ENGINE_STATE_UNKNOWN,
+                0L,
+                false,
+                false,
+                0L,
+                nowMs);
+    }
+
+    public Event update(
+            int rpm,
+            int speedKph,
+            long rpmUpdatedAtMs,
+            int engineState,
+            long engineStateUpdatedAtMs,
+            boolean parkStateValid,
+            boolean inPark,
+            long parkStateUpdatedAtMs,
+            long nowMs) {
         boolean observedRpm =
                 rpmUpdatedAtMs > 0L && nowMs >= rpmUpdatedAtMs;
         boolean freshRpm = observedRpm
@@ -69,7 +93,31 @@ public final class EngineRunDetector {
         boolean lastObservedRpmStopped = observedRpm && rpm <= STOP_RPM;
         // Once both stop signals were observed, transport silence must not
         // cancel the hold. New movement or nonzero RPM still cancels it.
-        boolean stopCondition = observedStationary && lastObservedRpmStopped;
+        boolean freshEngineState = engineStateUpdatedAtMs > 0L
+                && nowMs >= engineStateUpdatedAtMs
+                && nowMs - engineStateUpdatedAtMs <= VEHICLE_STATE_FRESH_MS;
+        boolean freshParkState = parkStateValid
+                && parkStateUpdatedAtMs > 0L
+                && nowMs >= parkStateUpdatedAtMs
+                && nowMs - parkStateUpdatedAtMs <= VEHICLE_STATE_FRESH_MS;
+        // A fresh non-Park state identifies an automatic start-stop pause and
+        // vetoes even the legacy RPM + zero-speed path.
+        boolean freshNonPark = freshParkState && !inPark;
+        boolean rpmAndSpeedStop = observedStationary
+                && lastObservedRpmStopped
+                && !freshNonPark;
+        boolean explicitEngineStop = freshEngineState
+                && engineState == ClusterState.ENGINE_STATE_STOPPED;
+        // The independent TBOX path is deliberately stricter than RPM: engine
+        // stopped and Park must both be fresh, while movement remains a veto.
+        boolean tboxStop = explicitEngineStop
+                && speedKph <= 0
+                && freshParkState
+                && inPark;
+        boolean stopCondition = rpmAndSpeedStop || tboxStop;
+        String stopEvidence = tboxStop
+                ? "tbox_engine_park"
+                : rpmAndSpeedStop ? "rpm_speed" : "none";
 
         switch (state) {
             case OFF:
@@ -81,7 +129,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                     return Event.STARTING;
                 }
                 return Event.NONE;
@@ -93,7 +142,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                     cancelCandidate(State.OFF);
                     return Event.NONE;
                 }
@@ -104,7 +154,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                     cancelCandidate(State.RUNNING);
                     return Event.STARTED;
                 }
@@ -118,7 +169,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                 }
                 return Event.NONE;
             case STOPPING:
@@ -129,7 +181,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                     cancelCandidate(State.RUNNING);
                     return Event.NONE;
                 }
@@ -140,7 +193,8 @@ public final class EngineRunDetector {
                             speedKph,
                             rpmUpdatedAtMs,
                             nowMs,
-                            observedStationary);
+                            observedStationary,
+                            stopEvidence);
                     cancelCandidate(State.OFF);
                     return Event.STOPPED;
                 }
@@ -166,7 +220,8 @@ public final class EngineRunDetector {
             int speedKph,
             long rpmUpdatedAtMs,
             long nowMs,
-            boolean observedStationary) {
+            boolean observedStationary,
+            String stopEvidence) {
         if (!shouldLogTransition(event, nowMs)) {
             return;
         }
@@ -180,6 +235,7 @@ public final class EngineRunDetector {
                         ? String.valueOf(nowMs - rpmUpdatedAtMs)
                         : "unavailable",
                 "stationary_evidence", String.valueOf(observedStationary),
+                "stop_evidence", stopEvidence,
                 "candidate_ms", candidateSinceMs >= 0L && nowMs >= candidateSinceMs
                         ? String.valueOf(nowMs - candidateSinceMs)
                         : "none");

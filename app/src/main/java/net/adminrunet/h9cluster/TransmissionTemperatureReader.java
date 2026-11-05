@@ -27,7 +27,9 @@ import java.util.concurrent.TimeUnit;
  */
 final class TransmissionTemperatureReader {
     interface Listener {
-        void onTransmissionTemperature(float temperatureC, long receivedAtMs);
+        void onTboxSnapshot(
+                TboxCanSnapshotDecoder.Result snapshot,
+                long receivedAtMs);
     }
 
     private static final String TAG = "TransmissionTemp";
@@ -35,9 +37,12 @@ final class TransmissionTemperatureReader {
     private static final String TBOX_USER = "root";
     private static final int TBOX_SSH_PORT = 22;
     private static final String SNAPSHOT_PATH = "/dev/shm/can_data_collect";
+    private static final int SNAPSHOT_CAPTURE_LIMIT_BYTES = 4096;
+    private static final int SNAPSHOT_CAPTURE_BUFFER_BYTES =
+            SNAPSHOT_CAPTURE_LIMIT_BYTES + 1;
     private static final String READ_SNAPSHOT_COMMAND =
             "dd if=" + SNAPSHOT_PATH + " bs="
-                    + TboxTransmissionTemperatureDecoder.SNAPSHOT_LENGTH
+                    + SNAPSHOT_CAPTURE_BUFFER_BYTES
                     + " count=1 2>/dev/null";
 
     private static final int CONNECT_TIMEOUT_MS = 2500;
@@ -46,6 +51,9 @@ final class TransmissionTemperatureReader {
     private static final long FAILURE_LOG_INTERVAL_MS = 60_000L;
     private static final long SUCCESS_LOG_INTERVAL_MS = 5L * 60L * 1000L;
     private static final long CONNECT_LOG_INTERVAL_MS = 5L * 60L * 1000L;
+    private static final long BACKOFF_LOG_INTERVAL_MS = 5L * 60L * 1000L;
+    private static final int FAILURES_BEFORE_BACKOFF = 3;
+    private static final long FAILURE_BACKOFF_MS = 60_000L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Listener listener;
@@ -63,6 +71,15 @@ final class TransmissionTemperatureReader {
     private long lastConnectedLogAtMs;
     private long lastDisconnectedLogAtMs;
     private long lastRecoveryLogAtMs;
+    private long lastBackoffLogAtMs;
+    private long backoffUntilMs;
+    private long skippedPollCount;
+    private long backoffCount;
+    private long lastGeneration = -1L;
+    private int consecutiveFailures;
+    private int lastLoggedEngineState = TboxCanSnapshotDecoder.ENGINE_UNKNOWN;
+    private int lastLoggedParkState = -1;
+    private String lastTemperatureStatus;
     private boolean previousPollSucceeded;
     private boolean missingSecretLogged;
 
@@ -80,6 +97,13 @@ final class TransmissionTemperatureReader {
         connectAttemptCount = 0L;
         lastConnectLogAtMs = lastConnectedLogAtMs = 0L;
         lastDisconnectedLogAtMs = lastRecoveryLogAtMs = 0L;
+        lastBackoffLogAtMs = backoffUntilMs = 0L;
+        skippedPollCount = backoffCount = 0L;
+        lastGeneration = -1L;
+        consecutiveFailures = 0;
+        lastLoggedEngineState = TboxCanSnapshotDecoder.ENGINE_UNKNOWN;
+        lastLoggedParkState = -1;
+        lastTemperatureStatus = null;
         previousPollSucceeded = false;
 
         if (!hasConfiguredSecret()) {
@@ -124,6 +148,8 @@ final class TransmissionTemperatureReader {
                     "polls", String.valueOf(pollCount),
                     "successes", String.valueOf(successCount),
                     "failures", String.valueOf(failureCount),
+                    "skipped_polls", String.valueOf(skippedPollCount),
+                    "backoffs", String.valueOf(backoffCount),
                     "session_connected", String.valueOf(
                             session != null && session.isConnected()));
         }
@@ -142,22 +168,29 @@ final class TransmissionTemperatureReader {
         if (!started) {
             return;
         }
+        long pollStartedAtMs = SystemClock.elapsedRealtime();
+        if (pollStartedAtMs < backoffUntilMs) {
+            skippedPollCount++;
+            return;
+        }
         pollCount++;
         try {
             byte[] snapshot = readSnapshot();
-            final float temperatureC;
+            final TboxCanSnapshotDecoder.Result decoded;
             try {
-                temperatureC =
-                        TboxTransmissionTemperatureDecoder.decodeCelsius(snapshot);
+                decoded = TboxCanSnapshotDecoder.decode(snapshot);
             } finally {
                 Arrays.fill(snapshot, (byte) 0);
             }
-            if (Float.isNaN(temperatureC)) {
-                throw new IOException("Invalid can_data_collect snapshot");
+            if (!decoded.validSnapshot) {
+                handleDecodeFailure(decoded);
+                return;
             }
 
             final long receivedAtMs = SystemClock.elapsedRealtime();
             successCount++;
+            consecutiveFailures = 0;
+            backoffUntilMs = 0L;
             boolean recovered = !previousPollSucceeded;
             previousPollSucceeded = true;
             boolean logRecovery = recovered
@@ -170,7 +203,24 @@ final class TransmissionTemperatureReader {
                 DiagnosticLog.info(
                         "tbox_temperature",
                         logRecovery ? "poll_recovered" : "poll_ok",
-                        "temperature_c", String.valueOf(temperatureC),
+                        "temperature_available", String.valueOf(
+                                decoded.hasTemperature()),
+                        "temperature_c", decoded.hasTemperature()
+                                ? String.valueOf(decoded.temperatureC)
+                                : "unavailable",
+                        "temperature_status", decoded.temperatureStatus,
+                        "temperature_raw", String.valueOf(decoded.rawTemperature),
+                        "temperature_records_raw", decoded.temperatureRecordsRaw,
+                        "generation", decoded.generationSignature,
+                        "engine_state", decoded.hasEngineState()
+                                ? String.valueOf(decoded.engineState)
+                                : "unavailable",
+                        "park", decoded.parkValid
+                                ? String.valueOf(decoded.inPark)
+                                : "unavailable",
+                        "epb", decoded.epbValid
+                                ? String.valueOf(decoded.epbEngaged)
+                                : "unavailable",
                         "polls", String.valueOf(pollCount),
                         "successes", String.valueOf(successCount),
                         "failures", String.valueOf(failureCount),
@@ -181,33 +231,140 @@ final class TransmissionTemperatureReader {
                     lastRecoveryLogAtMs = receivedAtMs;
                 }
             }
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (started) {
-                        listener.onTransmissionTemperature(
-                                temperatureC,
-                                receivedAtMs);
+            logTemperatureStatusChange(decoded);
+            logVehicleStateChange(decoded);
+            if (decoded.generation != lastGeneration) {
+                lastGeneration = decoded.generation;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (started) {
+                            listener.onTboxSnapshot(decoded, receivedAtMs);
+                        }
                     }
-                }
-            });
+                });
+            }
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
         } catch (Throwable error) {
             failureCount++;
+            consecutiveFailures++;
             previousPollSucceeded = false;
             disconnectSession();
             logFailureThrottled(error);
+            activateBackoffIfNeeded("transport");
         }
+    }
+
+    private void handleDecodeFailure(TboxCanSnapshotDecoder.Result decoded) {
+        failureCount++;
+        consecutiveFailures++;
+        previousPollSucceeded = false;
+        long now = SystemClock.elapsedRealtime();
+        if (lastFailureLogAtMs == 0L
+                || now - lastFailureLogAtMs >= FAILURE_LOG_INTERVAL_MS) {
+            lastFailureLogAtMs = now;
+            DiagnosticLog.warn(
+                    "tbox_temperature",
+                    "snapshot_rejected",
+                    "reason", decoded.failureReason,
+                    "observed_bytes", String.valueOf(decoded.observedLength),
+                    "declared_bytes", String.valueOf(decoded.declaredLength),
+                    "header", decoded.headerSignature,
+                    "generation", decoded.generationSignature,
+                    "capture_capped", String.valueOf(
+                            decoded.observedLength > SNAPSHOT_CAPTURE_LIMIT_BYTES),
+                    "polls", String.valueOf(pollCount),
+                    "successes", String.valueOf(successCount),
+                    "failures", String.valueOf(failureCount));
+        }
+        // A decoder mismatch cannot be repaired by rebuilding the SSH session.
+        // Keep the authenticated read-only session and retry at a bounded rate.
+        activateBackoffIfNeeded("snapshot_format");
+    }
+
+    private void logTemperatureStatusChange(TboxCanSnapshotDecoder.Result decoded) {
+        if (lastTemperatureStatus == null) {
+            lastTemperatureStatus = decoded.temperatureStatus;
+            return;
+        }
+        if (lastTemperatureStatus.equals(decoded.temperatureStatus)) {
+            return;
+        }
+        String previousStatus = lastTemperatureStatus;
+        lastTemperatureStatus = decoded.temperatureStatus;
+        DiagnosticLog.info(
+                "tbox_temperature",
+                "status_changed",
+                "previous_status", previousStatus,
+                "temperature_status", decoded.temperatureStatus,
+                "temperature_available", String.valueOf(decoded.hasTemperature()),
+                "temperature_c", decoded.hasTemperature()
+                        ? String.valueOf(decoded.temperatureC)
+                        : "unavailable",
+                "temperature_raw", String.valueOf(decoded.rawTemperature),
+                "temperature_records_raw", decoded.temperatureRecordsRaw,
+                "generation", decoded.generationSignature,
+                "engine_state", decoded.hasEngineState()
+                        ? String.valueOf(decoded.engineState)
+                        : "unavailable",
+                "park", decoded.parkValid
+                        ? String.valueOf(decoded.inPark)
+                        : "unavailable");
+    }
+
+    private void activateBackoffIfNeeded(String reason) {
+        if (consecutiveFailures < FAILURES_BEFORE_BACKOFF) {
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        backoffUntilMs = now + FAILURE_BACKOFF_MS;
+        backoffCount++;
+        consecutiveFailures = 0;
+        if (lastBackoffLogAtMs == 0L
+                || now - lastBackoffLogAtMs >= BACKOFF_LOG_INTERVAL_MS) {
+            lastBackoffLogAtMs = now;
+            DiagnosticLog.info(
+                    "tbox_temperature",
+                    "retry_backoff",
+                    "reason", reason,
+                    "backoff_ms", String.valueOf(FAILURE_BACKOFF_MS),
+                    "backoffs", String.valueOf(backoffCount),
+                    "polls", String.valueOf(pollCount),
+                    "failures", String.valueOf(failureCount));
+        }
+    }
+
+    private void logVehicleStateChange(TboxCanSnapshotDecoder.Result decoded) {
+        int parkState = decoded.parkValid ? (decoded.inPark ? 1 : 0) : -1;
+        if (decoded.engineState == lastLoggedEngineState
+                && parkState == lastLoggedParkState) {
+            return;
+        }
+        lastLoggedEngineState = decoded.engineState;
+        lastLoggedParkState = parkState;
+        DiagnosticLog.info(
+                "tbox_vehicle",
+                "state_changed",
+                "engine_state", decoded.hasEngineState()
+                        ? String.valueOf(decoded.engineState)
+                        : "unavailable",
+                "engine_raw", String.valueOf(decoded.rawEngineState),
+                "park", decoded.parkValid
+                        ? String.valueOf(decoded.inPark)
+                        : "unavailable",
+                "park_raw", String.valueOf(decoded.rawParkState),
+                "epb", decoded.epbValid
+                        ? String.valueOf(decoded.epbEngaged)
+                        : "unavailable",
+                "epb_raw", String.valueOf(decoded.rawEpbState));
     }
 
     private byte[] readSnapshot() throws Exception {
         Session currentSession = getOrConnectSession();
         ChannelExec channel = null;
         InputStream input = null;
-        byte[] snapshot = new byte[
-                TboxTransmissionTemperatureDecoder.SNAPSHOT_LENGTH];
-        boolean complete = false;
+        byte[] capture = new byte[SNAPSHOT_CAPTURE_BUFFER_BYTES];
         try {
             channel = (ChannelExec) currentSession.openChannel("exec");
             channel.setCommand(READ_SNAPSHOT_COMMAND);
@@ -218,36 +375,33 @@ final class TransmissionTemperatureReader {
             int offset = 0;
             long deadline = SystemClock.elapsedRealtime() + CHANNEL_TIMEOUT_MS;
             while (true) {
-                while (input.available() > 0 && offset < snapshot.length) {
+                while (input.available() > 0 && offset < capture.length) {
                     int read = input.read(
-                            snapshot,
+                            capture,
                             offset,
-                            snapshot.length - offset);
+                            capture.length - offset);
                     if (read < 0) {
                         break;
                     }
                     offset += read;
-                    if (offset == snapshot.length) {
-                        complete = true;
-                        return snapshot;
+                    if (offset == capture.length) {
+                        return Arrays.copyOf(capture, offset);
                     }
                 }
 
                 if (channel.isClosed()) {
-                    break;
+                    if (offset == 0) {
+                        throw new IOException("Empty TBOX snapshot");
+                    }
+                    return Arrays.copyOf(capture, offset);
                 }
                 if (SystemClock.elapsedRealtime() >= deadline) {
                     throw new IOException("Timed out reading TBOX snapshot");
                 }
                 Thread.sleep(10L);
             }
-            throw new IOException(
-                    "Incomplete TBOX snapshot: " + offset
-                            + "/" + snapshot.length + " bytes");
         } finally {
-            if (!complete) {
-                Arrays.fill(snapshot, (byte) 0);
-            }
+            Arrays.fill(capture, (byte) 0);
             if (input != null) {
                 try {
                     input.close();

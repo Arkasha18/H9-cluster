@@ -31,6 +31,8 @@ public final class SkinSettingsSessionTest {
         assertEquals(original, session.snapshot());
         assertEquals(original.hashCode(), session.snapshot().hashCode());
         session.selectFuelTankCapacity(42);
+        assertEquals(42, session.snapshot().fuelTankCapacityLiters);
+        session.selectFuelTankCapacity(201);
         assertEquals(80, session.snapshot().fuelTankCapacityLiters);
     }
 

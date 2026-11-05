@@ -151,6 +151,11 @@ public final class GwmClusterDataSource
     private long steeringUpdatedAtMs;
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
+    private int tboxEngineState = ClusterState.ENGINE_STATE_UNKNOWN;
+    private long tboxEngineStateUpdatedAtMs;
+    private boolean tboxParkStateValid;
+    private boolean tboxInPark;
+    private long tboxParkStateUpdatedAtMs;
     private boolean factoryNotificationVisible;
     private long speedCallbackAtMs;
     private int adapterGeneration;
@@ -238,6 +243,13 @@ public final class GwmClusterDataSource
         fuelConsumptionEstimator.reset();
         fdbusFuelFlowLitersPerHour = Float.NaN;
         fdbusFuelFlowUpdatedAtMs = 0L;
+        transmissionTemperatureC = Float.NaN;
+        transmissionTemperatureUpdatedAtMs = 0L;
+        tboxEngineState = ClusterState.ENGINE_STATE_UNKNOWN;
+        tboxEngineStateUpdatedAtMs = 0L;
+        tboxParkStateValid = false;
+        tboxInPark = false;
+        tboxParkStateUpdatedAtMs = 0L;
         Arrays.fill(signalAvailability, (byte) 0);
         Arrays.fill(signalAvailabilityLoggedAtMs, 0L);
         lastDiagnosticHealthAtMs = lastLiveSnapshotFailureLogAtMs = 0L;
@@ -780,7 +792,12 @@ public final class GwmClusterDataSource
                 journeyOdometerSample.updatedAtMs,
                 steeringUpdatedAtMs,
                 transmissionTemperatureUpdatedAtMs,
-                lastState.driveMode);
+                lastState.driveMode).withTboxVehicleState(
+                        tboxEngineState,
+                        tboxEngineStateUpdatedAtMs,
+                        tboxParkStateValid,
+                        tboxInPark,
+                        tboxParkStateUpdatedAtMs);
         lastState = state;
         currentListener.onClusterState(state);
         logHealthIfDue(state, now, mcuStreamAt);
@@ -823,12 +840,29 @@ public final class GwmClusterDataSource
     }
 
     @Override
-    public void onTransmissionTemperature(float temperatureC, long receivedAtMs) {
+    public void onTboxSnapshot(
+            TboxCanSnapshotDecoder.Result snapshot,
+            long receivedAtMs) {
         if (!started) {
             return;
         }
-        transmissionTemperatureC = temperatureC;
-        transmissionTemperatureUpdatedAtMs = receivedAtMs;
+        if (snapshot.hasTemperature()) {
+            transmissionTemperatureC = snapshot.temperatureC;
+            transmissionTemperatureUpdatedAtMs = receivedAtMs;
+        } else {
+            transmissionTemperatureC = Float.NaN;
+            transmissionTemperatureUpdatedAtMs = 0L;
+        }
+        if (snapshot.hasEngineState()) {
+            tboxEngineState = snapshot.engineState;
+            tboxEngineStateUpdatedAtMs = receivedAtMs;
+        } else {
+            tboxEngineState = ClusterState.ENGINE_STATE_UNKNOWN;
+            tboxEngineStateUpdatedAtMs = 0L;
+        }
+        tboxParkStateValid = snapshot.parkValid;
+        tboxInPark = snapshot.parkValid && snapshot.inPark;
+        tboxParkStateUpdatedAtMs = snapshot.parkValid ? receivedAtMs : 0L;
         publishState();
     }
 
@@ -886,7 +920,20 @@ public final class GwmClusterDataSource
                 "journey_age_ms", diagnosticAge(now, journeyOdometerUpdatedAtMs),
                 "tbox_temperature_age_ms", diagnosticAge(
                         now,
-                        transmissionTemperatureUpdatedAtMs));
+                        transmissionTemperatureUpdatedAtMs),
+                "tbox_engine_state", tboxEngineState
+                        == ClusterState.ENGINE_STATE_UNKNOWN
+                        ? "unavailable"
+                        : String.valueOf(tboxEngineState),
+                "tbox_engine_state_age_ms", diagnosticAge(
+                        now,
+                        tboxEngineStateUpdatedAtMs),
+                "tbox_park", tboxParkStateValid
+                        ? String.valueOf(tboxInPark)
+                        : "unavailable",
+                "tbox_park_age_ms", diagnosticAge(
+                        now,
+                        tboxParkStateUpdatedAtMs));
         lastDiagnosticHealthAtMs = now;
     }
 

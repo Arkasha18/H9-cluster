@@ -23,13 +23,13 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowSystemClock;
 
-/** Actual Canvas output: tank size changes liters while preserving the fuel fraction. */
+/** Actual Canvas output: any supported tank size preserves the fuel fraction. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public final class FuelTankSkinRenderingTest {
     @Test
-    public void everySkinShowsCorrectHalfAndFullLitersWithTheSameGaugePosition()
+    public void everySkinShowsArbitraryTankLitersWithTheSameGaugePosition()
             throws Exception {
         ShadowSystemClock.advanceBy(Duration.ofSeconds(1));
         int checkedSkins = 0;
@@ -39,18 +39,48 @@ public final class FuelTankSkinRenderingTest {
             for (float baselineLiters : new float[] {40.0f, 80.0f}) {
                 ClusterState source = state(baselineLiters);
                 Frame standard = render(definition.id, source);
-                Frame small = render(definition.id, source.withFuelTankCapacity(60));
                 try {
                     assertFuelText(definition.id, standard, Math.round(baselineLiters));
-                    assertFuelText(definition.id, small, Math.round(baselineLiters * 0.75f));
-                    assertSameFuelGauge(definition.id, standard, small);
+                    assertFuelFraction(definition.id, standard, baselineLiters / 80.0f);
+                    for (int capacity : new int[] {20, 55, 60, 80, 100, 200}) {
+                        Frame configured = render(
+                                definition.id,
+                                source.withFuelTankCapacity(capacity));
+                        try {
+                            assertFuelText(
+                                    definition.id,
+                                    configured,
+                                    Math.round(baselineLiters / 80.0f * capacity));
+                            assertFuelFraction(
+                                    definition.id,
+                                    configured,
+                                    baselineLiters / 80.0f);
+                            assertSameFuelGauge(definition.id, standard, configured);
+                        } finally {
+                            configured.bitmap.recycle();
+                        }
+                    }
                 } finally {
                     standard.bitmap.recycle();
-                    small.bitmap.recycle();
                 }
             }
         }
         assertEquals(7, checkedSkins);
+    }
+
+    private static void assertFuelFraction(String skinId, Frame frame, float fraction) {
+        if (!SkinRegistry.CLASSIC.equals(skinId) && !SkinRegistry.SPORT.equals(skinId)) {
+            return;
+        }
+        String expected = String.format(java.util.Locale.US, "%.1f", fraction);
+        boolean found = false;
+        for (TextCall call : frame.canvas.textCalls) {
+            if (expected.equals(call.text)) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue(skinId + " must draw fuel fraction " + expected, found);
     }
 
     private static void assertFuelText(String skinId, Frame frame, int liters) {
@@ -131,21 +161,20 @@ public final class FuelTankSkinRenderingTest {
                 }
                 break;
             case SkinRegistry.HORIZON:
-                assertSameRegion(skinId, standard.bitmap, small.bitmap, 612, 170, 634, 352);
+                // Compare the rail itself, without the numeric liters readout whose
+                // left edge can reach the pixels immediately to its right.
+                assertSameRegion(skinId, standard.bitmap, small.bitmap, 615, 174, 631, 349);
                 break;
             case SkinRegistry.ION_AURORA:
                 assertSameRegion(skinId, standard.bitmap, small.bitmap, 90, 624, 215, 634);
                 break;
             case SkinRegistry.APEX_SPORT:
-                // The arc and pointer surround the numeric liters, which must differ.
-                // Ignore the warning sector: its 10-liter threshold has a different angle.
+                // Compare the pointer's outer end. The inner warning arc intentionally
+                // represents an absolute 10-liter reserve and changes with tank size.
                 for (int y = 173; y <= 303; y++) {
                     for (int x = 401; x <= 531; x++) {
                         int radiusSquared = (x - 466) * (x - 466) + (y - 238) * (y - 238);
-                        double angle = (Math.toDegrees(Math.atan2(y - 238, x - 466))
-                                + 360.0) % 360.0;
-                        if (radiusSquared >= 45 * 45 && radiusSquared <= 63 * 63
-                                && (angle >= 190.0 || angle <= 50.0)) {
+                        if (radiusSquared >= 57 * 57 && radiusSquared <= 61 * 61) {
                             assertEquals(skinId + " fuel arc at " + x + "," + y,
                                     standard.bitmap.getPixel(x, y), small.bitmap.getPixel(x, y));
                         }

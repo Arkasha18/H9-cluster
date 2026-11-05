@@ -26,6 +26,14 @@ public final class EngineRunDetectorTest {
     }
 
     @Test
+    public void yuriyTraceKeepsZeroSpeedUntilRpmZeroArrivesTwentyFiveSecondsLater() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+        assertEquals(NONE, detector.update(800, 0, 10_000L, 10_000L));
+        assertEquals(NONE, detector.update(0, -1, 35_000L, 35_000L));
+        assertEquals(STOPPED, detector.update(0, -1, 35_000L, 36_500L));
+    }
+
+    @Test
     public void unknownSpeedAloneCannotStartAStopCandidate() {
         EngineRunDetector detector = new EngineRunDetector(true);
         assertEquals(NONE, detector.update(0, -1, 10_000L, 10_000L));
@@ -36,8 +44,8 @@ public final class EngineRunDetectorTest {
     public void oldStationaryEvidenceCannotStartAStopAfterProlongedDataLoss() {
         EngineRunDetector detector = new EngineRunDetector(true);
         assertEquals(NONE, detector.update(800, 0, 1_000L, 1_000L));
-        assertEquals(NONE, detector.update(0, -1, 3_001L, 3_001L));
-        assertEquals(NONE, detector.update(0, -1, 3_001L, 10_000L));
+        assertEquals(NONE, detector.update(0, -1, 61_001L, 61_001L));
+        assertEquals(NONE, detector.update(0, -1, 61_001L, 70_000L));
     }
 
     @Test
@@ -174,5 +182,75 @@ public final class EngineRunDetectorTest {
 
         assertEquals(NONE, detector.update(0, 0, 20_000L, 20_000L));
         assertEquals(STOPPED, detector.update(0, 0, 22_500L, 22_500L));
+    }
+
+    @Test
+    public void confirmedTboxEngineStopInParkStopsWithUnknownSpeedAndRpm() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                800, -1, 1_000L,
+                0, 2_000L, true, true, 2_000L,
+                2_000L));
+        assertEquals(STOPPED, detector.update(
+                800, -1, 1_000L,
+                0, 2_000L, true, true, 2_000L,
+                3_500L));
+    }
+
+    @Test
+    public void automaticEngineStopInDriveCannotEndTrip() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                0, 2_000L, true, false, 2_000L,
+                2_000L));
+        assertEquals(NONE, detector.update(
+                0, 0, 3_500L,
+                0, 3_500L, true, false, 3_500L,
+                3_500L));
+    }
+
+    @Test
+    public void measuredMovementVetoesContradictoryTboxStopAndPark() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                800, 5, 1_000L,
+                0, 2_000L, true, true, 2_000L,
+                2_000L));
+        assertEquals(NONE, detector.update(
+                800, 5, 1_000L,
+                0, 2_000L, true, true, 2_000L,
+                5_000L));
+    }
+
+    @Test
+    public void staleTboxEvidenceCannotEndTrip() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                800, -1, 1_000L,
+                0, 1_000L, true, true, 1_000L,
+                16_001L));
+    }
+
+    @Test
+    public void tboxEngineStopWithMeasuredZeroStillRequiresPark() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                800, 0, 1_000L,
+                0, 2_000L, false, false, 0L,
+                2_000L));
+        assertEquals(NONE, detector.update(
+                800, 0, 1_000L,
+                0, 3_500L, true, true, 3_500L,
+                3_500L));
+        assertEquals(STOPPED, detector.update(
+                800, 0, 1_000L,
+                0, 3_500L, true, true, 3_500L,
+                5_000L));
     }
 }
