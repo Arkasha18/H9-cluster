@@ -1,5 +1,7 @@
 package net.adminrunet.h9cluster.trip;
 
+import net.adminrunet.h9cluster.DiagnosticLog;
+
 /** Detects confirmed engine start and stop transitions from fresh RPM samples. */
 public final class EngineRunDetector {
     private static final int START_RPM = 400;
@@ -8,6 +10,7 @@ public final class EngineRunDetector {
     private static final long START_HOLD_MS = 1_000L;
     private static final long STOP_HOLD_MS = 1_500L;
     private static final long STOP_SPEED_EVIDENCE_MS = 2_000L;
+    private static final long TRANSIENT_LOG_INTERVAL_MS = 30_000L;
 
     public enum Event {
         NONE,
@@ -26,6 +29,10 @@ public final class EngineRunDetector {
     private State state;
     private long candidateSinceMs = -1L;
     private long lastStationaryAtMs = -1L;
+    private long lastStartCandidateLogAtMs = -1L;
+    private long lastStartCancelledLogAtMs = -1L;
+    private long lastStopCandidateLogAtMs = -1L;
+    private long lastStopCancelledLogAtMs = -1L;
 
     public EngineRunDetector(boolean initiallyRunning) {
         state = initiallyRunning ? State.RUNNING : State.OFF;
@@ -68,15 +75,36 @@ public final class EngineRunDetector {
             case OFF:
                 if (startCondition) {
                     beginCandidate(State.STARTING, nowMs);
+                    logTransition(
+                            "start_candidate",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                     return Event.STARTING;
                 }
                 return Event.NONE;
             case STARTING:
                 if (!startCondition || nowMs < candidateSinceMs) {
+                    logTransition(
+                            "start_cancelled",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                     cancelCandidate(State.OFF);
                     return Event.NONE;
                 }
                 if (nowMs - candidateSinceMs >= START_HOLD_MS) {
+                    logTransition(
+                            "engine_started",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                     cancelCandidate(State.RUNNING);
                     return Event.STARTED;
                 }
@@ -84,14 +112,35 @@ public final class EngineRunDetector {
             case RUNNING:
                 if (stopCondition) {
                     beginCandidate(State.STOPPING, nowMs);
+                    logTransition(
+                            "stop_candidate",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                 }
                 return Event.NONE;
             case STOPPING:
                 if (!stopCondition || nowMs < candidateSinceMs) {
+                    logTransition(
+                            "stop_cancelled",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                     cancelCandidate(State.RUNNING);
                     return Event.NONE;
                 }
                 if (nowMs - candidateSinceMs >= STOP_HOLD_MS) {
+                    logTransition(
+                            "engine_stopped",
+                            rpm,
+                            speedKph,
+                            rpmUpdatedAtMs,
+                            nowMs,
+                            observedStationary);
                     cancelCandidate(State.OFF);
                     return Event.STOPPED;
                 }
@@ -109,5 +158,73 @@ public final class EngineRunDetector {
     private void cancelCandidate(State stableState) {
         state = stableState;
         candidateSinceMs = -1L;
+    }
+
+    private void logTransition(
+            String event,
+            int rpm,
+            int speedKph,
+            long rpmUpdatedAtMs,
+            long nowMs,
+            boolean observedStationary) {
+        if (!shouldLogTransition(event, nowMs)) {
+            return;
+        }
+        DiagnosticLog.info(
+                "engine_detector",
+                event,
+                "state", state.name(),
+                "rpm", String.valueOf(rpm),
+                "speed_kph", String.valueOf(speedKph),
+                "rpm_age_ms", rpmUpdatedAtMs > 0L && nowMs >= rpmUpdatedAtMs
+                        ? String.valueOf(nowMs - rpmUpdatedAtMs)
+                        : "unavailable",
+                "stationary_evidence", String.valueOf(observedStationary),
+                "candidate_ms", candidateSinceMs >= 0L && nowMs >= candidateSinceMs
+                        ? String.valueOf(nowMs - candidateSinceMs)
+                        : "none");
+    }
+
+    private boolean shouldLogTransition(String event, long nowMs) {
+        long previous;
+        switch (event) {
+            case "start_candidate":
+                previous = lastStartCandidateLogAtMs;
+                break;
+            case "start_cancelled":
+                previous = lastStartCancelledLogAtMs;
+                break;
+            case "stop_candidate":
+                previous = lastStopCandidateLogAtMs;
+                break;
+            case "stop_cancelled":
+                previous = lastStopCancelledLogAtMs;
+                break;
+            default:
+                return true;
+        }
+        boolean shouldLog = previous < 0L
+                || nowMs < previous
+                || nowMs - previous >= TRANSIENT_LOG_INTERVAL_MS;
+        if (!shouldLog) {
+            return false;
+        }
+        switch (event) {
+            case "start_candidate":
+                lastStartCandidateLogAtMs = nowMs;
+                break;
+            case "start_cancelled":
+                lastStartCancelledLogAtMs = nowMs;
+                break;
+            case "stop_candidate":
+                lastStopCandidateLogAtMs = nowMs;
+                break;
+            case "stop_cancelled":
+                lastStopCancelledLogAtMs = nowMs;
+                break;
+            default:
+                break;
+        }
+        return true;
     }
 }

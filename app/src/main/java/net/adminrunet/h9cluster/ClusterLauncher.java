@@ -60,6 +60,11 @@ public final class ClusterLauncher {
                 ? SkinPreferences.getSelectedSkin(context)
                 : draft.skinId;
         if (!SkinRegistry.hasRenderer(skinId)) {
+            DiagnosticLog.info(
+                    "cluster_launcher",
+                    "stock_cluster_selected",
+                    "skin", skinId,
+                    "user_requested", String.valueOf(userRequested));
             ClusterDisplayRecovery.cancel();
             ClusterWindowRegistry.closeAll();
             return true;
@@ -73,6 +78,12 @@ public final class ClusterLauncher {
                 currentDisplayId);
         if (targetDisplayId == ClusterDisplayPolicy.NO_DISPLAY) {
             Log.w(TAG, "Display 2 is not ready");
+            DiagnosticLog.warn(
+                    "cluster_launcher",
+                    "target_display_unavailable",
+                    "current_display", String.valueOf(currentDisplayId),
+                    "cluster_display_available", String.valueOf(clusterDisplayAvailable),
+                    "user_requested", String.valueOf(userRequested));
             return false;
         }
 
@@ -109,9 +120,20 @@ public final class ClusterLauncher {
         options.setLaunchDisplayId(targetDisplayId);
         try {
             context.startActivity(intent, options.toBundle());
+            DiagnosticLog.info(
+                    "cluster_launcher",
+                    "activity_started",
+                    "target_display", String.valueOf(targetDisplayId),
+                    "skin", skinId,
+                    "user_requested", String.valueOf(userRequested));
             return true;
         } catch (RuntimeException error) {
             Log.e(TAG, "Cannot start cluster on Display " + targetDisplayId, error);
+            DiagnosticLog.error(
+                    "cluster_launcher",
+                    "activity_start_failed",
+                    "target_display", String.valueOf(targetDisplayId),
+                    "error", error.getClass().getSimpleName());
             return false;
         }
     }
