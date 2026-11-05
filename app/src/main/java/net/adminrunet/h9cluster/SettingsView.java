@@ -12,8 +12,12 @@ import android.content.DialogInterface;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.text.InputType;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.EditText;
+
+import java.util.Locale;
 
 /** Touch settings surface kept dependency-free for the Android 9 head unit. */
 @SuppressLint("ViewConstructor")
@@ -38,10 +42,6 @@ public final class SettingsView extends View {
             "Реальная",
             "Как в авто +4,5%",
             "Как в авто +5 км/ч",
-    };
-    private static final int[] FUEL_TANK_CAPACITIES = {
-            FuelTankCapacity.DEFAULT_LITERS,
-            FuelTankCapacity.SMALL_LITERS,
     };
     private static final float CONFIGURE_LEFT = 590.0f;
     private static final float CONFIGURE_RIGHT = 850.0f;
@@ -369,20 +369,20 @@ public final class SettingsView extends View {
     private void drawFuelControl(Canvas canvas) {
         drawLeftText(canvas, "Объём бака", 140.0f,
                 SettingsFuelControl.TEXT_BASELINE, 15.0f, COLOR_MUTED, false);
-        for (int index = 0; index < SettingsFuelControl.SEGMENT_COUNT; index++) {
-            int capacity = FUEL_TANK_CAPACITIES[index];
-            boolean selected = capacity == session.snapshot().fuelTankCapacityLiters;
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(selected ? COLOR_ACCENT : COLOR_CARD_SELECTED);
-            canvas.drawRoundRect(
-                    SettingsFuelControl.segmentLeft(index), SettingsFuelControl.TOP,
-                    SettingsFuelControl.segmentRight(index), SettingsFuelControl.BOTTOM,
-                    12.0f, 12.0f, paint);
-            drawCenteredText(canvas, capacity + " л",
-                    SettingsFuelControl.segmentCenterX(index),
-                    SettingsFuelControl.TEXT_BASELINE, 17.0f,
-                    selected ? Color.BLACK : COLOR_TEXT, selected);
-        }
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                SettingsFuelControl.LEFT, SettingsFuelControl.TOP,
+                SettingsFuelControl.RIGHT, SettingsFuelControl.BOTTOM,
+                12.0f, 12.0f, paint);
+        drawCenteredText(
+                canvas,
+                session.snapshot().fuelTankCapacityLiters + " л · изменить",
+                SettingsFuelControl.centerX(),
+                SettingsFuelControl.TEXT_BASELINE,
+                17.0f,
+                Color.BLACK,
+                true);
     }
 
     private void drawGearControl(Canvas canvas) {
@@ -425,15 +425,8 @@ public final class SettingsView extends View {
             selectSpeedDisplayMode(SPEED_MODES[speedSegment]);
             return true;
         }
-        int fuelSegment = SettingsFuelControl.segmentAt(x, y);
-        if (fuelSegment >= 0) {
-            int capacity = FUEL_TANK_CAPACITIES[fuelSegment];
-            if (capacity != session.snapshot().fuelTankCapacityLiters) {
-                session.selectFuelTankCapacity(capacity);
-                status = "Предпросмотр объёма бака: " + capacity + " л";
-                listener.onDraftChanged(session.snapshot());
-                invalidate();
-            }
+        if (SettingsFuelControl.contains(x, y)) {
+            showFuelTankCapacityEditor();
             return true;
         }
         boolean configurable = selectedDefinition().hasSettings();
@@ -506,6 +499,51 @@ public final class SettingsView extends View {
     @Override
     public boolean performClick() {
         super.performClick();
+        return true;
+    }
+
+    private void showFuelTankCapacityEditor() {
+        final EditText input = new EditText(getContext());
+        input.setId(SettingsFuelControl.INPUT_ID);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.format(
+                Locale.US,
+                "%d",
+                session.snapshot().fuelTankCapacityLiters));
+        input.selectAll();
+        new AlertDialog.Builder(getContext())
+                .setTitle("Объём топливного бака, л")
+                .setMessage(
+                        "Введите целое число от " + FuelTankCapacity.MIN_LITERS
+                                + " до " + FuelTankCapacity.MAX_LITERS + " литров.")
+                .setView(input)
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton(
+                        "Применить",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                applyFuelTankCapacityText(input.getText().toString());
+                            }
+                        })
+                .show();
+    }
+
+    boolean applyFuelTankCapacityText(String value) {
+        int capacity = FuelTankCapacity.parse(value);
+        if (capacity < 0) {
+            status = "Введите объём бака от " + FuelTankCapacity.MIN_LITERS
+                    + " до " + FuelTankCapacity.MAX_LITERS + " л";
+            invalidate();
+            return false;
+        }
+        if (capacity != session.snapshot().fuelTankCapacityLiters) {
+            session.selectFuelTankCapacity(capacity);
+            status = "Предпросмотр объёма бака: " + capacity + " л";
+            listener.onDraftChanged(session.snapshot());
+            invalidate();
+        }
         return true;
     }
 

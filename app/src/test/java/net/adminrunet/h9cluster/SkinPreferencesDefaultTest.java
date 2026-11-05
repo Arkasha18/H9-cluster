@@ -34,6 +34,9 @@ public final class SkinPreferencesDefaultTest {
         assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
         context.getSharedPreferences(SkinPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
                 .edit().putInt("fuel_tank_capacity_liters", 100).commit();
+        assertEquals(100, SkinPreferences.getFuelTankCapacityLiters(context));
+        context.getSharedPreferences(SkinPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit().putInt("fuel_tank_capacity_liters", 201).commit();
         assertEquals(80, SkinPreferences.getFuelTankCapacityLiters(context));
     }
 

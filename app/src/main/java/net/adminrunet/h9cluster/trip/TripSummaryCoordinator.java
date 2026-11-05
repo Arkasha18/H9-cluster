@@ -76,6 +76,11 @@ public final class TripSummaryCoordinator {
                 state.rpm,
                 state.speedKph,
                 state.rpmUpdatedAtMs,
+                state.engineState,
+                state.engineStateUpdatedAtMs,
+                state.parkStateValid,
+                state.inPark,
+                state.parkStateUpdatedAtMs,
                 nowMs);
         TripTelemetry telemetry = TripTelemetry.from(state, nowMs);
 
