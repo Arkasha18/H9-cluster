@@ -13,6 +13,7 @@
         android:required="false" />
 
     <application
+        android:name=".H9ClusterApplication"
         android:allowBackup="false"
         android:hardwareAccelerated="true"
         android:icon="@drawable/ic_dashboard"

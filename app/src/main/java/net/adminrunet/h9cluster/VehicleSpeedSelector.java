@@ -9,6 +9,7 @@ final class VehicleSpeedSelector {
     private static final long FROZEN_MS = 1000;
     private static final long DISAGREEMENT_MS = 400;
     private static final long RECOVERY_MS = 1000;
+    private static final long DIAGNOSTIC_TRANSITION_INTERVAL_MS = 60_000L;
     private static final float DISAGREEMENT_KPH = 1.0f;
 
     private float gwmSpeed = Float.NaN;
@@ -21,12 +22,15 @@ final class VehicleSpeedSelector {
     private long agreementSince;
     private long gwmChanges;
     private long rejectedGwmChanges;
+    private long sourceTransitionCount;
+    private long lastSourceTransitionLogAt;
     private Source source = Source.UNAVAILABLE;
 
     void reset() {
         gwmSpeed = mcuSpeed = Float.NaN;
         gwmAt = gwmChangedAt = mcuAt = disagreementSince = rejectedAt = agreementSince = 0;
         gwmChanges = rejectedGwmChanges = 0;
+        sourceTransitionCount = lastSourceTransitionLogAt = 0;
         source = Source.UNAVAILABLE;
     }
 
@@ -90,18 +94,57 @@ final class VehicleSpeedSelector {
             disagreementSince = agreementSince = 0;
         }
         if (gwmFresh && rejectedAt == 0) {
-            source = Source.GWM;
+            updateSource(Source.GWM, now, gwmFresh, mcuFresh);
             return Math.round(gwmSpeed);
         }
         if (mcuFresh) {
-            source = Source.MCU;
+            updateSource(Source.MCU, now, gwmFresh, mcuFresh);
             return Math.round(mcuSpeed);
         }
-        source = Source.UNAVAILABLE;
+        updateSource(Source.UNAVAILABLE, now, gwmFresh, mcuFresh);
         return -1;
     }
 
     Source source() { return source; }
+
+    private void updateSource(
+            Source next,
+            long now,
+            boolean gwmFresh,
+            boolean mcuFresh) {
+        if (source == next) {
+            return;
+        }
+        Source previous = source;
+        source = next;
+        sourceTransitionCount++;
+        if (lastSourceTransitionLogAt > 0L
+                && now >= lastSourceTransitionLogAt
+                && now - lastSourceTransitionLogAt
+                        < DIAGNOSTIC_TRANSITION_INTERVAL_MS) {
+            return;
+        }
+        lastSourceTransitionLogAt = now;
+        DiagnosticLog.info(
+                "vehicle_speed",
+                "source_changed",
+                "from", previous.name(),
+                "to", next.name(),
+                "gwm_fresh", String.valueOf(gwmFresh),
+                "mcu_fresh", String.valueOf(mcuFresh),
+                "gwm_speed", String.valueOf(gwmSpeed),
+                "mcu_speed", String.valueOf(mcuSpeed),
+                "gwm_age_ms", age(now, gwmAt),
+                "mcu_age_ms", age(now, mcuAt),
+                "gwm_rejected", String.valueOf(rejectedAt > 0),
+                "transition_count", String.valueOf(sourceTransitionCount));
+    }
+
+    private static String age(long now, long timestamp) {
+        return timestamp > 0 && now >= timestamp
+                ? String.valueOf(now - timestamp)
+                : "unavailable";
+    }
 
     private static boolean valid(float speed) {
         return Float.isFinite(speed) && speed >= 0 && speed <= 300;

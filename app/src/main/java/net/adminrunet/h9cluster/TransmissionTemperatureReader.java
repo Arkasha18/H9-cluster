@@ -43,7 +43,9 @@ final class TransmissionTemperatureReader {
     private static final int CONNECT_TIMEOUT_MS = 2500;
     private static final int CHANNEL_TIMEOUT_MS = 2000;
     private static final long POLL_INTERVAL_MS = 5000L;
-    private static final long FAILURE_LOG_INTERVAL_MS = 30000L;
+    private static final long FAILURE_LOG_INTERVAL_MS = 60_000L;
+    private static final long SUCCESS_LOG_INTERVAL_MS = 5L * 60L * 1000L;
+    private static final long CONNECT_LOG_INTERVAL_MS = 5L * 60L * 1000L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Listener listener;
@@ -52,6 +54,16 @@ final class TransmissionTemperatureReader {
     private volatile Session session;
     private ScheduledExecutorService executor;
     private long lastFailureLogAtMs;
+    private long lastSuccessLogAtMs;
+    private long pollCount;
+    private long successCount;
+    private long failureCount;
+    private long connectAttemptCount;
+    private long lastConnectLogAtMs;
+    private long lastConnectedLogAtMs;
+    private long lastDisconnectedLogAtMs;
+    private long lastRecoveryLogAtMs;
+    private boolean previousPollSucceeded;
     private boolean missingSecretLogged;
 
     TransmissionTemperatureReader(Listener listener) {
@@ -63,14 +75,30 @@ final class TransmissionTemperatureReader {
             return;
         }
         started = true;
+        pollCount = successCount = failureCount = 0L;
+        lastFailureLogAtMs = lastSuccessLogAtMs = 0L;
+        connectAttemptCount = 0L;
+        lastConnectLogAtMs = lastConnectedLogAtMs = 0L;
+        lastDisconnectedLogAtMs = lastRecoveryLogAtMs = 0L;
+        previousPollSucceeded = false;
 
         if (!hasConfiguredSecret()) {
             if (!missingSecretLogged) {
                 missingSecretLogged = true;
                 Log.w(TAG, "H9_TBOX_PASSWORD is not set; temperature source disabled");
+                DiagnosticLog.warn(
+                        "tbox_temperature",
+                        "source_disabled",
+                        "reason", "missing_build_secret");
             }
             return;
         }
+
+        DiagnosticLog.info(
+                "tbox_temperature",
+                "source_start",
+                "host", TBOX_HOST,
+                "poll_interval_ms", String.valueOf(POLL_INTERVAL_MS));
 
         executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
             @Override
@@ -89,6 +117,16 @@ final class TransmissionTemperatureReader {
     }
 
     synchronized void stop() {
+        if (started) {
+            DiagnosticLog.info(
+                    "tbox_temperature",
+                    "source_stop",
+                    "polls", String.valueOf(pollCount),
+                    "successes", String.valueOf(successCount),
+                    "failures", String.valueOf(failureCount),
+                    "session_connected", String.valueOf(
+                            session != null && session.isConnected()));
+        }
         started = false;
         mainHandler.removeCallbacksAndMessages(null);
 
@@ -104,6 +142,7 @@ final class TransmissionTemperatureReader {
         if (!started) {
             return;
         }
+        pollCount++;
         try {
             byte[] snapshot = readSnapshot();
             final float temperatureC;
@@ -117,8 +156,31 @@ final class TransmissionTemperatureReader {
                 throw new IOException("Invalid can_data_collect snapshot");
             }
 
-            lastFailureLogAtMs = 0L;
             final long receivedAtMs = SystemClock.elapsedRealtime();
+            successCount++;
+            boolean recovered = !previousPollSucceeded;
+            previousPollSucceeded = true;
+            boolean logRecovery = recovered
+                    && (lastRecoveryLogAtMs == 0L
+                            || receivedAtMs - lastRecoveryLogAtMs
+                                    >= FAILURE_LOG_INTERVAL_MS);
+            if (logRecovery
+                    || lastSuccessLogAtMs == 0L
+                    || receivedAtMs - lastSuccessLogAtMs >= SUCCESS_LOG_INTERVAL_MS) {
+                DiagnosticLog.info(
+                        "tbox_temperature",
+                        logRecovery ? "poll_recovered" : "poll_ok",
+                        "temperature_c", String.valueOf(temperatureC),
+                        "polls", String.valueOf(pollCount),
+                        "successes", String.valueOf(successCount),
+                        "failures", String.valueOf(failureCount),
+                        "session_connected", String.valueOf(
+                                session != null && session.isConnected()));
+                lastSuccessLogAtMs = receivedAtMs;
+                if (logRecovery) {
+                    lastRecoveryLogAtMs = receivedAtMs;
+                }
+            }
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -132,6 +194,8 @@ final class TransmissionTemperatureReader {
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
         } catch (Throwable error) {
+            failureCount++;
+            previousPollSucceeded = false;
             disconnectSession();
             logFailureThrottled(error);
         }
@@ -203,6 +267,19 @@ final class TransmissionTemperatureReader {
             return currentSession;
         }
 
+        connectAttemptCount++;
+        long connectNow = SystemClock.elapsedRealtime();
+        boolean logConnectAttempt = lastConnectLogAtMs == 0L
+                || connectNow - lastConnectLogAtMs >= CONNECT_LOG_INTERVAL_MS;
+        if (logConnectAttempt) {
+            lastConnectLogAtMs = connectNow;
+            DiagnosticLog.info(
+                    "tbox_temperature",
+                    "connect_attempt",
+                    "host", TBOX_HOST,
+                    "port", String.valueOf(TBOX_SSH_PORT),
+                    "attempts", String.valueOf(connectAttemptCount));
+        }
         byte[] password = decodeConfiguredSecret();
         Session newSession = null;
         boolean connected = false;
@@ -226,7 +303,28 @@ final class TransmissionTemperatureReader {
                 connected = true;
             }
             Log.i(TAG, "Connected to read-only TBOX temperature source");
+            long connectedAt = SystemClock.elapsedRealtime();
+            if (lastConnectedLogAtMs == 0L
+                    || connectedAt - lastConnectedLogAtMs
+                            >= FAILURE_LOG_INTERVAL_MS) {
+                DiagnosticLog.info(
+                        "tbox_temperature",
+                        "connected",
+                        "host", TBOX_HOST,
+                        "attempts", String.valueOf(connectAttemptCount));
+                lastConnectedLogAtMs = connectedAt;
+            }
             return newSession;
+        } catch (Exception error) {
+            if (logConnectAttempt) {
+                DiagnosticLog.warn(
+                        "tbox_temperature",
+                        "connect_failed",
+                        "error", error.getClass().getSimpleName(),
+                        "detail", safeDetail(error),
+                        "attempts", String.valueOf(connectAttemptCount));
+            }
+            throw error;
         } finally {
             Arrays.fill(password, (byte) 0);
             if (!connected && newSession != null) {
@@ -260,6 +358,15 @@ final class TransmissionTemperatureReader {
         session = null;
         if (oldSession != null) {
             oldSession.disconnect();
+            long now = SystemClock.elapsedRealtime();
+            if (lastDisconnectedLogAtMs == 0L
+                    || now - lastDisconnectedLogAtMs >= FAILURE_LOG_INTERVAL_MS) {
+                DiagnosticLog.info(
+                        "tbox_temperature",
+                        "session_disconnected",
+                        "attempts", String.valueOf(connectAttemptCount));
+                lastDisconnectedLogAtMs = now;
+            }
         }
     }
 
@@ -269,6 +376,19 @@ final class TransmissionTemperatureReader {
                 || now - lastFailureLogAtMs >= FAILURE_LOG_INTERVAL_MS) {
             lastFailureLogAtMs = now;
             Log.w(TAG, "TBOX temperature read failed; will retry", error);
+            DiagnosticLog.warn(
+                    "tbox_temperature",
+                    "poll_failed",
+                    "error", error.getClass().getSimpleName(),
+                    "detail", safeDetail(error),
+                    "polls", String.valueOf(pollCount),
+                    "successes", String.valueOf(successCount),
+                    "failures", String.valueOf(failureCount));
         }
+    }
+
+    private static String safeDetail(Throwable error) {
+        String detail = error == null ? "" : error.getMessage();
+        return detail == null ? "" : detail;
     }
 }

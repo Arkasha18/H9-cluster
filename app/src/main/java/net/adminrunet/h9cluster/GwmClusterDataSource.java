@@ -51,6 +51,7 @@ public final class GwmClusterDataSource
     private static final long FDBUS_FUEL_STALE_MS = 2000L;
     private static final long LIVE_REFRESH_MS = 500L;
     private static final long SPEED_CALLBACK_STALE_MS = 1000L;
+    private static final long DIAGNOSTIC_HEALTH_INTERVAL_MS = 60_000L;
 
     private static final int INDEX_SPEED = 0;
     private static final int INDEX_RPM = 1;
@@ -122,6 +123,8 @@ public final class GwmClusterDataSource
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final String[] values = new String[DATA_IDS.length];
     private final long[] valueRevisions = new long[DATA_IDS.length];
+    private final byte[] signalAvailability = new byte[DATA_IDS.length];
+    private final long[] signalAvailabilityLoggedAtMs = new long[DATA_IDS.length];
     private final ReadOnlyDataListener dataListener;
     private final FdbusRpmReader fdbusRpmReader;
     private final VehicleSpeedSelector vehicleSpeed = new VehicleSpeedSelector();
@@ -153,6 +156,8 @@ public final class GwmClusterDataSource
     private int adapterGeneration;
     private boolean refreshPending;
     private ExecutorService adapterRefreshExecutor;
+    private long lastDiagnosticHealthAtMs;
+    private long lastLiveSnapshotFailureLogAtMs;
     private final Runnable speedWatchdog = new Runnable() {
         @Override public void run() {
             if (!started) return;
@@ -223,6 +228,7 @@ public final class GwmClusterDataSource
 
     @Override
     public void start(Listener listener) {
+        DiagnosticLog.info("gwm_adapter", "source_start");
         this.listener = listener;
         started = true;
         vehicleSpeed.reset();
@@ -232,6 +238,9 @@ public final class GwmClusterDataSource
         fuelConsumptionEstimator.reset();
         fdbusFuelFlowLitersPerHour = Float.NaN;
         fdbusFuelFlowUpdatedAtMs = 0L;
+        Arrays.fill(signalAvailability, (byte) 0);
+        Arrays.fill(signalAvailabilityLoggedAtMs, 0L);
+        lastDiagnosticHealthAtMs = lastLiveSnapshotFailureLogAtMs = 0L;
         publishState();
         fdbusRpmReader.start();
         transmissionTemperatureReader.start();
@@ -240,6 +249,12 @@ public final class GwmClusterDataSource
 
     @Override
     public void stop() {
+        DiagnosticLog.info(
+                "gwm_adapter",
+                "source_stop",
+                "bound", String.valueOf(bound),
+                "listener_registered", String.valueOf(listenerRegistered),
+                "speed_source", speedSource.name());
         started = false;
         mainHandler.removeCallbacks(speedWatchdog);
         vehicleSpeed.reset();
@@ -273,6 +288,10 @@ public final class GwmClusterDataSource
         intent.setClassName(SERVICE_PACKAGE, SERVICE_CLASS);
         try {
             bound = context.bindService(intent, this, Context.BIND_AUTO_CREATE);
+            DiagnosticLog.info(
+                    "gwm_adapter",
+                    "bind_requested",
+                    "accepted", String.valueOf(bound));
             if (!bound) {
                 Log.w(TAG, "bindService returned false");
                 scheduleRebind();
@@ -280,6 +299,10 @@ public final class GwmClusterDataSource
         } catch (RuntimeException error) {
             bound = false;
             Log.e(TAG, "Cannot bind GWM adapter service", error);
+            DiagnosticLog.error(
+                    "gwm_adapter",
+                    "bind_failed",
+                    "error", error.getClass().getSimpleName());
             scheduleRebind();
         }
     }
@@ -296,6 +319,10 @@ public final class GwmClusterDataSource
         Log.i(TAG, listenerRegistered
                 ? "GWM adapter connected; live listener active"
                 : "GWM adapter connected; read-only snapshot refresh active");
+        DiagnosticLog.info(
+                "gwm_adapter",
+                "service_connected",
+                "listener_registered", String.valueOf(listenerRegistered));
     }
 
     @Override
@@ -304,10 +331,12 @@ public final class GwmClusterDataSource
         service = null;
         listenerRegistered = false;
         Log.w(TAG, "GWM adapter service disconnected; waiting for Android reconnect");
+        DiagnosticLog.warn("gwm_adapter", "service_disconnected");
     }
 
     @Override
     public void onBindingDied(ComponentName name) {
+        DiagnosticLog.warn("gwm_adapter", "binding_died");
         stopLiveRefresh();
         service = null;
         listenerRegistered = false;
@@ -324,6 +353,7 @@ public final class GwmClusterDataSource
 
     @Override
     public void onNullBinding(ComponentName name) {
+        DiagnosticLog.warn("gwm_adapter", "null_binding");
         stopLiveRefresh();
         service = null;
         listenerRegistered = false;
@@ -344,6 +374,11 @@ public final class GwmClusterDataSource
             if (DATA_IDS[index].equals(id)) {
                 String normalized = normalizeValue(value);
                 long now = SystemClock.elapsedRealtime();
+                logSignalAvailability(
+                        index,
+                        normalized != null
+                                && (index != INDEX_SPEED || validSpeed(normalized)),
+                        "callback");
                 if (index == INDEX_SPEED) {
                     if (!validSpeed(normalized)) {
                         storeValue(index, null, now);
@@ -425,6 +460,11 @@ public final class GwmClusterDataSource
                     // A newer callback always wins over an older in-flight GET.
                     if (valueRevisions[index] != revisions[index]) continue;
                     String value = normalizeValue(result[i]);
+                    logSignalAvailability(
+                            index,
+                            value != null
+                                    && (index != INDEX_SPEED || validSpeed(value)),
+                            "live_snapshot");
                     if (value == null || (index == INDEX_SPEED && !validSpeed(value))) continue;
                     storeValue(index, value, now);
                     if (index == INDEX_DOOR_STATUS) updateFactoryNotificationSignal(index, value, now);
@@ -449,6 +489,16 @@ public final class GwmClusterDataSource
             return reply.createStringArray();
         } catch (Exception error) {
             Log.w(TAG, "Adapter live snapshot unavailable", error);
+            long now = SystemClock.elapsedRealtime();
+            if (lastLiveSnapshotFailureLogAtMs == 0L
+                    || now - lastLiveSnapshotFailureLogAtMs
+                            >= DIAGNOSTIC_HEALTH_INTERVAL_MS) {
+                DiagnosticLog.warn(
+                        "gwm_adapter",
+                        "live_snapshot_failed",
+                        "error", error.getClass().getSimpleName());
+                lastLiveSnapshotFailureLogAtMs = now;
+            }
             return null;
         } finally {
             data.recycle();
@@ -487,6 +537,7 @@ public final class GwmClusterDataSource
 
             if (!currentService.transact(TRANSACTION_GET_DATA, data, reply, 0)) {
                 Log.w(TAG, "GET_DATA transaction rejected");
+                DiagnosticLog.warn("gwm_adapter", "initial_snapshot_rejected");
                 return;
             }
 
@@ -497,6 +548,11 @@ public final class GwmClusterDataSource
                 long now = SystemClock.elapsedRealtime();
                 for (int index = 0; index < count; index++) {
                     String value = normalizeValue(response[index]);
+                    logSignalAvailability(
+                            index,
+                            value != null
+                                    && (index != INDEX_SPEED || validSpeed(value)),
+                            "initial_snapshot");
                     if (index == INDEX_SPEED && !validSpeed(value)) continue;
                     if (value != null
                             || index == INDEX_RPM
@@ -513,10 +569,19 @@ public final class GwmClusterDataSource
                 // Only a new listener event may open the generic-warning hole.
                 factoryNotificationMonitor.seedWarningSnapshot(values[INDEX_IPK_WARNING]);
                 updateFactoryNotificationVisibility(now);
+                DiagnosticLog.info(
+                        "gwm_adapter",
+                        "initial_snapshot_received",
+                        "response_count", String.valueOf(response.length),
+                        "available_count", String.valueOf(countAvailableSignals()));
             }
             publishState();
         } catch (Throwable error) {
             Log.e(TAG, "Cannot read GWM data", error);
+            DiagnosticLog.error(
+                    "gwm_adapter",
+                    "initial_snapshot_failed",
+                    "error", error.getClass().getSimpleName());
         } finally {
             data.recycle();
             reply.recycle();
@@ -543,6 +608,10 @@ public final class GwmClusterDataSource
             return reply.readInt() != 0;
         } catch (Throwable error) {
             Log.e(TAG, "Cannot register GWM listener", error);
+            DiagnosticLog.error(
+                    "gwm_adapter",
+                    "listener_registration_failed",
+                    "error", error.getClass().getSimpleName());
             return false;
         } finally {
             data.recycle();
@@ -604,8 +673,13 @@ public final class GwmClusterDataSource
             }
         } catch (Throwable error) {
             Log.w(TAG, "Cannot unregister GWM listener", error);
+            DiagnosticLog.warn(
+                    "gwm_adapter",
+                    "listener_unregistration_failed",
+                    "error", error.getClass().getSimpleName());
         } finally {
             listenerRegistered = false;
+            DiagnosticLog.info("gwm_adapter", "listener_unregistered");
             data.recycle();
             reply.recycle();
         }
@@ -709,6 +783,7 @@ public final class GwmClusterDataSource
                 lastState.driveMode);
         lastState = state;
         currentListener.onClusterState(state);
+        logHealthIfDue(state, now, mcuStreamAt);
     }
 
     @Override
@@ -755,6 +830,70 @@ public final class GwmClusterDataSource
         transmissionTemperatureC = temperatureC;
         transmissionTemperatureUpdatedAtMs = receivedAtMs;
         publishState();
+    }
+
+    private void logSignalAvailability(int index, boolean available, String source) {
+        byte next = available ? (byte) 2 : (byte) 1;
+        if (index < 0 || index >= signalAvailability.length
+                || signalAvailability[index] == next) {
+            return;
+        }
+        signalAvailability[index] = next;
+        long now = SystemClock.elapsedRealtime();
+        if (signalAvailabilityLoggedAtMs[index] > 0L
+                && now - signalAvailabilityLoggedAtMs[index]
+                        < DIAGNOSTIC_HEALTH_INTERVAL_MS) {
+            return;
+        }
+        signalAvailabilityLoggedAtMs[index] = now;
+        DiagnosticLog.info(
+                "gwm_adapter",
+                "signal_availability_changed",
+                "signal", DATA_IDS[index],
+                "available", String.valueOf(available),
+                "source", source);
+    }
+
+    private int countAvailableSignals() {
+        int count = 0;
+        for (byte state : signalAvailability) {
+            if (state == 2) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void logHealthIfDue(ClusterState state, long now, long mcuStreamAt) {
+        if (lastDiagnosticHealthAtMs > 0L
+                && now >= lastDiagnosticHealthAtMs
+                && now - lastDiagnosticHealthAtMs < DIAGNOSTIC_HEALTH_INTERVAL_MS) {
+            return;
+        }
+        DiagnosticLog.info(
+                "vehicle_sources",
+                "health",
+                "adapter_bound", String.valueOf(bound),
+                "adapter_listener", String.valueOf(listenerRegistered),
+                "available_signals", String.valueOf(countAvailableSignals()),
+                "speed_source", speedSource.name(),
+                "speed_kph", String.valueOf(state.speedKph),
+                "gwm_speed_callback_age_ms", diagnosticAge(now, speedCallbackAtMs),
+                "mcu_stream_age_ms", diagnosticAge(now, mcuStreamAt),
+                "rpm", String.valueOf(state.rpm),
+                "binder_rpm_age_ms", diagnosticAge(now, binderRpmUpdatedAtMs),
+                "fdbus_rpm_age_ms", diagnosticAge(now, fdbusRpmUpdatedAtMs),
+                "journey_age_ms", diagnosticAge(now, journeyOdometerUpdatedAtMs),
+                "tbox_temperature_age_ms", diagnosticAge(
+                        now,
+                        transmissionTemperatureUpdatedAtMs));
+        lastDiagnosticHealthAtMs = now;
+    }
+
+    private static String diagnosticAge(long now, long timestamp) {
+        return timestamp > 0L && now >= timestamp
+                ? String.valueOf(now - timestamp)
+                : "unavailable";
     }
 
     private float[] parseTyrePressures(ClusterState fallback) {
