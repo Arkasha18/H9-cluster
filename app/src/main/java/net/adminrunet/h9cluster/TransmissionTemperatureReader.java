@@ -385,7 +385,7 @@ final class TransmissionTemperatureReader {
                     }
                     offset += read;
                     if (offset == capture.length) {
-                        return Arrays.copyOf(capture, offset);
+                        return TboxSnapshotFramer.extract(capture, offset);
                     }
                 }
 
@@ -393,7 +393,7 @@ final class TransmissionTemperatureReader {
                     if (offset == 0) {
                         throw new IOException("Empty TBOX snapshot");
                     }
-                    return Arrays.copyOf(capture, offset);
+                    return TboxSnapshotFramer.extract(capture, offset);
                 }
                 if (SystemClock.elapsedRealtime() >= deadline) {
                     throw new IOException("Timed out reading TBOX snapshot");
