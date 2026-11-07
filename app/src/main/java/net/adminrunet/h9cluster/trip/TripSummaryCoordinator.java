@@ -81,6 +81,8 @@ public final class TripSummaryCoordinator {
                 state.parkStateValid,
                 state.inPark,
                 state.parkStateUpdatedAtMs,
+                state.gearSelector,
+                state.gearSelectorObservedAtMs,
                 nowMs);
         TripTelemetry telemetry = TripTelemetry.from(state, nowMs);
 
