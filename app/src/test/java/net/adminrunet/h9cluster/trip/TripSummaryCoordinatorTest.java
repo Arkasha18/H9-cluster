@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.GearSelector;
 
 import org.junit.Test;
 
@@ -159,6 +160,36 @@ public final class TripSummaryCoordinatorTest {
 
         assertTrue(coordinator.isTripActive());
         assertTrue(listener.summaries.isEmpty());
+    }
+
+    @Test
+    public void automaticStartStopInDriveKeepsTripActiveUntilPark() {
+        MutableClock clock = new MutableClock(1_000L);
+        MemoryPersistence persistence = new MemoryPersistence();
+        RecordingListener listener = new RecordingListener(persistence);
+        TripSummaryCoordinator coordinator =
+                new TripSummaryCoordinator(persistence, listener, clock);
+        confirmStart(coordinator, clock, 10.0f);
+
+        clock.now = 10_000L;
+        coordinator.onClusterState(state(
+                0, 0, 10.1f, 9.0f, 5_000L, clock.nowMs(),
+                GearSelector.DRIVE, 9_500L));
+        clock.now = 30_000L;
+        coordinator.onClockTick();
+
+        assertTrue(coordinator.isTripActive());
+        assertTrue(listener.summaries.isEmpty());
+
+        clock.now = 31_000L;
+        coordinator.onClusterState(state(
+                0, 0, 10.1f, 9.0f, 5_000L, clock.nowMs(),
+                GearSelector.PARK, clock.nowMs()));
+        clock.now = 32_500L;
+        coordinator.onClockTick();
+
+        assertFalse(coordinator.isTripActive());
+        assertEquals(1, listener.summaries.size());
     }
 
     @Test
@@ -379,11 +410,31 @@ public final class TripSummaryCoordinatorTest {
             float averageFuel,
             long rpmUpdatedAtMs,
             long nowMs) {
+        return state(
+                rpm,
+                speedKph,
+                journeyKm,
+                averageFuel,
+                rpmUpdatedAtMs,
+                nowMs,
+                speedKph == 0 ? GearSelector.PARK : GearSelector.DRIVE,
+                0L);
+    }
+
+    private static ClusterState state(
+            int rpm,
+            int speedKph,
+            float journeyKm,
+            float averageFuel,
+            long rpmUpdatedAtMs,
+            long nowMs,
+            String gearSelector,
+            long gearSelectorObservedAtMs) {
         return new ClusterState(
                 speedKph,
                 rpm,
                 speedKph == 0 ? 0 : 3,
-                speedKph == 0 ? "P" : "D",
+                gearSelector,
                 80,
                 Float.NaN,
                 50.0f,
@@ -411,7 +462,7 @@ public final class TripSummaryCoordinatorTest {
                 nowMs,
                 nowMs,
                 nowMs,
-                "NORMAL");
+                "NORMAL").withGearSelectorObservation(gearSelectorObservedAtMs);
     }
 
     private static final class MutableClock

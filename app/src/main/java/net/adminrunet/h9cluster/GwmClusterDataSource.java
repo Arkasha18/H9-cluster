@@ -149,6 +149,7 @@ public final class GwmClusterDataSource
     private long journeyAverageFuelConsumptionUpdatedAtMs;
     private long journeyOdometerUpdatedAtMs;
     private long steeringUpdatedAtMs;
+    private long gearSelectorObservedAtMs;
     private float transmissionTemperatureC = Float.NaN;
     private long transmissionTemperatureUpdatedAtMs;
     private int tboxEngineState = ClusterState.ENGINE_STATE_UNKNOWN;
@@ -243,6 +244,7 @@ public final class GwmClusterDataSource
         fuelConsumptionEstimator.reset();
         fdbusFuelFlowLitersPerHour = Float.NaN;
         fdbusFuelFlowUpdatedAtMs = 0L;
+        gearSelectorObservedAtMs = 0L;
         transmissionTemperatureC = Float.NaN;
         transmissionTemperatureUpdatedAtMs = 0L;
         tboxEngineState = ClusterState.ENGINE_STATE_UNKNOWN;
@@ -430,6 +432,8 @@ public final class GwmClusterDataSource
                             : 0L;
         } else if (index == INDEX_STEERING_ANGLE && value != null) {
             steeringUpdatedAtMs = nowMs;
+        } else if (index == INDEX_GEAR_STATUS && value != null) {
+            gearSelectorObservedAtMs = nowMs;
         }
     }
 
@@ -792,7 +796,8 @@ public final class GwmClusterDataSource
                 journeyOdometerSample.updatedAtMs,
                 steeringUpdatedAtMs,
                 transmissionTemperatureUpdatedAtMs,
-                lastState.driveMode).withTboxVehicleState(
+                lastState.driveMode).withGearSelectorObservation(
+                        gearSelectorObservedAtMs).withTboxVehicleState(
                         tboxEngineState,
                         tboxEngineStateUpdatedAtMs,
                         tboxParkStateValid,
@@ -917,6 +922,15 @@ public final class GwmClusterDataSource
                 "rpm", String.valueOf(state.rpm),
                 "binder_rpm_age_ms", diagnosticAge(now, binderRpmUpdatedAtMs),
                 "fdbus_rpm_age_ms", diagnosticAge(now, fdbusRpmUpdatedAtMs),
+                "gear_selector_raw", values[INDEX_GEAR_STATUS] == null
+                        ? "unavailable"
+                        : values[INDEX_GEAR_STATUS],
+                "gear_selector", state.gearSelector.isEmpty()
+                        ? "unknown"
+                        : state.gearSelector,
+                "gear_selector_age_ms", diagnosticAge(
+                        now,
+                        state.gearSelectorObservedAtMs),
                 "journey_age_ms", diagnosticAge(now, journeyOdometerUpdatedAtMs),
                 "tbox_temperature_age_ms", diagnosticAge(
                         now,

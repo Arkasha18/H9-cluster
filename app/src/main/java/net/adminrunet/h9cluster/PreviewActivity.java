@@ -528,6 +528,12 @@ public final class PreviewActivity extends Activity
                         StationarySpeedDisplayFallback.isActive(state, nowMs)),
                 "rpm", String.valueOf(state.rpm),
                 "rpm_age_ms", age(nowMs, state.rpmUpdatedAtMs),
+                "gear_selector", state.gearSelector.isEmpty()
+                        ? "unknown"
+                        : state.gearSelector,
+                "gear_selector_age_ms", age(
+                        nowMs,
+                        state.gearSelectorObservedAtMs),
                 "journey_km", String.valueOf(state.dayKm),
                 "journey_age_ms", age(nowMs, state.journeyOdometerUpdatedAtMs),
                 "journey_consumption", String.valueOf(
