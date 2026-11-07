@@ -2,8 +2,9 @@ package net.adminrunet.h9cluster.trip;
 
 import net.adminrunet.h9cluster.ClusterState;
 import net.adminrunet.h9cluster.DiagnosticLog;
+import net.adminrunet.h9cluster.GearSelector;
 
-/** Detects confirmed engine start and stop transitions from fresh RPM samples. */
+/** Detects confirmed engine transitions from delivered RPM and vehicle-state evidence. */
 public final class EngineRunDetector {
     private static final int START_RPM = 400;
     private static final int STOP_RPM = 50;
@@ -67,6 +68,32 @@ public final class EngineRunDetector {
             boolean inPark,
             long parkStateUpdatedAtMs,
             long nowMs) {
+        return update(
+                rpm,
+                speedKph,
+                rpmUpdatedAtMs,
+                engineState,
+                engineStateUpdatedAtMs,
+                parkStateValid,
+                inPark,
+                parkStateUpdatedAtMs,
+                GearSelector.UNKNOWN,
+                0L,
+                nowMs);
+    }
+
+    public Event update(
+            int rpm,
+            int speedKph,
+            long rpmUpdatedAtMs,
+            int engineState,
+            long engineStateUpdatedAtMs,
+            boolean parkStateValid,
+            boolean inPark,
+            long parkStateUpdatedAtMs,
+            String gearSelector,
+            long gearSelectorObservedAtMs,
+            long nowMs) {
         boolean observedRpm =
                 rpmUpdatedAtMs > 0L && nowMs >= rpmUpdatedAtMs;
         boolean freshRpm = observedRpm
@@ -103,9 +130,18 @@ public final class EngineRunDetector {
         // A fresh non-Park state identifies an automatic start-stop pause and
         // vetoes even the legacy RPM + zero-speed path.
         boolean freshNonPark = freshParkState && !inPark;
+        boolean selectorObserved = gearSelectorObservedAtMs > 0L
+                && nowMs >= gearSelectorObservedAtMs;
+        boolean selectorPark = selectorObserved
+                && GearSelector.PARK.equals(gearSelector);
+        // The selector is stateful: a delivered D/R/N/M (or an unmapped code)
+        // remains a stop veto until the factory source explicitly reports P.
+        // A car that has never exposed gear_status keeps the legacy path.
+        boolean selectorVeto = selectorObserved && !selectorPark;
         boolean rpmAndSpeedStop = observedStationary
                 && lastObservedRpmStopped
-                && !freshNonPark;
+                && !freshNonPark
+                && !selectorVeto;
         boolean explicitEngineStop = freshEngineState
                 && engineState == ClusterState.ENGINE_STATE_STOPPED;
         // The independent TBOX path is deliberately stricter than RPM: engine
@@ -117,7 +153,16 @@ public final class EngineRunDetector {
         boolean stopCondition = rpmAndSpeedStop || tboxStop;
         String stopEvidence = tboxStop
                 ? "tbox_engine_park"
-                : rpmAndSpeedStop ? "rpm_speed" : "none";
+                : rpmAndSpeedStop
+                        ? selectorPark ? "rpm_speed_gear_park" : "rpm_speed_legacy"
+                        : "none";
+        String selectorEvidence = !selectorObserved
+                ? "unavailable"
+                : selectorPark
+                        ? "park"
+                        : GearSelector.UNKNOWN.equals(gearSelector)
+                                ? "unmapped"
+                                : "non_park";
 
         switch (state) {
             case OFF:
@@ -130,7 +175,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                     return Event.STARTING;
                 }
                 return Event.NONE;
@@ -143,7 +191,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                     cancelCandidate(State.OFF);
                     return Event.NONE;
                 }
@@ -155,7 +206,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                     cancelCandidate(State.RUNNING);
                     return Event.STARTED;
                 }
@@ -170,7 +224,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                 }
                 return Event.NONE;
             case STOPPING:
@@ -182,7 +239,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                     cancelCandidate(State.RUNNING);
                     return Event.NONE;
                 }
@@ -194,7 +254,10 @@ public final class EngineRunDetector {
                             rpmUpdatedAtMs,
                             nowMs,
                             observedStationary,
-                            stopEvidence);
+                            stopEvidence,
+                            gearSelector,
+                            gearSelectorObservedAtMs,
+                            selectorEvidence);
                     cancelCandidate(State.OFF);
                     return Event.STOPPED;
                 }
@@ -221,7 +284,10 @@ public final class EngineRunDetector {
             long rpmUpdatedAtMs,
             long nowMs,
             boolean observedStationary,
-            String stopEvidence) {
+            String stopEvidence,
+            String gearSelector,
+            long gearSelectorObservedAtMs,
+            String selectorEvidence) {
         if (!shouldLogTransition(event, nowMs)) {
             return;
         }
@@ -236,6 +302,14 @@ public final class EngineRunDetector {
                         : "unavailable",
                 "stationary_evidence", String.valueOf(observedStationary),
                 "stop_evidence", stopEvidence,
+                "gear_selector", gearSelector == null || gearSelector.isEmpty()
+                        ? "unknown"
+                        : gearSelector,
+                "gear_selector_age_ms", gearSelectorObservedAtMs > 0L
+                        && nowMs >= gearSelectorObservedAtMs
+                        ? String.valueOf(nowMs - gearSelectorObservedAtMs)
+                        : "unavailable",
+                "selector_evidence", selectorEvidence,
                 "candidate_ms", candidateSinceMs >= 0L && nowMs >= candidateSinceMs
                         ? String.valueOf(nowMs - candidateSinceMs)
                         : "none");

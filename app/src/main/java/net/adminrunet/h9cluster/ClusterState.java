@@ -17,6 +17,8 @@ public final class ClusterState {
     public final long parkStateUpdatedAtMs;
     public final int currentGear;
     public final String gearSelector;
+    /** Last delivered factory selector observation; zero means never observed. */
+    public final long gearSelectorObservedAtMs;
     public final int coolantC;
     public final float transmissionTemperatureC;
     public final float fuelLiters;
@@ -92,6 +94,7 @@ public final class ClusterState {
         this.gearSelector = gearSelector == null
                 ? GearSelector.UNKNOWN
                 : gearSelector;
+        this.gearSelectorObservedAtMs = 0L;
         this.coolantC = coolantC;
         this.transmissionTemperatureC = transmissionTemperatureC;
         this.fuelLiters = fuelLiters;
@@ -135,7 +138,8 @@ public final class ClusterState {
                 source.engineStateUpdatedAtMs,
                 source.parkStateValid,
                 source.inPark,
-                source.parkStateUpdatedAtMs);
+                source.parkStateUpdatedAtMs,
+                source.gearSelectorObservedAtMs);
     }
 
     private ClusterState(
@@ -146,7 +150,8 @@ public final class ClusterState {
             long engineStateUpdatedAtMs,
             boolean parkStateValid,
             boolean inPark,
-            long parkStateUpdatedAtMs) {
+            long parkStateUpdatedAtMs,
+            long gearSelectorObservedAtMs) {
         this.speedKph = speedKph;
         rpm = source.rpm;
         this.engineState = engineState;
@@ -156,6 +161,7 @@ public final class ClusterState {
         this.parkStateUpdatedAtMs = parkStateUpdatedAtMs;
         currentGear = source.currentGear;
         gearSelector = source.gearSelector;
+        this.gearSelectorObservedAtMs = gearSelectorObservedAtMs;
         coolantC = source.coolantC;
         transmissionTemperatureC = source.transmissionTemperatureC;
         fuelLiters = source.fuelTankCapacityLiters == fuelTankCapacityLiters
@@ -220,7 +226,26 @@ public final class ClusterState {
                 engineStateUpdatedAtMs,
                 parkStateValid,
                 inPark,
-                parkStateUpdatedAtMs);
+                parkStateUpdatedAtMs,
+                gearSelectorObservedAtMs);
+    }
+
+    /** Records that the factory selector source delivered the current value. */
+    public ClusterState withGearSelectorObservation(long observedAtMs) {
+        long normalizedObservedAtMs = Math.max(0L, observedAtMs);
+        if (gearSelectorObservedAtMs == normalizedObservedAtMs) {
+            return this;
+        }
+        return new ClusterState(
+                this,
+                fuelTankCapacityLiters,
+                speedKph,
+                engineState,
+                engineStateUpdatedAtMs,
+                parkStateValid,
+                inPark,
+                parkStateUpdatedAtMs,
+                normalizedObservedAtMs);
     }
 
     /** Adds independent read-only engine/Park evidence without changing display telemetry. */
@@ -256,7 +281,8 @@ public final class ClusterState {
                 normalizedEngineUpdatedAtMs,
                 normalizedParkValid,
                 normalizedParkValid && inPark,
-                normalizedParkUpdatedAtMs);
+                normalizedParkUpdatedAtMs,
+                gearSelectorObservedAtMs);
     }
 
     public boolean hasTransmissionTemperature() {

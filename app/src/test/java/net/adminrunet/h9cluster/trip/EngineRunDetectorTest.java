@@ -6,6 +6,9 @@ import static net.adminrunet.h9cluster.trip.EngineRunDetector.Event.STARTING;
 import static net.adminrunet.h9cluster.trip.EngineRunDetector.Event.STOPPED;
 import static org.junit.Assert.assertEquals;
 
+import net.adminrunet.h9cluster.ClusterState;
+import net.adminrunet.h9cluster.GearSelector;
+
 import org.junit.Test;
 
 public final class EngineRunDetectorTest {
@@ -210,6 +213,66 @@ public final class EngineRunDetectorTest {
                 0, 0, 3_500L,
                 0, 3_500L, true, false, 3_500L,
                 3_500L));
+    }
+
+    @Test
+    public void observedDriveSelectorVetoesStaleZeroWithoutTbox() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.DRIVE, 1_500L,
+                7_000L));
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.DRIVE, 1_500L,
+                60_000L));
+    }
+
+    @Test
+    public void explicitParkAfterDriveAllowsRpmStopPath() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.DRIVE, 1_500L,
+                7_000L));
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.PARK, 8_000L,
+                8_000L));
+        assertEquals(STOPPED, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.PARK, 8_000L,
+                9_500L));
+    }
+
+    @Test
+    public void observedUnmappedSelectorFailsClosed() {
+        EngineRunDetector detector = new EngineRunDetector(true);
+
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.UNKNOWN, 1_500L,
+                7_000L));
+        assertEquals(NONE, detector.update(
+                0, 0, 2_000L,
+                ClusterState.ENGINE_STATE_UNKNOWN, 0L,
+                false, false, 0L,
+                GearSelector.UNKNOWN, 1_500L,
+                60_000L));
     }
 
     @Test
