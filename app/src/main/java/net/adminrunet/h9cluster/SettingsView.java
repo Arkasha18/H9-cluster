@@ -30,6 +30,13 @@ public final class SettingsView extends View {
     private static final int COLOR_MUTED = 0xFF98A7AE;
     private static final int COLOR_ACCENT = 0xFF31D7C5;
     private static final int COLOR_DANGER = 0xFFE2574C;
+    private static final float SUPPORT_CARD_LEFT = 10.0f;
+    private static final float SUPPORT_CARD_TOP = 8.0f;
+    private static final float SUPPORT_CARD_RIGHT = 179.0f;
+    private static final float SUPPORT_CARD_BOTTOM = 158.0f;
+    private static final float SUPPORT_QR_LEFT = 39.0f;
+    private static final float SUPPORT_QR_TOP = 11.0f;
+    private static final float SUPPORT_QR_MODULE_SIZE = 3.0f;
     private static final SkinRegistry.Definition[] SKINS =
             SkinRegistry.getDefinitions();
     private static final CharSequence[] SKIN_TITLES = createSkinTitles();
@@ -98,6 +105,7 @@ public final class SettingsView extends View {
         canvas.translate(contentOffsetX, contentOffsetY);
         canvas.scale(contentScale, contentScale);
 
+        drawSupportProjectQr(canvas);
         drawCenteredText(canvas, "H9 Cluster", 480.0f, 54.0f, 34.0f, COLOR_TEXT, true);
         drawCenteredText(
                 canvas,
@@ -178,6 +186,68 @@ public final class SettingsView extends View {
         }
 
         canvas.restoreToCount(save);
+    }
+
+    private void drawSupportProjectQr(Canvas canvas) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(COLOR_CARD_SELECTED);
+        canvas.drawRoundRect(
+                SUPPORT_CARD_LEFT,
+                SUPPORT_CARD_TOP,
+                SUPPORT_CARD_RIGHT,
+                SUPPORT_CARD_BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(1.5f);
+        paint.setColor(COLOR_ACCENT);
+        canvas.drawRoundRect(
+                SUPPORT_CARD_LEFT,
+                SUPPORT_CARD_TOP,
+                SUPPORT_CARD_RIGHT,
+                SUPPORT_CARD_BOTTOM,
+                12.0f,
+                12.0f,
+                paint);
+
+        boolean antiAlias = paint.isAntiAlias();
+        paint.setAntiAlias(false);
+        paint.setStyle(Paint.Style.FILL);
+        float qrSize = SupportProjectQr.MODULE_COUNT * SUPPORT_QR_MODULE_SIZE;
+        paint.setColor(Color.WHITE);
+        canvas.drawRect(
+                SUPPORT_QR_LEFT,
+                SUPPORT_QR_TOP,
+                SUPPORT_QR_LEFT + qrSize,
+                SUPPORT_QR_TOP + qrSize,
+                paint);
+        paint.setColor(Color.BLACK);
+        for (int row = 0; row < SupportProjectQr.MODULE_COUNT; row++) {
+            for (int column = 0; column < SupportProjectQr.MODULE_COUNT; column++) {
+                if (!SupportProjectQr.isDarkModule(row, column)) {
+                    continue;
+                }
+                float left = SUPPORT_QR_LEFT + column * SUPPORT_QR_MODULE_SIZE;
+                float top = SUPPORT_QR_TOP + row * SUPPORT_QR_MODULE_SIZE;
+                canvas.drawRect(
+                        left,
+                        top,
+                        left + SUPPORT_QR_MODULE_SIZE,
+                        top + SUPPORT_QR_MODULE_SIZE,
+                        paint);
+            }
+        }
+        paint.setAntiAlias(antiAlias);
+
+        drawCenteredText(
+                canvas,
+                "Поддержать проект",
+                (SUPPORT_CARD_LEFT + SUPPORT_CARD_RIGHT) * 0.5f,
+                149.0f,
+                13.0f,
+                COLOR_TEXT,
+                true);
     }
 
     private String saveButtonTitle() {
