@@ -60,7 +60,7 @@ public final class GearNumberVisibilityTest {
             assertEquals(8, telemetry.currentGear);
             assertEquals(GearSelector.DRIVE, telemetry.gearSelector);
         }
-        assertEquals(7, checked);
+        assertEquals(8, checked);
     }
 
     @Test

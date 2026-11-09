@@ -1,0 +1,47 @@
+{
+  "canvas": [
+    1920,
+    720
+  ],
+  "left_x_scale": 0.9,
+  "left_y_knots": [
+    [
+      0,
+      0
+    ],
+    [
+      220,
+      220
+    ],
+    [
+      360,
+      344
+    ],
+    [
+      440,
+      440
+    ],
+    [
+      540,
+      540
+    ],
+    [
+      600,
+      650
+    ],
+    [
+      690,
+      706
+    ],
+    [
+      720,
+      720
+    ]
+  ],
+  "source": "clean-material-source.png",
+  "source_sha256": "872457dda8927aceff36cfff5998d1592cc7984558ed7ebdc73e91e78625f22b",
+  "calibration_sha256": "c21978f23e6bcbcdbb255c8ee3b0599ee4494310741eeb84deb1298ff0957260",
+  "alpha_source": "generated sprite; globally remapped max(0,a-6)*255/249 to remove subvisible haze",
+  "y_interpolation": "monotone cubic Hermite with harmonic-mean interior tangents",
+  "technical_masks_used_for_export": false
+}

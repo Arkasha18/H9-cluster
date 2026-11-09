@@ -65,7 +65,7 @@ public final class FuelTankSkinRenderingTest {
                 }
             }
         }
-        assertEquals(7, checkedSkins);
+        assertEquals(8, checkedSkins);
     }
 
     private static void assertFuelFraction(String skinId, Frame frame, float fraction) {
@@ -128,6 +128,11 @@ public final class FuelTankSkinRenderingTest {
                 expectedY = 250;
                 minimumX = 410; maximumX = 510;
                 break;
+            case SkinRegistry.PORCELAIN_FLUID:
+                expected = liters + " л";
+                expectedY = 543;
+                minimumX = 1389; maximumX = 1401;
+                break;
             default:
                 throw new AssertionError("Fuel readout needs coverage for " + skinId);
         }
@@ -147,6 +152,14 @@ public final class FuelTankSkinRenderingTest {
     private static void assertSameFuelGauge(String skinId, Frame standard, Frame small)
             throws Exception {
         switch (skinId) {
+            case SkinRegistry.PORCELAIN_FLUID:
+                // Waves vary with time. The per-skin native test also compares
+                // actual liquid pixels for different capacities at an equal phase.
+                Method fraction = standard.view.getClass().getDeclaredMethod("fuelFraction");
+                fraction.setAccessible(true);
+                assertEquals(((Number) fraction.invoke(standard.view)).floatValue(),
+                        ((Number) fraction.invoke(small.view)).floatValue(), .0001f);
+                break;
             case SkinRegistry.CLASSIC:
             case SkinRegistry.SPORT:
                 Bitmap standardNeedles = needles(standard.view);

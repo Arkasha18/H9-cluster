@@ -12,7 +12,7 @@ public final class SkinRegistryTest {
         SkinRegistry.Definition[] definitions =
                 SkinRegistry.getDefinitions();
 
-        assertEquals(8, definitions.length);
+        assertEquals(9, definitions.length);
         assertEquals(SkinRegistry.ION_AURORA, definitions[0].id);
         assertEquals(SkinRegistry.CLASSIC, definitions[1].id);
         assertEquals(SkinRegistry.SPORT, definitions[2].id);
@@ -20,7 +20,8 @@ public final class SkinRegistryTest {
         assertEquals(SkinRegistry.HORIZON, definitions[4].id);
         assertEquals(SkinRegistry.SCULPTED_TITANIUM, definitions[5].id);
         assertEquals(SkinRegistry.APEX_SPORT, definitions[6].id);
-        assertEquals(SkinRegistry.STOCK, definitions[7].id);
+        assertEquals(SkinRegistry.PORCELAIN_FLUID, definitions[7].id);
+        assertEquals(SkinRegistry.STOCK, definitions[8].id);
     }
 
     @Test

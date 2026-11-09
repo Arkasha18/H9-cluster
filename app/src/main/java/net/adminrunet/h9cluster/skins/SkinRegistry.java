@@ -2,6 +2,7 @@ package net.adminrunet.h9cluster.skins;
 
 import net.adminrunet.h9cluster.ClusterRenderer;
 import net.adminrunet.h9cluster.skins.apexsport.ApexSportClusterView;
+import net.adminrunet.h9cluster.skins.porcelainfluid.PorcelainFluidClusterView;
 import net.adminrunet.h9cluster.skins.classic.ClassicClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonClusterView;
 import net.adminrunet.h9cluster.skins.horizon.HorizonSettingsProvider;
@@ -30,6 +31,7 @@ public final class SkinRegistry {
     public static final String STOCK = "stock";
     public static final String SCULPTED_TITANIUM = "sculptedtitanium";
     public static final String APEX_SPORT = "apexsport";
+    public static final String PORCELAIN_FLUID = "porcelainfluid";
 
     private interface RendererFactory {
         View create(
@@ -222,6 +224,18 @@ public final class SkinRegistry {
                     public View create(Context context, SkinSettings settings,
                             SpeedDisplayMode speedDisplayMode) {
                         return new ApexSportClusterView(context, speedDisplayMode);
+                    }
+                },
+                null),
+        new Definition(
+                PORCELAIN_FLUID,
+                "Porcelain Fluid — белая керамика",
+                "Перламутровые переливы, жидкостные приборы и крупные показания",
+                new RendererFactory() {
+                    @Override
+                    public View create(Context context, SkinSettings settings,
+                            SpeedDisplayMode speedDisplayMode) {
+                        return new PorcelainFluidClusterView(context, speedDisplayMode);
                     }
                 },
                 null),

@@ -6,6 +6,22 @@ components remain under their respective licenses.
 
 ## Fonts
 
+### Exo 2 and Manrope (Porcelain Fluid)
+
+- Exo 2 copyright: Copyright 2013 The Exo 2 Project Authors
+  (<https://github.com/googlefonts/Exo-2.0>)
+- Manrope copyright: Copyright 2018 The Manrope Project Authors
+  (<https://github.com/googlefonts/manrope>)
+- License: SIL Open Font License 1.1; complete texts accompany each font
+- Runtime files and license texts:
+  `app/src/main/assets/dashboard/skins/porcelainfluid/PFDisplay.ttf`,
+  `PFData.ttf`, `PFLabel.ttf` and their `*-OFL.txt` files
+- Corresponding WOFF inputs: `tools/assets/porcelain_fluid/fonts/`
+
+These subsets are renamed PFDisplay (Exo 2 weight 650), PFData (Exo 2 weight
+560) and PFLabel (Manrope weight 650). Numeric subsets use tabular digits.
+The original reserved family names are not used for the modified fonts.
+
 ### Noto Sans (design tooling only)
 
 - File: `tools/assets/fonts/NotoSans.ttf`; not included in Android assets
