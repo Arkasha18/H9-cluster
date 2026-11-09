@@ -11,6 +11,7 @@ Each skin owns its complete rendering code and design assets:
 | Sport | `sport/SportClusterView.java` | `assets/dashboard/skins/sport/` |
 | Sculpted Titanium | `sculptedtitanium/SculptedTitaniumClusterView.java` | `assets/dashboard/skins/sculptedtitanium/` |
 | APEX SPORT | `apexsport/ApexSportClusterView.java` | `assets/dashboard/skins/apexsport/` |
+| Porcelain Fluid | `porcelainfluid/PorcelainFluidClusterView.java` | `assets/dashboard/skins/porcelainfluid/` |
 | Stock | none, the factory is `null` | Nothing is drawn |
 
 All renderers receive the same immutable `ClusterState` through the shared
@@ -25,6 +26,14 @@ separates strict lower-left reservations from factory fields that permit a
 decorative underlay. This does not relax any existing skin's stricter tests.
 Keep the original calibrated PNG intact; document and test any derived edge
 treatment. Validate foreground alpha separately from the full composition.
+
+## Porcelain Fluid
+
+Porcelain Fluid's native layout, live bindings, asset transform, licensing and
+alpha checks are documented in
+[`tools/assets/porcelain_fluid/README_RU.md`](../../../../../../../../tools/assets/porcelain_fluid/README_RU.md).
+Its numeric fuel input honors the shared tank-capacity setting; the animated
+surface uses the resulting percentage. The original calibrated map is unchanged.
 
 ## APEX SPORT
 
